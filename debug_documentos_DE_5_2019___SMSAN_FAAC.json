@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-04-13T07:15:24.949493",
+  "processo": "DE 5/2019 - SMSAN/FAAC",
+  "documentos": [
+    {
+      "indice": 1,
+      "nome": "D.E. 5",
+      "html_arquivo": "<td class=\"rich-table-cell\" id=\"form:tabelaDocumentos:0:j_id281\" width=\"5%\"><input id=\"form:tabelaDocumentos:0:j_id283\" name=\"form:tabelaDocumentos:0:j_id283\" onclick=\"A4J.AJAX.Submit('form',event,{'oncomplete':function(request,event,data){open_download('/ConsultaLicitacoes');},'similarityGroupingId':'form:tabelaDocumentos:0:j_id283','parameters':{'id':17675,'form:tabelaDocumentos:0:j_id283':'form:tabelaDocumentos:0:j_id283'} ,'actionUrl':'/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf'} );return false;\" src=\"/ConsultaLicitacoes/images/about.gif\" style=\"border: 0\" tabindex=\"0\" type=\"image\"/></td>",
+      "elementos": [
+        {
+          "tipo": "input",
+          "input_type": "image",
+          "value": "",
+          "onclick": "A4J.AJAX.Submit('form',event,{'oncomplete':function(request,event,data){open_download('/ConsultaLicitacoes');},'similarityGroupingId':'form:tabelaDocumentos:0:j_id283','parameters':{'id':17675,'form:tabelaDocumentos:0:j_id283':'form:tabelaDocumentos:0:j_id283'} ,'actionUrl':'/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf'} );return false;",
+          "id": "form:tabelaDocumentos:0:j_id283"
+        }
+      ]
+    }
+  ],
+  "requisicoes_capturadas": [
+    {
+      "url": "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf",
+      "status": 200,
+      "content_type": "text/xml;charset=UTF-8",
+      "timestamp": "2026-04-13T07:15:24.880658"
+    }
+  ],
+  "quantidade_docs": 1
+}

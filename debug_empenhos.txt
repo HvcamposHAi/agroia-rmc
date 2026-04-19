@@ -1,0 +1,61 @@
+	
+	
+	Lista Licitações	
+		
+	Licitação	
+	
+
+
+Licitação:	Dispensa - 73 / 2019
+Empresa:	Fundo de Abastecimento Alimentar de Curitiba
+Nº Edital:	73	Data Abertura:	13/08/2019
+Setor:	SMSAN/FAAC
+Local Abertura:	RUA GENERAL CARNEIRO, 938 - CENTRO
+Situação:	Concluído
+Total de Forn. que Retiraram o Edital:	
+0	
+
+Total de Fornecedores Participantes:	
+4	
+		
+
+Objeto:	
+	
+		
+	
+		
+Seq
+	
+Código
+	
+Descrição
+	
+Qt. Solicitada
+	
+UN
+	
+Valor
+	
+Empenhos
+
+páginas
+			
+
+2	890606027107	LEITE,	520.000,00	LITRO	2,2800	Empenhos
+1	890606035180	LEITE,	12.000,00	LITRO	2,2800	Empenhos
+3	892306646953	MANDIOCA/AIPIM,	15.000,00	UNIDADE	0,0000	Empenhos
+	
+		
+		
+		
+	
+	Empenhos	
+	
+	
+Número
+	
+Ano
+	
+Data Empenho
+	
+		

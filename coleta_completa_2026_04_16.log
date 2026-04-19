@@ -1,0 +1,36 @@
+[13:41:02] [INFO] ======================================================================
+[13:41:02] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[13:41:02] [INFO] ======================================================================
+[13:41:02] [INFO] Google Drive conectado
+[13:41:03] [INFO] Acessando portal...
+[13:41:09] [INFO] Pesquisando...
+[13:41:18] [INFO] Pesquisa: 1243 licitações encontradas
+[13:41:18] [INFO] 
+Coletando documentos (limit=None)...
+[13:41:18] [INFO] 
+[1] AD 3/2019 - SMSAN/FAAC
+[13:41:26] [INFO] 
+[2] DE 4/2019 - SMSAN/FAAC
+[13:41:30] [INFO]   DE 4/2019 - SMSAN/FAAC: 1 documento(s)
+[13:42:19] [WARN]     Documento já existe no BD (ID=1714)
+[13:42:19] [INFO]     [1] D.E 4: OK (DB salvo)
+[13:42:22] [INFO] 
+[3] DE 5/2019 - SMSAN/FAAC
+[13:42:26] [INFO]   DE 5/2019 - SMSAN/FAAC: 1 documento(s)
+[13:42:55] [WARN]     Documento já existe no BD (ID=1715)
+[13:42:55] [INFO]     [1] D.E. 5: OK (DB salvo)
+[13:42:57] [INFO] 
+[4] DE 6/2019 - SMSAN/FAAC
+[13:43:01] [INFO]   DE 6/2019 - SMSAN/FAAC: 1 documento(s)
+[13:43:25] [WARN]     Documento já existe no BD (ID=1716)
+[13:43:25] [INFO]     [1] : OK (DB salvo)
+[13:43:28] [INFO] 
+[5] DS 70/2019 - SMSAN/FAAC
+[13:43:34] [INFO] 
+======================================================================
+[13:43:34] [INFO] RESUMO DA COLETA
+[13:43:34] [INFO] ======================================================================
+[13:43:34] [INFO] Processados: 5
+[13:43:34] [INFO] Documentos: 3
+[13:43:34] [INFO] Erros: 0
+[13:43:34] [INFO] Taxa sucesso: 60.0%

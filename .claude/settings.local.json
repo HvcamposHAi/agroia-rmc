@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import ast; src=open\\(''etapa2_itens_v8.py'',encoding=''utf-8''\\).read\\(\\); ast.parse\\(src\\); print\\(''OK''\\)\")",
+      "Bash(ls C:UsershvcamMeu DrivePessoalMestradoDissertaçãoagroia-rmc/*.py)",
+      "Bash(xargs -I{} basename {})",
+      "Bash(ls -la \"c:\\\\Users\\\\hvcam\\\\Meu Drive\\\\Pessoal\\\\Mestrado\\\\Dissertação\\\\agroia-rmc\"/*.log)"
+    ]
+  }
+}

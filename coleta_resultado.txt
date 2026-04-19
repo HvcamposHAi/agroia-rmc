@@ -1,0 +1,57 @@
+[OK] Google Drive conectado
+
+======================================================================
+COLETA DE DOCUMENTOS - VERSÃO CORRIGIDA
+======================================================================
+
+[1] Acessando portal...
+
+[2] Pesquisando...
+[Pesquisa] Aguardando...
+[Pesquisa] Preenchendo...
+[Pesquisa] Enviando...
+[Pesquisa] Total: 1243
+
+[3] Coletando documentos...
+    Encontrados: 5 processos na página
+
+  [1] AD 3/2019 - SMSAN/FAAC
+      [Total] 0 documentos
+
+  [2] DE 4/2019 - SMSAN/FAAC
+      Documentos: 1
+        [1] D.E 4...
+        [Popup] http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/download/download.jsf
+        [Click] Botão encontrado (1)
+        [OK] Baixado: DE_4.pdf
+        [OK] Upload: https://drive.google.com/file/d/1KROIxz9-GMdTBYksx...
+      [Total] 1 documentos
+
+  [3] DE 5/2019 - SMSAN/FAAC
+      Documentos: 1
+        [1] D.E. 5...
+        [Popup] http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/download/download.jsf
+        [Click] Botão encontrado (1)
+        [OK] Baixado: DE_05.pdf
+        [OK] Upload: https://drive.google.com/file/d/1Djp6jycpPegw5wcSk...
+      [Total] 1 documentos
+
+  [4] DE 6/2019 - SMSAN/FAAC
+      Documentos: 1
+        [1] ...
+        [Popup] http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/download/download.jsf
+        [Click] Botão encontrado (1)
+        [OK] Baixado: Dispensa_Eletrônica_6.pdf
+        [OK] Upload: https://drive.google.com/file/d/1pHPpzA26vfqkq5F1l...
+      [Total] 1 documentos
+
+  [5] DS 70/2019 - SMSAN/FAAC
+      Documentos: 0
+      [Total] 0 documentos
+
+======================================================================
+RESUMO
+======================================================================
+Processos abertos: 5
+Documentos coletados: 3
+Erros: 0

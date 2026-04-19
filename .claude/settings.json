@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -1 \"c:\\\\Users\\\\hvcam\\\\Meu Drive\\\\Pessoal\\\\Mestrado\\\\Dissertação\\\\agroia-rmc\"/*.py)",
+      "Bash(python3 -c ':*)",
+      "Bash(python -c ':*)",
+      "Bash(python -)",
+      "Bash(python diagnostico_documentos.py)",
+      "Bash(timeout 180 python teste_download_correto.py)"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-04-13T07:15:08.644508",
+  "processo": "AD 3/2019 - SMSAN/FAAC",
+  "documentos": [],
+  "requisicoes_capturadas": [
+    {
+      "url": "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/a4j/g/3_3_3.Finalimages/modal_06.gif.jsf",
+      "status": 200,
+      "content_type": "image/gif",
+      "timestamp": "2026-04-13T07:14:57.547702"
+    },
+    {
+      "url": "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/a4j/g/3_3_3.Finalimages/modal_05.gif.jsf",
+      "status": 200,
+      "content_type": "image/gif",
+      "timestamp": "2026-04-13T07:14:57.550355"
+    },
+    {
+      "url": "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf",
+      "status": 200,
+      "content_type": "text/xml;charset=UTF-8",
+      "timestamp": "2026-04-13T07:15:00.585127"
+    }
+  ],
+  "quantidade_docs": 0
+}

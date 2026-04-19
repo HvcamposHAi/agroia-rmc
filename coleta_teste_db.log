@@ -1,0 +1,36 @@
+[11:00:52] [INFO] ======================================================================
+[11:00:52] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[11:00:52] [INFO] ======================================================================
+[11:00:52] [INFO] Google Drive conectado
+[11:00:53] [INFO] Acessando portal...
+[11:00:58] [INFO] Pesquisando...
+[11:01:08] [INFO] Pesquisa: 1243 licitações encontradas
+[11:01:08] [INFO] 
+Coletando documentos (limit=10)...
+[11:01:08] [INFO] 
+[1] AD 3/2019 - SMSAN/FAAC
+[11:01:16] [INFO] 
+[2] DE 4/2019 - SMSAN/FAAC
+[11:01:20] [INFO]   DE 4/2019 - SMSAN/FAAC: 1 documento(s)
+[11:02:11] [WARN]     Erro ao salvar no banco: {'message': "Could not find the 'data_coleta' column of 'documentos_licitacao' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
+[11:02:11] [INFO]     [1] D.E 4: OK (sem DB)
+[11:02:14] [INFO] 
+[3] DE 5/2019 - SMSAN/FAAC
+[11:02:18] [INFO]   DE 5/2019 - SMSAN/FAAC: 1 documento(s)
+[11:02:49] [WARN]     Erro ao salvar no banco: {'message': "Could not find the 'data_coleta' column of 'documentos_licitacao' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
+[11:02:49] [INFO]     [1] D.E. 5: OK (sem DB)
+[11:02:51] [INFO] 
+[4] DE 6/2019 - SMSAN/FAAC
+[11:02:56] [INFO]   DE 6/2019 - SMSAN/FAAC: 1 documento(s)
+[11:03:20] [WARN]     Erro ao salvar no banco: {'message': "Could not find the 'data_coleta' column of 'documentos_licitacao' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
+[11:03:20] [INFO]     [1] : OK (sem DB)
+[11:03:23] [INFO] 
+[5] DS 70/2019 - SMSAN/FAAC
+[11:03:30] [INFO] 
+======================================================================
+[11:03:30] [INFO] RESUMO DA COLETA
+[11:03:30] [INFO] ======================================================================
+[11:03:30] [INFO] Processados: 5
+[11:03:30] [INFO] Documentos: 3
+[11:03:30] [INFO] Erros: 0
+[11:03:30] [INFO] Taxa sucesso: 60.0%

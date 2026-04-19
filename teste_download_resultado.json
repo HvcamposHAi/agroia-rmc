@@ -1,0 +1,10 @@
+{
+  "processo": "PE 156/2023 - SMSAN/FAAC",
+  "tempo_inicio": "2026-04-13T08:15:16.835281",
+  "popup_capturado": false,
+  "response_capturada": false,
+  "tamanho_bytes": 0,
+  "content_type": "",
+  "erro": "Timeout 60000ms exceeded while waiting for event \"page\"",
+  "tempo_fim": "2026-04-13T08:16:16.845819"
+}
