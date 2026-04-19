@@ -2,8 +2,11 @@ import uuid
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from dotenv import load_dotenv
 from chat.agent import chat
 from chat.db import get_supabase_client
+
+load_dotenv()
 
 app = FastAPI(
     title="AgroIA-RMC Chat",
@@ -70,19 +73,22 @@ def salvar_turno(session_id: str, role: str, content: str, tools_usadas: list[st
 @app.post("/chat")
 def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """Endpoint de chat com persistência de histórico."""
-    session_id = request.session_id or str(uuid.uuid4())
+    try:
+        session_id = request.session_id or str(uuid.uuid4())
 
-    historico = request.historico or carregar_historico(session_id)
-    resultado = chat(request.pergunta, historico)
+        historico = request.historico or carregar_historico(session_id)
+        resultado = chat(request.pergunta, historico)
 
-    salvar_turno(session_id, "user", request.pergunta)
-    salvar_turno(session_id, "assistant", resultado["resposta"], resultado["tools_usadas"])
+        salvar_turno(session_id, "user", request.pergunta)
+        salvar_turno(session_id, "assistant", resultado["resposta"], resultado["tools_usadas"])
 
-    return ChatResponse(
-        resposta=resultado["resposta"],
-        tools_usadas=resultado["tools_usadas"],
-        session_id=session_id
-    )
+        return ChatResponse(
+            resposta=resultado["resposta"],
+            tools_usadas=resultado["tools_usadas"],
+            session_id=session_id
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/conversas/{session_id}")
 def obter_conversa(session_id: str) -> list[dict]:
