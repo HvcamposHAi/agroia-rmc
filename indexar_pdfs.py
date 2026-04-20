@@ -8,6 +8,7 @@ import io
 import os
 import json
 import pickle
+import base64
 from pathlib import Path
 from datetime import datetime
 from typing import Iterator
@@ -16,8 +17,7 @@ from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
 from supabase import create_client, Client
-import pdfplumber
-import easyocr
+import anthropic
 import fitz
 from sentence_transformers import SentenceTransformer
 from google.auth.transport.requests import Request
@@ -91,40 +91,60 @@ def baixar_pdf_drive(service, file_id: str) -> bytes | None:
         print(f"Erro ao baixar {file_id}: {e}")
         return None
 
-def extrair_texto_pdf(pdf_bytes: bytes, ocr_reader=None) -> str:
-    """Extrai texto de PDF: primeiro tenta pdfplumber, depois OCR como fallback."""
+def extrair_texto_com_claude(pdf_bytes: bytes, client: anthropic.Anthropic) -> str:
+    """Extrai texto de PDF usando Claude Vision com prompt contextualizado."""
     try:
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-            paginas = []
-            for page in pdf.pages:
-                texto = page.extract_text()
-                if texto and len(texto.strip()) > 50:
-                    paginas.append(texto)
-            if paginas:
-                return "\n\n".join(paginas)
-    except Exception as e:
-        print(f"pdfplumber falhou: {e}")
-
-    if ocr_reader is None:
-        return ""
-
-    try:
-        print("      Tentando OCR...", end="", flush=True)
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        paginas = []
-        for page_num, page in enumerate(doc):
-            try:
-                pix = page.get_pixmap(dpi=200)
-                img_bytes = pix.tobytes("png")
-                resultado = ocr_reader.readtext(img_bytes, detail=0)
-                texto = " ".join(resultado)
-                if len(texto.strip()) > 50:
-                    paginas.append(texto)
-            except Exception as e:
-                print(f"[pagina {page_num}: {e}]", end="", flush=True)
-        return "\n\n".join(paginas)
+        textos = []
+
+        for page_num in range(min(10, len(doc))):
+            page = doc[page_num]
+            pix = page.get_pixmap(dpi=150)
+            img_bytes = pix.tobytes("png")
+            img_base64 = base64.standard_b64encode(img_bytes).decode("utf-8")
+
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1000,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/png",
+                                "data": img_base64
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": """Analisa documentos de licitacoes publicas de alimentos da Regiao Metropolitana de Curitiba.
+
+Extraia APENAS informacoes relevantes a:
+- Culturas agricolas (frutas, horticulas, graos, proteina animal, laticeos)
+- Itens licitados (descricao, quantidade, unidade, valor)
+- Fornecedores e cooperativas
+- Valores e precos
+- Numero do processo licitatorio
+- Canais: PNAE, PAA, Armazem da Familia, Banco de Alimentos, Mesa Solidaria
+
+Ignore informacoes administrativas irrelevantes.
+Se nao houver informacoes agricolas relevantes, responda: [SEM CONTEUDO AGRICOLA]
+
+Extraia:"""
+                        }
+                    ]
+                }]
+            )
+
+            texto = response.content[0].text.strip()
+            if texto and "[SEM CONTEUDO AGRICOLA]" not in texto:
+                textos.append(f"[Pagina {page_num + 1}]\n{texto}")
+
+        return "\n\n".join(textos) if textos else ""
     except Exception as e:
-        print(f"OCR falhou: {e}")
+        print(f"Erro na extracao com Claude: {e}")
         return ""
 
 def fazer_chunks(texto: str, tamanho: int = 500, sobreposicao: int = 50) -> list[str]:
@@ -179,7 +199,7 @@ def indexar_pdfs():
         print("   Nenhum documento novo para indexar!")
         return
 
-    print("\n3. Inicializando Google Drive, OCR e modelo de embeddings...")
+    print("\n3. Inicializando Google Drive, Claude Vision e modelo de embeddings...")
     try:
         service = autenticar_google()
         print("   [OK] Google Drive autenticado")
@@ -188,12 +208,11 @@ def indexar_pdfs():
         return
 
     try:
-        print("   Carregando OCR...", end="", flush=True)
-        ocr_reader = easyocr.Reader(['pt', 'en'], gpu=False)
-        print(" [OK]")
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        print("   [OK] Claude Haiku Vision configurado")
     except Exception as e:
-        print(f" [ERRO] {e}")
-        ocr_reader = None
+        print(f"   [ERRO] Erro ao configurar Claude: {e}")
+        return
 
     modelo = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
     print("   [OK] Modelo de embeddings carregado")
@@ -213,10 +232,16 @@ def indexar_pdfs():
 
         print(f"\n   [{idx}/{len(documentos_novos)}] {nome_doc} (ID: {doc_id})")
 
+        try:
+            lic_result = sb.table("licitacoes").select("processo").eq("id", licitacao_id).single().execute()
+            processo = lic_result.data.get("processo", "?") if lic_result.data else "?"
+        except Exception:
+            processo = "?"
+
         file_id = extrair_file_id(url)
         if not file_id:
-            print(f"      [ERRO] Não consegui extrair file_id de: {url}")
-            erros[str(doc_id)] = "file_id inválido"
+            print(f"      [ERRO] Nao consegui extrair file_id de: {url}")
+            erros[str(doc_id)] = "file_id invalido"
             continue
 
         pdf_bytes = baixar_pdf_drive(service, file_id)
@@ -225,11 +250,13 @@ def indexar_pdfs():
             erros[str(doc_id)] = "erro no download"
             continue
 
-        texto = extrair_texto_pdf(pdf_bytes, ocr_reader)
+        print(f"      Extraindo com Claude Vision...", end="", flush=True)
+        texto = extrair_texto_com_claude(pdf_bytes, client)
         if not texto:
-            print(f"      [ERRO] Nenhum texto extraído do PDF")
+            print(f" [VAZIO]")
             erros[str(doc_id)] = "texto vazio"
             continue
+        print(f" [OK]")
 
         chunks = fazer_chunks(texto)
         if not chunks:
@@ -253,7 +280,7 @@ def indexar_pdfs():
             registros.append({
                 "licitacao_id": licitacao_id,
                 "documento_id": doc_id,
-                "processo": "?",
+                "processo": processo,
                 "nome_doc": nome_doc,
                 "chunk_index": i,
                 "chunk_text": chunk,

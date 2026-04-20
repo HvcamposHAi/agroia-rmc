@@ -194,3 +194,24 @@ WHERE il.categoria_v2 = 'NAO_CLASSIFICADO'
 GROUP BY l.processo, l.canal, il.descricao
 ORDER BY ocorrencias DESC
 LIMIT 100;
+
+-- ──────────────────────────────────────────────────────────────
+-- Q11. Lista de licitações com itens agrícolas (resumo)
+--      Baseado em vw_itens_agro — uma licitação por linha
+--      com agregação de volume, valor e categorias
+--      Execute no SQL Editor para criar a view permanente
+-- ──────────────────────────────────────────────────────────────
+CREATE OR REPLACE VIEW vw_licitacoes_agro AS
+SELECT
+    licitacao_id,
+    processo,
+    canal,
+    dt_abertura,
+    situacao,
+    COUNT(*) AS qtd_itens_agro,
+    COUNT(DISTINCT categoria_v2) AS categorias,
+    ROUND(SUM(valor_total)::numeric, 2) AS valor_total_agro_R$,
+    STRING_AGG(DISTINCT categoria_v2, ', ') AS categorias_lista
+FROM vw_itens_agro
+GROUP BY licitacao_id, processo, canal, dt_abertura, situacao
+ORDER BY valor_total_agro_R$ DESC NULLS LAST;
