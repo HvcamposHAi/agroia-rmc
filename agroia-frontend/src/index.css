@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #1f2937;
+  background: #ffffff;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-lg border border-gray-200 shadow-sm p-4;
+  }
+
+  .badge {
+    @apply inline-block px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors font-medium;
+  }
+
+  .message-user {
+    @apply max-w-xs lg:max-w-md xl:max-w-lg bg-blue-500 text-white rounded-lg px-4 py-2 ml-auto;
+  }
+
+  .message-assistant {
+    @apply max-w-xs lg:max-w-md xl:max-w-lg bg-gray-100 text-gray-800 rounded-lg px-4 py-2 mr-auto;
+  }
+}
