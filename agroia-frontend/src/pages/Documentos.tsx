@@ -24,6 +24,21 @@ interface Licitacao {
   situacao: string
 }
 
+const toEmbedUrl = (url: string): string => {
+  // Converte URLs do Google Drive para formato embedável
+  const matchView = url.match(/drive\.google\.com\/file\/d\/([^/]+)\//)
+  if (matchView) return `https://drive.google.com/file/d/${matchView[1]}/preview`
+  const matchUc = url.match(/drive\.google\.com\/uc\?id=([^&]+)/)
+  if (matchUc) return `https://drive.google.com/file/d/${matchUc[1]}/preview`
+  return url
+}
+
+const toDownloadUrl = (url: string): string => {
+  const matchView = url.match(/drive\.google\.com\/file\/d\/([^/]+)\//)
+  if (matchView) return `https://drive.google.com/uc?id=${matchView[1]}&export=download`
+  return url
+}
+
 const fmtBytes = (b: number) =>
   b > 1_000_000 ? `${(b / 1_000_000).toFixed(1)} MB`
   : b > 1_000 ? `${(b / 1_000).toFixed(0)} KB`
@@ -45,7 +60,6 @@ export default function Documentos() {
         const { data: docsData } = await supabase
           .from('documentos_licitacao')
           .select('*')
-          .not('url_publica', 'is', null)
           .order('coletado_em', { ascending: false })
           .limit(500)
 
@@ -116,7 +130,7 @@ export default function Documentos() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <a
-                href={pdfAberto.url_publica}
+                href={toDownloadUrl(pdfAberto.url_publica)}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ background: 'var(--verde)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
@@ -132,7 +146,7 @@ export default function Documentos() {
             </div>
           </div>
           <iframe
-            src={pdfAberto.url_publica}
+            src={toEmbedUrl(pdfAberto.url_publica)}
             style={{ flex: 1, border: 'none', width: '100%', background: '#525659' }}
             title={pdfAberto.nome_doc}
           />
