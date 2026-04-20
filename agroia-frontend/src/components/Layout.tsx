@@ -1,46 +1,64 @@
-import React, { useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import Sidebar from './Sidebar'
-import { Menu, X } from 'lucide-react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
-interface LayoutProps {
-  children: React.ReactNode
-}
+const navItems = [
+  { to: '/', icon: '💬', label: 'Assistente' },
+  { to: '/dashboard', icon: '📊', label: 'Dashboard' },
+  { to: '/consultas', icon: '🔍', label: 'Consultas' },
+]
 
-export default function Layout({ children }: LayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+export default function Layout() {
   const location = useLocation()
 
+  const titles: Record<string, string> = {
+    '/': 'Assistente Agrícola',
+    '/dashboard': 'Painel de Dados',
+    '/consultas': 'Consultas de Licitações',
+  }
+
   return (
-    <div className="flex h-screen bg-white">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-4 right-4 z-50 lg:hidden p-2 hover:bg-gray-100 rounded-lg"
-      >
-        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
-      {/* Sidebar */}
-      {(sidebarOpen || window.innerWidth >= 1024) && (
-        <div className="fixed lg:relative w-80 h-full bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 overflow-y-auto z-40">
-          <Sidebar />
+    <div className="layout">
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <h1>
+            <div className="logo-icon">🌾</div>
+            AgroIA-RMC
+          </h1>
+          <p>Agricultura Familiar</p>
         </div>
-      )}
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <nav className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4 z-30">
-          <div className="flex-1" />
-          <div className="text-sm text-gray-500">
-            {location.pathname === '/' && 'Chat'}
-            {location.pathname === '/dashboard' && 'Dashboard'}
-            {location.pathname === '/consultas' && 'Consultas'}
-          </div>
+        <nav className="sidebar-nav">
+          <div className="nav-section-title">Menu</div>
+          {navItems.map(item => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            >
+              <span className="icon">{item.icon}</span>
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
-        <main className="p-6 max-w-7xl mx-auto w-full">
-          {children}
-        </main>
+
+        <div className="sidebar-footer">
+          <div className="user-card">
+            <div className="user-avatar">AG</div>
+            <div className="user-info">
+              <p>Gestor SMSAN</p>
+              <span>Curitiba – PR</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="main">
+        <header className="topbar">
+          <h2>{titles[location.pathname] ?? 'AgroIA-RMC'}</h2>
+          <span className="topbar-badge">🌱 Sistema Ativo</span>
+        </header>
+
+        <Outlet />
       </div>
     </div>
   )
