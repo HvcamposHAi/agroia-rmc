@@ -43,10 +43,16 @@ export default function Dashboard() {
   const [topN, setTopN] = useState(10)
 
   useEffect(() => {
-    supabase.from('vw_itens_agro')
-      .select('cultura, canal, valor_total, dt_abertura, qt_solicitada')
-      .then(({ data }) => { if (data) setRaw(data as RawItem[]) })
-      .finally(() => setLoading(false))
+    async function load() {
+      try {
+        const { data } = await supabase.from('vw_itens_agro')
+          .select('cultura, canal, valor_total, dt_abertura, qt_solicitada')
+        if (data) setRaw(data as RawItem[])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   const anos = useMemo(() =>
@@ -204,7 +210,7 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie data={porCanal} dataKey="total" nameKey="canal" cx="50%" cy="43%" outerRadius={85}
-                label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
                 {porCanal.map((entry) => (
                   <Cell key={entry.canal} fill={CANAL_COLORS[entry.canal] ?? DEFAULT_COLOR} />
                 ))}
@@ -219,7 +225,7 @@ export default function Dashboard() {
       <div className="chart-card">
         <h3>{filAno !== 'todos' ? `📈 Evolução Mensal — ${filAno}` : '📈 Evolução Anual da Demanda'}</h3>
         <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={filAno !== 'todos' ? evolucaoMensal : evolucao} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+          <AreaChart data={(filAno !== 'todos' ? evolucaoMensal : evolucao) as any[]} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
             <defs>
               <linearGradient id="gradVerde" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#3a7d44" stopOpacity={0.2} />
