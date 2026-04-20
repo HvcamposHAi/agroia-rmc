@@ -173,17 +173,27 @@ Responda APENAS em JSON válido, sem markdown, no formato:
   "resumo": "parágrafo resumindo os principais riscos encontrados"
 }}
 
-Gere no máximo 15 alertas, priorizando os mais críticos."""
+Gere no máximo 10 alertas, priorizando os mais críticos."""
 
         msg = client.messages.create(
             model="claude-haiku-4-5",
-            max_tokens=2000,
+            max_tokens=4000,
             messages=[{"role": "user", "content": prompt}]
         )
 
         texto = msg.content[0].text.strip()
-        if texto.startswith('```'):
-            texto = texto.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+
+        # Remove markdown code blocks se presentes
+        if '```json' in texto:
+            texto = texto.split('```json', 1)[1].split('```', 1)[0].strip()
+        elif '```' in texto:
+            texto = texto.split('```', 1)[1].split('```', 1)[0].strip()
+
+        # Extrai apenas o objeto JSON (do primeiro { ao último })
+        inicio = texto.find('{')
+        fim = texto.rfind('}')
+        if inicio != -1 and fim != -1:
+            texto = texto[inicio:fim+1]
 
         return json.loads(texto)
 
