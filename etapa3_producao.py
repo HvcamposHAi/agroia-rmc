@@ -47,7 +47,7 @@ DT_FIM = "30/04/2026"
 
 CHECKPOINT_FILE = "coleta_checkpoint.json"
 LOG_FILE = "coleta_producao.log"
-SKIP_DB_SYNC = True  # Set to False when Supabase is reachable
+SKIP_DB_SYNC = False  # Salva PDFs no Supabase apos coleta
 
 sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
