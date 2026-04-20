@@ -1,204 +1,153 @@
-import { useState, useEffect } from 'react'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { getTopCulturas, getDemandaPorAno } from '../lib/supabaseClient'
-import { Loader } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, Area, AreaChart,
+} from 'recharts'
 
-interface CulturaData {
-  cultura: string
-  valor_total: number
-  count?: number
-}
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL ?? '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+)
 
-interface AnoData {
-  ano: number
-  valor_total: number
-}
+const fmt = (v: number) =>
+  v >= 1_000_000
+    ? `R$ ${(v / 1_000_000).toFixed(1)}M`
+    : v >= 1_000
+    ? `R$ ${(v / 1_000).toFixed(0)}K`
+    : `R$ ${v.toFixed(0)}`
 
 export default function Dashboard() {
-  const [culturas, setCulturas] = useState<CulturaData[]>([])
-  const [demanda, setDemanda] = useState<AnoData[]>([])
+  const [culturas, setCulturas] = useState<{ cultura: string; total: number }[]>([])
+  const [evolucao, setEvolucao] = useState<{ ano: string; total: number }[]>([])
+  const [metrics, setMetrics] = useState({ valorTotal: 0, totalItens: 0, totalCulturas: 0, anos: '' })
   const [loading, setLoading] = useState(true)
-  const [totalValor, setTotalValor] = useState(0)
-  const [totalItens, setTotalItens] = useState(0)
 
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    async function load() {
+      try {
+        const { data: raw } = await supabase
+          .from('vw_itens_agro')
+          .select('cultura, valor_total, dt_abertura')
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true)
+        if (!raw) return
 
-      // Top culturas
-      const { data: culturasData } = await getTopCulturas()
-      if (culturasData) {
-        const grouped = culturasData.reduce((acc: any, item: any) => {
-          const existing = acc.find((x: any) => x.cultura === item.cultura)
-          if (existing) {
-            existing.valor_total += item.valor_total
-            existing.count = (existing.count || 1) + 1
-          } else {
-            acc.push({ ...item, count: 1 })
-          }
-          return acc
-        }, [])
+        const valorTotal = raw.reduce((s, r) => s + (r.valor_total ?? 0), 0)
+        const anos = [...new Set(raw.map(r => r.dt_abertura?.slice(0, 4)).filter(Boolean))].sort()
 
-        const sorted = grouped
-          .sort((a: any, b: any) => b.valor_total - a.valor_total)
+        const cultMap: Record<string, number> = {}
+        raw.forEach(r => {
+          if (r.cultura) cultMap[r.cultura] = (cultMap[r.cultura] ?? 0) + (r.valor_total ?? 0)
+        })
+        const topCulturas = Object.entries(cultMap)
+          .map(([cultura, total]) => ({ cultura, total }))
+          .sort((a, b) => b.total - a.total)
           .slice(0, 10)
 
-        setCulturas(sorted)
-        setTotalValor(grouped.reduce((sum: any, x: any) => sum + x.valor_total, 0))
-        setTotalItens(culturasData.length)
-      }
-
-      // Demanda por ano
-      const { data: demandaData } = await getDemandaPorAno()
-      if (demandaData) {
-        const groupedByYear: any = {}
-        demandaData.forEach((item: any) => {
-          const ano = new Date(item.dt_abertura).getFullYear()
-          groupedByYear[ano] = (groupedByYear[ano] || 0) + item.valor_total
+        const anoMap: Record<string, number> = {}
+        raw.forEach(r => {
+          const ano = r.dt_abertura?.slice(0, 4)
+          if (ano) anoMap[ano] = (anoMap[ano] ?? 0) + (r.valor_total ?? 0)
         })
+        const evoData = Object.entries(anoMap)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([ano, total]) => ({ ano, total }))
 
-        const formatted = Object.entries(groupedByYear)
-          .map(([ano, valor]) => ({
-            ano: parseInt(ano),
-            valor_total: valor as number,
-          }))
-          .sort((a, b) => a.ano - b.ano)
-
-        setDemanda(formatted)
+        setCulturas(topCulturas)
+        setEvolucao(evoData)
+        setMetrics({
+          valorTotal,
+          totalItens: raw.length,
+          totalCulturas: Object.keys(cultMap).length,
+          anos: anos.length > 0 ? `${anos[0]}–${anos[anos.length - 1]}` : '—',
+        })
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
-    } catch (error) {
-      console.error('Erro ao carregar dashboard:', error)
-      setLoading(false)
     }
-  }
+    load()
+  }, [])
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0,
-    }).format(value)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader className="animate-spin text-emerald-500" size={40} />
+  if (loading) return (
+    <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+      <div style={{ textAlign: 'center' }}>
+        <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
+        <p style={{ marginTop: 16, color: 'var(--texto-suave)', fontWeight: 600 }}>Carregando dados...</p>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">📊 Dashboard - Análise Agrícola</h2>
-        <p className="text-gray-600 mt-1">Visualizando dados de licitações públicas (2019-2026)</p>
-      </div>
-
-      {/* Métricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="text-sm text-gray-600 font-medium">Total de Valores</div>
-          <div className="text-2xl font-bold text-emerald-600 mt-2">
-            {formatCurrency(totalValor)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">Itens agrícolas</div>
+    <div className="page">
+      <div className="metrics-grid">
+        <div className="metric-card verde">
+          <span className="metric-icon">💰</span>
+          <div className="metric-label">Valor Total Licitado</div>
+          <div className="metric-value">{fmt(metrics.valorTotal)}</div>
+          <div className="metric-sub">em compras institucionais</div>
         </div>
-
-        <div className="card">
-          <div className="text-sm text-gray-600 font-medium">Total de Itens</div>
-          <div className="text-2xl font-bold text-blue-600 mt-2">{totalItens}</div>
-          <div className="text-xs text-gray-500 mt-1">Licitados</div>
+        <div className="metric-card amarelo">
+          <span className="metric-icon">📦</span>
+          <div className="metric-label">Total de Itens</div>
+          <div className="metric-value">{metrics.totalItens.toLocaleString('pt-BR')}</div>
+          <div className="metric-sub">itens em licitações</div>
         </div>
-
-        <div className="card">
-          <div className="text-sm text-gray-600 font-medium">Período</div>
-          <div className="text-2xl font-bold text-purple-600 mt-2">8 anos</div>
-          <div className="text-xs text-gray-500 mt-1">2019-2026</div>
+        <div className="metric-card ceu">
+          <span className="metric-icon">🌱</span>
+          <div className="metric-label">Culturas Distintas</div>
+          <div className="metric-value">{metrics.totalCulturas}</div>
+          <div className="metric-sub">tipos de produtos</div>
         </div>
-
-        <div className="card">
-          <div className="text-sm text-gray-600 font-medium">Culturas</div>
-          <div className="text-2xl font-bold text-orange-600 mt-2">45+</div>
-          <div className="text-xs text-gray-500 mt-1">Variedades</div>
+        <div className="metric-card terra">
+          <span className="metric-icon">📅</span>
+          <div className="metric-label">Período</div>
+          <div className="metric-value" style={{ fontSize: 22 }}>{metrics.anos}</div>
+          <div className="metric-sub">série histórica</div>
         </div>
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Culturas */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">🏆 Top-10 Culturas por Valor</h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={culturas}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="cultura" angle={-45} textAnchor="end" height={80} />
-              <YAxis />
-              <Tooltip
-                formatter={(value) => formatCurrency(value as number)}
-                contentStyle={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}
-              />
-              <Bar dataKey="valor_total" fill="#10b981" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Demanda por Ano */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">📈 Evolução Temporal</h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={demanda}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="ano" />
-              <YAxis />
-              <Tooltip
-                formatter={(value) => formatCurrency(value as number)}
-                contentStyle={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="valor_total"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                dot={{ fill: '#3b82f6', r: 4 }}
-                name="Valor Total"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="chart-card">
+        <h3>🏆 Top 10 Culturas por Valor Licitado</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={culturas} margin={{ top: 4, right: 8, left: 8, bottom: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
+            <XAxis
+              dataKey="cultura"
+              tick={{ fontSize: 11, fill: '#6b6458', fontFamily: 'Nunito' }}
+              angle={-35}
+              textAnchor="end"
+              interval={0}
+            />
+            <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: '#6b6458', fontFamily: 'Nunito' }} />
+            <Tooltip
+              formatter={(v: number) => [fmt(v), 'Valor']}
+              contentStyle={{ fontFamily: 'Nunito', fontSize: 13, borderRadius: 10, border: '1px solid #d9d0c4' }}
+            />
+            <Bar dataKey="total" fill="#3a7d44" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* Tabela Fornecedores */}
-      <div className="card p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">🏢 Fornecedores Principais</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Fornecedor</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Participações</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Valor Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...Array(5)].map((_, i) => (
-                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">Fornecedor {String.fromCharCode(65 + i)}</td>
-                  <td className="px-4 py-3">{Math.floor(Math.random() * 200) + 50}</td>
-                  <td className="px-4 py-3">{formatCurrency(Math.random() * 500000 + 100000)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="chart-card">
+        <h3>📈 Evolução Anual da Demanda Institucional</h3>
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={evolucao} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+            <defs>
+              <linearGradient id="gradVerde" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3a7d44" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#3a7d44" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
+            <XAxis dataKey="ano" tick={{ fontSize: 12, fill: '#6b6458', fontFamily: 'Nunito' }} />
+            <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: '#6b6458', fontFamily: 'Nunito' }} />
+            <Tooltip
+              formatter={(v: number) => [fmt(v), 'Valor']}
+              contentStyle={{ fontFamily: 'Nunito', fontSize: 13, borderRadius: 10, border: '1px solid #d9d0c4' }}
+            />
+            <Area type="monotone" dataKey="total" stroke="#3a7d44" strokeWidth={2.5} fill="url(#gradVerde)" dot={{ fill: '#3a7d44', r: 4 }} />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )
