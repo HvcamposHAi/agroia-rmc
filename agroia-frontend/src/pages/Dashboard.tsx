@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Area, AreaChart,
+  Area, AreaChart,
 } from 'recharts'
 
 const supabase = createClient(
@@ -120,7 +120,7 @@ export default function Dashboard() {
             />
             <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: '#6b6458', fontFamily: 'Nunito' }} />
             <Tooltip
-              formatter={(v: number) => [fmt(v), 'Valor']}
+              formatter={(v: number | string) => [fmt(Number(v)), 'Valor']}
               contentStyle={{ fontFamily: 'Nunito', fontSize: 13, borderRadius: 10, border: '1px solid #d9d0c4' }}
             />
             <Bar dataKey="total" fill="#3a7d44" radius={[6, 6, 0, 0]} />
@@ -142,7 +142,7 @@ export default function Dashboard() {
             <XAxis dataKey="ano" tick={{ fontSize: 12, fill: '#6b6458', fontFamily: 'Nunito' }} />
             <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: '#6b6458', fontFamily: 'Nunito' }} />
             <Tooltip
-              formatter={(v: number) => [fmt(v), 'Valor']}
+              formatter={(v: number | string) => [fmt(Number(v)), 'Valor']}
               contentStyle={{ fontFamily: 'Nunito', fontSize: 13, borderRadius: 10, border: '1px solid #d9d0c4' }}
             />
             <Area type="monotone" dataKey="total" stroke="#3a7d44" strokeWidth={2.5} fill="url(#gradVerde)" dot={{ fill: '#3a7d44', r: 4 }} />
