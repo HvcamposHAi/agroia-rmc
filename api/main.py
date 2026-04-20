@@ -1,4 +1,7 @@
 import uuid
+import os
+import json
+from collections import defaultdict
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -49,7 +52,6 @@ def carregar_historico(session_id: str) -> list[dict]:
         result = sb.table("conversas").select(
             "role, content"
         ).eq("session_id", session_id).order("criado_em").execute()
-
         return [
             {"role": row["role"], "content": row["content"]}
             for row in (result.data or [])
@@ -75,13 +77,10 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """Endpoint de chat com persistência de histórico."""
     try:
         session_id = request.session_id or str(uuid.uuid4())
-
         historico = request.historico or carregar_historico(session_id)
         resultado = chat(request.pergunta, historico)
-
         salvar_turno(session_id, "user", request.pergunta)
         salvar_turno(session_id, "assistant", resultado["resposta"], resultado["tools_usadas"])
-
         return ChatResponse(
             resposta=resultado["resposta"],
             tools_usadas=resultado["tools_usadas"],
@@ -105,6 +104,92 @@ def deletar_conversa(session_id: str) -> dict:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/alertas")
+async def gerar_alertas():
+    """Analisa dados históricos e gera alertas com IA."""
+    import anthropic as ant
+
+    try:
+        sb = get_supabase_client()
+
+        # Busca dados da view
+        r = sb.from_('vw_itens_agro').select(
+            'cultura, valor_total, qt_solicitada, dt_abertura'
+        ).not_.is_('cultura', 'null').gt('qt_solicitada', 0).gt('valor_total', 0).execute()
+
+        dados_raw = r.data or []
+        IGNORAR = {'OUTRO', 'SERVIÇO', 'LOCAÇÃO', 'LIMPEZA', 'INFORMÁTICA',
+                   'EQUIPAMENTO', 'SACOLA', 'EMBALAGEM', 'BANDEJA', 'ETIQUETA'}
+
+        # Agrega por cultura e ano
+        agg: dict = defaultdict(lambda: defaultdict(list))
+        for row in dados_raw:
+            cultura = row.get('cultura', '')
+            if not cultura or cultura in IGNORAR:
+                continue
+            ano = (row.get('dt_abertura') or '')[:4]
+            if not ano:
+                continue
+            preco = row['valor_total'] / row['qt_solicitada']
+            agg[cultura][ano].append({'preco': preco, 'ultima': row['dt_abertura']})
+
+        dados = []
+        for cultura, anos_data in agg.items():
+            for ano, items in sorted(anos_data.items()):
+                precos = [i['preco'] for i in items]
+                dados.append({
+                    'cultura': cultura,
+                    'ano': int(ano),
+                    'preco_medio_kg': round(sum(precos) / len(precos), 2),
+                    'qtd_itens': len(items),
+                    'ultima_compra': max(i['ultima'] for i in items)
+                })
+
+        client = ant.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+        prompt = f"""Você é um sistema de análise de inteligência de abastecimento para a SMSAN/FAAC de Curitiba.
+
+Analise os dados históricos de licitações de alimentos abaixo e identifique alertas em três categorias:
+
+1. ALTA_PRECO: culturas com aumento de preço/kg acima de 20% entre anos consecutivos
+2. DESABASTECIMENTO: culturas sem compras nos últimos 12 meses (ultima_compra antes de 2025)
+3. SUPERFATURAMENTO: itens com preço/kg muito acima da média histórica da mesma cultura (desvio acima de 50%)
+
+Dados (cultura, ano, preco_medio_kg, qtd_itens, ultima_compra):
+{str(dados[:300])}
+
+Responda APENAS em JSON válido, sem markdown, no formato:
+{{
+  "alertas": [
+    {{
+      "tipo": "ALTA_PRECO" | "DESABASTECIMENTO" | "SUPERFATURAMENTO",
+      "severidade": "ALTA" | "MEDIA" | "BAIXA",
+      "cultura": "nome da cultura",
+      "titulo": "título curto do alerta",
+      "descricao": "descrição detalhada com números específicos",
+      "recomendacao": "ação sugerida para gestores"
+    }}
+  ],
+  "resumo": "parágrafo resumindo os principais riscos encontrados"
+}}
+
+Gere no máximo 15 alertas, priorizando os mais críticos."""
+
+        msg = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        texto = msg.content[0].text.strip()
+        if texto.startswith('```'):
+            texto = texto.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+
+        return json.loads(texto)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 def root():
     """Documentação da API."""
@@ -113,6 +198,7 @@ def root():
         "endpoints": {
             "GET /health": "Status do banco de dados",
             "POST /chat": "Enviar pergunta e receber resposta",
+            "POST /alertas": "Gerar alertas inteligentes com IA",
             "GET /docs": "Documentação Swagger"
         }
     }

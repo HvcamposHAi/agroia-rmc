@@ -5,6 +5,7 @@ const navItems = [
   { to: '/', icon: '💬', label: 'Assistente' },
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/consultas', icon: '🔍', label: 'Consultas' },
+  { to: '/alertas', icon: '🚨', label: 'Alertas IA' },
 ]
 
 export default function Layout({ children }: { children?: ReactNode }) {
@@ -14,6 +15,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
     '/': 'Assistente Agrícola',
     '/dashboard': 'Painel de Dados',
     '/consultas': 'Consultas de Licitações',
+    '/alertas': 'Alertas Inteligentes',
   }
 
   return (
