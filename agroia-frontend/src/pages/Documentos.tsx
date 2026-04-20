@@ -15,7 +15,7 @@ interface DocComLic {
   tamanho_bytes: number
   coletado_em: string
   processo: string
-  modalidade: string
+  modalidade: string  // tipo_processo
   objeto: string
   dt_abertura: string
   situacao: string
@@ -67,7 +67,7 @@ export default function Documentos() {
             id, licitacao_id, nome_arquivo, nome_doc,
             url_publica, tamanho_bytes, coletado_em,
             licitacoes (
-              processo, modalidade, objeto,
+              processo, tipo_processo, objeto,
               dt_abertura, situacao, canal
             )
           `)
@@ -78,7 +78,7 @@ export default function Documentos() {
           const flat = data.map((d: any) => ({
             ...d,
             processo: d.licitacoes?.processo ?? '',
-            modalidade: d.licitacoes?.modalidade ?? '',
+            modalidade: d.licitacoes?.tipo_processo ?? '',
             objeto: d.licitacoes?.objeto ?? '',
             dt_abertura: d.licitacoes?.dt_abertura ?? '',
             situacao: d.licitacoes?.situacao ?? '',

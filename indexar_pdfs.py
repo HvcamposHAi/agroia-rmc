@@ -264,7 +264,7 @@ def indexar_pdfs():
             erros[str(doc_id)] = "chunking falhou"
             continue
 
-        print(f"      → {len(chunks)} chunks, {len(texto)} caracteres")
+        print(f"      -> {len(chunks)} chunks, {len(texto)} caracteres")
 
         print(f"      Gerando embeddings...", end="", flush=True)
         try:
