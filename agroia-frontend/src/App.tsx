@@ -1,20 +1,21 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
 import Consultas from './pages/Consultas'
-import './index.css'
+import Alertas from './pages/Alertas'
 
-function App() {
+export default function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout><Chat /></Layout>} />
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-        <Route path="/consultas" element={<Layout><Consultas /></Layout>} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Chat />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="consultas" element={<Consultas />} />
+          <Route path="alertas" element={<Alertas />} />
+        </Route>
       </Routes>
-    </Router>
+    </BrowserRouter>
   )
 }
-
-export default App
