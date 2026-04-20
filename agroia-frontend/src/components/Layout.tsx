@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
 
 const navItems = [
   { to: '/', icon: '💬', label: 'Assistente' },
@@ -6,7 +7,7 @@ const navItems = [
   { to: '/consultas', icon: '🔍', label: 'Consultas' },
 ]
 
-export default function Layout() {
+export default function Layout({ children }: { children?: ReactNode }) {
   const location = useLocation()
 
   const titles: Record<string, string> = {
@@ -58,7 +59,7 @@ export default function Layout() {
           <span className="topbar-badge">🌱 Sistema Ativo</span>
         </header>
 
-        <Outlet />
+        {children ?? <Outlet />}
       </div>
     </div>
   )
