@@ -38,7 +38,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
 
-PORTAL_URL = "http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/"
+PORTAL_URL = "https://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/"
 ORGAO = "SMSAN/FAAC"
 DT_INICIO = "01/01/2019"
 DT_FIM = "30/04/2026"
