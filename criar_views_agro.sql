@@ -76,3 +76,34 @@ SELECT
         1
     )                                                                   AS pct_agro
 FROM itens_licitacao;
+
+-- ──────────────────────────────────────────────────────────────
+-- VIEW 4: Documentos de licitações agrícolas
+--         Retorna documentos apenas para licitações que têm itens
+--         relevantes à agricultura (relevante_agro = true)
+--         use: SELECT * FROM vw_licitacoes_agro_documentos
+-- ──────────────────────────────────────────────────────────────
+CREATE OR REPLACE VIEW vw_licitacoes_agro_documentos AS
+SELECT DISTINCT
+    d.id,
+    d.licitacao_id,
+    d.nome_arquivo,
+    d.nome_doc,
+    d.url_publica,
+    d.tamanho_bytes,
+    d.coletado_em,
+    d.storage_path,
+    l.processo,
+    l.tipo_processo,
+    l.objeto,
+    l.dt_abertura,
+    l.situacao,
+    l.canal
+FROM documentos_licitacao d
+JOIN licitacoes l ON l.id = d.licitacao_id
+WHERE EXISTS (
+    SELECT 1 FROM itens_licitacao il
+    WHERE il.licitacao_id = l.id
+    AND il.relevante_agro = true
+)
+ORDER BY d.coletado_em DESC;

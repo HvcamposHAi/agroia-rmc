@@ -62,27 +62,25 @@ export default function Documentos() {
     async function load() {
       try {
         const { data } = await supabase
-          .from('documentos_licitacao')
-          .select(`
-            id, licitacao_id, nome_arquivo, nome_doc,
-            url_publica, tamanho_bytes, coletado_em,
-            licitacoes (
-              processo, tipo_processo, objeto,
-              dt_abertura, situacao, canal
-            )
-          `)
-          .order('coletado_em', { ascending: false })
+          .from('vw_licitacoes_agro_documentos')
+          .select('*')
           .limit(500)
 
         if (data) {
           const flat = data.map((d: any) => ({
-            ...d,
-            processo: d.licitacoes?.processo ?? '',
-            modalidade: d.licitacoes?.tipo_processo ?? '',
-            objeto: d.licitacoes?.objeto ?? '',
-            dt_abertura: d.licitacoes?.dt_abertura ?? '',
-            situacao: d.licitacoes?.situacao ?? '',
-            canal: d.licitacoes?.canal ?? '',
+            id: d.id,
+            licitacao_id: d.licitacao_id,
+            nome_arquivo: d.nome_arquivo,
+            nome_doc: d.nome_doc,
+            url_publica: d.url_publica,
+            tamanho_bytes: d.tamanho_bytes,
+            coletado_em: d.coletado_em,
+            processo: d.processo ?? '',
+            modalidade: d.tipo_processo ?? '',
+            objeto: d.objeto ?? '',
+            dt_abertura: d.dt_abertura ?? '',
+            situacao: d.situacao ?? '',
+            canal: d.canal ?? '',
           }))
           setDocs(flat)
         }
