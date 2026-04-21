@@ -235,55 +235,54 @@ async def executar_auditoria() -> AuditoriaResultado:
         sb = get_supabase_client()
         alertas = []
 
-        # Q1: Licitações agrícolas
-        q_lics_agro = sb.from_('itens_licitacao').select('licitacao_id').eq('relevante_agro', True).execute()
-        lics_agro_ids = set(r['licitacao_id'] for r in (q_lics_agro.data or []))
+        # Trazer dados em bulk
+        itens_agro = sb.from_('itens_licitacao').select('id, licitacao_id').eq('relevante_agro', True).execute()
+        documentos = sb.from_('documentos_licitacao').select('licitacao_id').execute()
+        empenhos = sb.from_('empenhos').select('id, item_id, nr_empenho').execute()
+        licitacoes = sb.from_('licitacoes').select('id, processo, situacao').execute()
+
+        # Extrair dados
+        itens_agro_data = itens_agro.data or []
+        docs_data = documentos.data or []
+        empenhos_data = empenhos.data or []
+        lics_data = licitacoes.data or []
+
+        # Sets de IDs
+        lics_agro_ids = set(r['licitacao_id'] for r in itens_agro_data)
+        lics_com_docs = set(d['licitacao_id'] for d in docs_data)
         total_lics_agro = len(lics_agro_ids)
-
-        # Q2: Licitações com documentos
-        q_docs = sb.from_('documentos_licitacao').select('licitacao_id').execute()
-        lics_com_docs = set(d['licitacao_id'] for d in (q_docs.data or []))
         total_docs_agro = len(lics_com_docs & lics_agro_ids)
-
         taxa_cobertura = (total_docs_agro / total_lics_agro * 100) if total_lics_agro > 0 else 0
 
-        # Q3: Empenhos
-        q_emp = sb.from_('empenhos').select('id, item_id, nr_empenho').execute()
-        empenhos = q_emp.data or []
-        total_empenhos = len(empenhos)
+        # Mapear item → licitação
+        item_to_lic = {i['id']: i['licitacao_id'] for i in itens_agro_data}
 
-        # Q4: Itens com empenhos
-        q_itens_emp = sb.from_('empenhos').select('DISTINCT item_id').execute()
-        itens_com_emp = set(e.get('item_id') for e in (q_itens_emp.data or []) if e.get('item_id'))
-
-        # Q5: Mapear itens para licitações
-        q_itens = sb.from_('itens_licitacao').select('id, licitacao_id').execute()
-        item_to_lic = {i['id']: i['licitacao_id'] for i in (q_itens.data or [])}
-
-        # Identificar licitações com empenhos
+        # Licitações com empenhos
         lics_com_empenhos = set()
-        for item_id in itens_com_emp:
-            if item_id in item_to_lic:
+        for emp in empenhos_data:
+            item_id = emp.get('item_id')
+            if item_id and item_id in item_to_lic:
                 lics_com_empenhos.add(item_to_lic[item_id])
 
-        # Empenhos sem documentação
+        # Dicionário de licitações para lookup rápido
+        lic_dict = {l['id']: l for l in lics_data}
+
+        # Empenhos sem documentação (CRÍTICO)
         empenhos_sem_docs = 0
         for lic_id in lics_com_empenhos:
-            if lic_id not in lics_com_docs:
+            if lic_id not in lics_com_docs and lic_id in lic_dict:
                 empenhos_sem_docs += 1
-                q_lic = sb.from_('licitacoes').select('processo').eq('id', lic_id).limit(1).execute()
-                if q_lic.data:
-                    alertas.append(AuditoriaAlerta(
-                        tipo='ERRO_BD',
-                        severidade='CRITICO',
-                        mensagem=f"CRÍTICO: Licitação {q_lic.data[0]['processo']} com empenho(s) mas SEM documentação",
-                        processo=q_lic.data[0]['processo']
-                    ))
+                lic = lic_dict[lic_id]
+                alertas.append(AuditoriaAlerta(
+                    tipo='ERRO_BD',
+                    severidade='CRITICO',
+                    mensagem=f"CRÍTICO: Licitação {lic['processo']} com empenho(s) mas SEM documentação",
+                    processo=lic['processo']
+                ))
 
-        # Licitações concluídas sem docs
-        q_conc = sb.from_('licitacoes').select('id, processo').eq('situacao', 'Concluído').execute()
-        for lic in (q_conc.data or []):
-            if lic['id'] in lics_agro_ids and lic['id'] not in lics_com_docs:
+        # Licitações concluídas sem docs (GRAVE)
+        for lic in lics_data:
+            if lic['id'] in lics_agro_ids and lic['id'] not in lics_com_docs and lic['situacao'] == 'Concluído':
                 alertas.append(AuditoriaAlerta(
                     tipo='ERRO_BD',
                     severidade='GRAVE',
@@ -291,19 +290,17 @@ async def executar_auditoria() -> AuditoriaResultado:
                     processo=lic['processo']
                 ))
 
-        # Contar alertas
         alertas_criticos = sum(1 for a in alertas if a.severidade == 'CRITICO')
         alertas_graves = sum(1 for a in alertas if a.severidade == 'GRAVE')
-        lics_concluidas_sem_docs = alertas_graves
 
         metricas = AuditoriaMetricas(
             total_licitacoes_agro=total_lics_agro,
             lics_com_docs=total_docs_agro,
             taxa_cobertura_pct=round(taxa_cobertura, 1),
-            total_empenhos=total_empenhos,
+            total_empenhos=len(empenhos_data),
             lics_com_empenhos=len(lics_com_empenhos),
             empenhos_sem_docs=empenhos_sem_docs,
-            lics_concluidas_sem_docs=lics_concluidas_sem_docs,
+            lics_concluidas_sem_docs=alertas_graves,
             alertas_criticos=alertas_criticos,
             alertas_graves=alertas_graves
         )

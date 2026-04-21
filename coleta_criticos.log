@@ -46,3 +46,35 @@ Call log:
 [18:36:24] [INFO] COLETA CONCLUÍDA
 [18:36:24] [INFO] Total de documentos coletados: 0
 [18:36:24] [INFO] ======================================================================
+[18:37:17] [INFO] ======================================================================
+[18:37:17] [INFO] COLETA DIRECIONADA: 24 PROCESSOS CRÍTICOS COM EMPENHOS
+[18:37:17] [INFO] ======================================================================
+[18:37:17] [INFO] 
+Carregando info dos 24 processos críticos...
+[18:37:26] [INFO] Encontrados 24 processos críticos
+[18:37:26] [INFO] Google Drive conectado
+[18:37:27] [ERROR] Erro fatal: Page.goto: net::ERR_NAME_NOT_RESOLVED at http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/
+Call log:
+  - navigating to "http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/", waiting until "domcontentloaded"
+
+[18:37:27] [INFO] 
+======================================================================
+[18:37:27] [INFO] COLETA CONCLUÍDA
+[18:37:27] [INFO] Total de documentos coletados: 0
+[18:37:27] [INFO] ======================================================================
+[18:38:10] [INFO] ======================================================================
+[18:38:10] [INFO] COLETA DIRECIONADA: 24 PROCESSOS CRÍTICOS COM EMPENHOS
+[18:38:10] [INFO] ======================================================================
+[18:38:10] [INFO] 
+Carregando info dos 24 processos críticos...
+[18:38:16] [INFO] Encontrados 24 processos críticos
+[18:38:16] [INFO] Google Drive conectado
+[18:38:17] [ERROR] Erro fatal: Page.goto: net::ERR_SSL_PROTOCOL_ERROR at https://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/
+Call log:
+  - navigating to "https://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/", waiting until "domcontentloaded"
+
+[18:38:17] [INFO] 
+======================================================================
+[18:38:17] [INFO] COLETA CONCLUÍDA
+[18:38:17] [INFO] Total de documentos coletados: 0
+[18:38:17] [INFO] ======================================================================
