@@ -1,0 +1,163 @@
+{
+  "timestamp": "2026-04-21T17:05:29.017469",
+  "estatisticas": {
+    "licitacoes_agro_total": 326,
+    "licitacoes_com_documentos": 14,
+    "licitacoes_com_empenhos": 0,
+    "documentos_total": 67,
+    "empenhos_total": 3473,
+    "taxa_cobertura_docs": 4.294478527607362,
+    "taxa_cobertura_empenhos": 0.0
+  },
+  "alertas": {
+    "ERRO_BD": [
+      "Encontradas 312 licitacoes agricolas SEM documentos na base",
+      "Erro ao analisar empenhos: {'message': 'column empenhos.licitacao_id does not exist', 'code': '42703', 'hint': None, 'details': None}"
+    ],
+    "INCONSISTENCIA_PORTAL": [
+      "Encontradas 5 inconsistencias no portal"
+    ]
+  },
+  "problemas_documentos": [
+    {
+      "licitacao_id": 34,
+      "processo": "DS 70/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-07-30",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 55,
+      "processo": "DS 73/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-08-13",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 56,
+      "processo": "DS 75/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-08-20",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 59,
+      "processo": "DS 79/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-09-10",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 60,
+      "processo": "DS 81/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-09-12",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 61,
+      "processo": "DS 83/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-09-19",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 63,
+      "processo": "DS 86/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-10-09",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 64,
+      "processo": "DS 87/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-10-10",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 65,
+      "processo": "DS 88/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-10-10",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 67,
+      "processo": "DS 90/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-10-22",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 70,
+      "processo": "DS 93/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-11-07",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 71,
+      "processo": "DS 94/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-11-07",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 72,
+      "processo": "DS 95/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-11-14",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 126,
+      "processo": "DS 99/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-11-19",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 128,
+      "processo": "DS 101/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-11-18",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 134,
+      "processo": "DS 107/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-12-03",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 136,
+      "processo": "DS 109/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-12-10",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 138,
+      "processo": "DS 111/2019 - SMSAN/FAAC",
+      "dt_abertura": "2019-12-19",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 264,
+      "processo": "DS 2/2020 - SMSAN/FAAC",
+      "dt_abertura": "2020-01-21",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    },
+    {
+      "licitacao_id": 265,
+      "processo": "DS 3/2020 - SMSAN/FAAC",
+      "dt_abertura": "2020-01-21",
+      "situacao": "Concluído",
+      "qtd_docs": 0
+    }
+  ]
+}

@@ -35,6 +35,33 @@ class ChatResponse(BaseModel):
     tools_usadas: list[str]
     session_id: str
 
+class AuditoriaAlerta(BaseModel):
+    tipo: str
+    severidade: str
+    mensagem: str
+    processo: str | None = None
+    qtd_empenhos: int | None = None
+
+class AuditoriaMetricas(BaseModel):
+    total_licitacoes_agro: int
+    lics_com_docs: int
+    taxa_cobertura_pct: float
+    total_empenhos: int
+    lics_com_empenhos: int
+    empenhos_sem_docs: int
+    lics_concluidas_sem_docs: int
+    alertas_criticos: int
+    alertas_graves: int
+
+class AuditoriaResultado(BaseModel):
+    metricas: AuditoriaMetricas
+    alertas: list[AuditoriaAlerta]
+    executado_em: str
+
+class AuditoriaChatRequest(BaseModel):
+    pergunta: str
+    contexto: AuditoriaResultado
+
 @app.get("/health")
 def health():
     """Verifica conectividade com Supabase."""
@@ -200,6 +227,127 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/auditoria/executar")
+async def executar_auditoria() -> AuditoriaResultado:
+    """Executa auditoria de qualidade dos dados e licitações agrícolas."""
+    from datetime import datetime
+    try:
+        sb = get_supabase_client()
+        alertas = []
+
+        # Q1: Sumário geral
+        q1 = sb.from_('itens_licitacao').select('DISTINCT licitacao_id').eq('relevante_agro', True).execute()
+        total_lics_agro = len(set(r['licitacao_id'] for r in q1.data or []))
+
+        q_docs = sb.from_('documentos_licitacao').select('DISTINCT licitacao_id').execute()
+        total_docs_agro = len([d for d in q_docs.data or [] if any(
+            sb.from_('itens_licitacao').select('id').eq('licitacao_id', d['licitacao_id']).eq('relevante_agro', True).execute().data
+        )])
+
+        taxa_cobertura = (total_docs_agro / total_lics_agro * 100) if total_lics_agro > 0 else 0
+
+        # Q2: Empenhos sem docs (CRÍTICO)
+        q_emp = sb.from_('empenhos').select(
+            'id, item_id, nr_empenho, valor_empenhado'
+        ).execute()
+        empenhos = q_emp.data or []
+        lics_com_empenhos = set()
+        empenhos_sem_docs = 0
+
+        for emp in empenhos:
+            item_id = emp.get('item_id')
+            if item_id:
+                q_item = sb.from_('itens_licitacao').select('licitacao_id').eq('id', item_id).execute()
+                if q_item.data:
+                    lic_id = q_item.data[0]['licitacao_id']
+                    lics_com_empenhos.add(lic_id)
+                    q_doc = sb.from_('documentos_licitacao').select('id').eq('licitacao_id', lic_id).execute()
+                    if not q_doc.data:
+                        empenhos_sem_docs += 1
+                        q_lic = sb.from_('licitacoes').select('processo, nr_empenhos').eq('id', lic_id).execute()
+                        if q_lic.data:
+                            alertas.append(AuditoriaAlerta(
+                                tipo='ERRO_BD',
+                                severidade='CRITICO',
+                                mensagem=f"CRÍTICO: Licitação {q_lic.data[0].get('processo', 'N/A')} tem {emp.get('nr_empenho', '?')} mas SEM documentação",
+                                processo=q_lic.data[0].get('processo'),
+                                qtd_empenhos=1
+                            ))
+
+        # Q3: Lics concluídas sem docs (GRAVE)
+        q_conc = sb.from_('licitacoes').select('id, processo, situacao').eq('situacao', 'Concluído').execute()
+        for lic in q_conc.data or []:
+            q_doc = sb.from_('documentos_licitacao').select('id').eq('licitacao_id', lic['id']).execute()
+            if not q_doc.data:
+                alertas.append(AuditoriaAlerta(
+                    tipo='ERRO_BD',
+                    severidade='GRAVE',
+                    mensagem=f"GRAVE: Licitação {lic.get('processo')} finalizada SEM documentação",
+                    processo=lic.get('processo')
+                ))
+
+        # Contar alertas críticos e graves
+        alertas_criticos = sum(1 for a in alertas if a.severidade == 'CRITICO')
+        alertas_graves = sum(1 for a in alertas if a.severidade == 'GRAVE')
+
+        metricas = AuditoriaMetricas(
+            total_licitacoes_agro=total_lics_agro,
+            lics_com_docs=total_docs_agro,
+            taxa_cobertura_pct=round(taxa_cobertura, 1),
+            total_empenhos=len(empenhos),
+            lics_com_empenhos=len(lics_com_empenhos),
+            empenhos_sem_docs=empenhos_sem_docs,
+            lics_concluidas_sem_docs=len([a for a in alertas if a.severidade == 'GRAVE']),
+            alertas_criticos=alertas_criticos,
+            alertas_graves=alertas_graves
+        )
+
+        return AuditoriaResultado(
+            metricas=metricas,
+            alertas=alertas[:50],
+            executado_em=datetime.now().isoformat()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/auditoria/chat")
+async def auditoria_chat(request: AuditoriaChatRequest) -> dict:
+    """Discute resultados da auditoria com IA."""
+    import anthropic as ant
+
+    try:
+        client = ant.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+        contexto_str = json.dumps({
+            'metricas': request.contexto.metricas.model_dump(),
+            'alertas_amostra': [a.model_dump() for a in request.contexto.alertas[:10]]
+        }, ensure_ascii=False, indent=2)
+
+        prompt = f"""Você é um assistente especializado em auditoria de licitações públicas para agricultura familiar.
+
+Um gestor da SMSAN/FAAC de Curitiba fez uma auditoria de qualidade dos dados de licitações agrícolas.
+
+CONTEXTO DA AUDITORIA:
+{contexto_str}
+
+PERGUNTA DO GESTOR:
+{request.pergunta}
+
+Responda em português de forma clara, direta e executiva. Se a pergunta se refere aos dados da auditoria, cite números específicos."""
+
+        msg = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return {
+            'resposta': msg.content[0].text,
+            'timestamp': datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 def root():
     """Documentação da API."""
@@ -209,6 +357,8 @@ def root():
             "GET /health": "Status do banco de dados",
             "POST /chat": "Enviar pergunta e receber resposta",
             "POST /alertas": "Gerar alertas inteligentes com IA",
+            "POST /auditoria/executar": "Executar auditoria sob demanda",
+            "POST /auditoria/chat": "Discutir resultados da auditoria com IA",
             "GET /docs": "Documentação Swagger"
         }
     }

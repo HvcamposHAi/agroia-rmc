@@ -1,0 +1,133 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+=== AgroIA PDF Indexing ===
+Inicio: 2026-04-21 14:56:13
+
+1. Carregando lista de documentos com URL pública...
+   Encontrados 67 documentos com URL
+
+2. Carregando documentos já indexados...
+   51 já indexados, 17 novos
+
+3. Inicializando Google Drive, Claude Vision e modelo de embeddings...
+   [OK] Google Drive autenticado
+   [OK] Claude Haiku Vision configurado
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 2837.06it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+   [OK] Modelo de embeddings carregado
+
+4. Processando 17 documentos...
+
+   [1/17] DE 1.2020 (ID: 1974)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 3180 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [2/17] PROCESSO LICITATÓRIO (ID: 1947)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 1350 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [3/17] PROCESSO LICITATÓRIO (ID: 1968)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 950 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [4/17] PROCESSO LICITATÓRIO (ID: 1970)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 2078 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [5/17] PROCESSO LICITATÓRIO (ID: 1972)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 2427 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [6/17] PROCESSO LICITATÓRIO (ID: 1946)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 1972 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [7/17] PROCESSO LICITATÓRIO (ID: 1967)
+      Extraindo com Claude Vision... [OK]
+      -> 2 chunks, 4078 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [8/17] PROCESSO LICITATÓRIO (ID: 1969)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 2647 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [9/17] PROCESSO LICITATÓRIO (ID: 1971)
+      Extraindo com Claude Vision... [OK]
+      -> 2 chunks, 3214 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [10/17] PROCESSO LICITATÓRIO (ID: 1973)
+      Extraindo com Claude Vision... [OK]
+      -> 3 chunks, 8596 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [11/17] DE 2 - FAAC 2020 (ID: 1975)
+      Extraindo com Claude Vision... [OK]
+      -> 2 chunks, 4191 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [12/17] DE 3 - FAAC 2020 (ID: 1976)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 2383 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [13/17] DE 4- FAAC 2020 (ID: 1977)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 1444 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [14/17] D.E. 5 2020-FAAC (ID: 1978)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 2154 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [15/17] D.E. 6 2020-SMSAN/FAAC (ID: 1979)
+      Extraindo com Claude Vision... [OK]
+      -> 1 chunks, 1684 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+   [16/17] DE 07 - FAAC 2020 (ID: 1980)
+      Extraindo com Claude Vision... [VAZIO]
+
+   [17/17] DE 08.2020-SMSAN/FAAC (ID: 1981)
+      Extraindo com Claude Vision... [OK]
+      -> 2 chunks, 4660 caracteres
+      Gerando embeddings... [OK]
+      Salvando no Supabase... [OK]
+
+=== Resumo ===
+Documentos processados: 16/17
+Chunks gerados: 22
+Sucesso taxa: 94.1%
+
+Erros encontrados (1):
+Detalhes salvos em indexacao_erros.json
+
+Fim: 2026-04-21 15:10:55

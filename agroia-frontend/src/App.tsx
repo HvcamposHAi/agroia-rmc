@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Consultas from './pages/Consultas'
 import Alertas from './pages/Alertas'
 import Documentos from './pages/Documentos'
+import Auditoria from './pages/Auditoria'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="consultas" element={<Consultas />} />
           <Route path="alertas" element={<Alertas />} />
           <Route path="documentos" element={<Documentos />} />
+          <Route path="auditoria" element={<Auditoria />} />
         </Route>
       </Routes>
     </BrowserRouter>

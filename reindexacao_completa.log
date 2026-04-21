@@ -1,0 +1,37 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+=== AgroIA PDF Indexing ===
+Inicio: 2026-04-21 15:31:53
+
+1. Carregando lista de documentos com URL pública...
+   Encontrados 67 documentos com URL
+
+2. Carregando documentos já indexados...
+   67 já indexados, 1 novos
+
+3. Inicializando Google Drive, Claude Vision e modelo de embeddings...
+   [OK] Google Drive autenticado
+   [OK] Claude Haiku Vision configurado
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 2771.39it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+   [OK] Modelo de embeddings carregado
+
+4. Processando 1 documentos...
+
+   [1/1] DE 07 - FAAC 2020 (ID: 1980)
+      Extraindo com Claude Vision... [VAZIO]
+
+=== Resumo ===
+Documentos processados: 0/1
+Chunks gerados: 0
+Sucesso taxa: 0.0%
+
+Erros encontrados (1):
+Detalhes salvos em indexacao_erros.json
+
+Fim: 2026-04-21 15:32:08

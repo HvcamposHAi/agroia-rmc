@@ -1,0 +1,48 @@
+[18:26:09] [INFO] ======================================================================
+[18:26:09] [INFO] COLETA DIRECIONADA: 24 PROCESSOS CRÍTICOS COM EMPENHOS
+[18:26:09] [INFO] ======================================================================
+[18:26:09] [INFO] 
+Carregando info dos 24 processos críticos...
+[18:26:16] [INFO] Encontrados 24 processos críticos
+[18:26:16] [INFO] Google Drive conectado
+[18:26:30] [ERROR] Erro fatal: Page.goto: net::ERR_NAME_NOT_RESOLVED at http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf
+Call log:
+  - navigating to "http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf", waiting until "domcontentloaded"
+
+[18:26:30] [INFO] 
+======================================================================
+[18:26:30] [INFO] COLETA CONCLUÍDA
+[18:26:30] [INFO] Total de documentos coletados: 0
+[18:26:30] [INFO] ======================================================================
+[18:32:58] [INFO] ======================================================================
+[18:32:58] [INFO] COLETA DIRECIONADA: 24 PROCESSOS CRÍTICOS COM EMPENHOS
+[18:32:58] [INFO] ======================================================================
+[18:32:58] [INFO] 
+Carregando info dos 24 processos críticos...
+[18:33:05] [INFO] Encontrados 24 processos críticos
+[18:33:05] [INFO] Google Drive conectado
+[18:33:06] [ERROR] Erro fatal: Page.goto: net::ERR_NAME_NOT_RESOLVED at http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf
+Call log:
+  - navigating to "http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf", waiting until "domcontentloaded"
+
+[18:33:07] [INFO] 
+======================================================================
+[18:33:07] [INFO] COLETA CONCLUÍDA
+[18:33:07] [INFO] Total de documentos coletados: 0
+[18:33:07] [INFO] ======================================================================
+[18:36:16] [INFO] ======================================================================
+[18:36:16] [INFO] COLETA DIRECIONADA: 24 PROCESSOS CRÍTICOS COM EMPENHOS
+[18:36:16] [INFO] ======================================================================
+[18:36:16] [INFO] 
+Carregando info dos 24 processos críticos...
+[18:36:22] [INFO] Encontrados 24 processos críticos
+[18:36:22] [INFO] Google Drive conectado
+[18:36:24] [ERROR] Erro fatal: Page.goto: net::ERR_NAME_NOT_RESOLVED at http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf
+Call log:
+  - navigating to "http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf", waiting until "domcontentloaded"
+
+[18:36:24] [INFO] 
+======================================================================
+[18:36:24] [INFO] COLETA CONCLUÍDA
+[18:36:24] [INFO] Total de documentos coletados: 0
+[18:36:24] [INFO] ======================================================================

@@ -1,0 +1,48 @@
+=== Reconciliacao V2 Melhorada ===
+
+1. Carregando processo_lic_mapping.json...
+   326 processos carregados
+
+2. Autenticando Google Drive...
+   [OK]
+
+3. Listando PDFs do Google Drive...
+   Encontrados 597 PDFs
+
+4. Conectando Supabase...
+   67 registros já existem
+
+5. Filtrando arquivos com processo no nome...
+   191 novos arquivos com processo
+
+6. Processando 191 arquivos...
+
+   [1/191] DT_02.pdf - DT 02 [NAO ENCONTRADO]
+   [2/191] DISPENSA_104.pdf - DS 104 [NAO ENCONTRADO]
+   [3/191] DS_97.pdf - DS 97 [NAO ENCONTRADO]
+   [4/191] DS 84 [OK]
+   [5/191] DS 78 [OK]
+   [6/191] DS 77 [OK]
+   [7/191] D.E._5.pdf - DE 5 [NAO ENCONTRADO]
+   [8/191] DT_02.pdf - DT 02 [NAO ENCONTRADO]
+   [9/191] D.E_4.pdf - DE 4 [NAO ENCONTRADO]
+   [10/191] DISPENSA_104.pdf - DS 104 [NAO ENCONTRADO]
+   [11/191] DS_97.pdf - DS 97 [NAO ENCONTRADO]
+   [12/191] DS 84 [OK]
+   [13/191] DS 78 [OK]
+   [14/191] DS 77 [OK]
+   [15/191] D.E._5.pdf - DE 5 [NAO ENCONTRADO]
+   [16/191] D.E_4.pdf - DE 4 [NAO ENCONTRADO]
+   [17/191] DT_02.pdf - DT 02 [NAO ENCONTRADO]
+   [18/191] DISPENSA_104.pdf - DS 104 [NAO ENCONTRADO]
+   [19/191] DS_97.pdf - DS 97 [NAO ENCONTRADO]
+   [20/191] DS 84 [OK]
+   [100/191] DS 77 [OK]
+   [150/191] DS 78 [OK]
+
+=== Resumo V2 Melhorada ===
+Total arquivos processados: 191
+Inseridos/atualizados: 49
+Nao mapeados: 142
+
+Concluido: 2026-04-21 15:31:25

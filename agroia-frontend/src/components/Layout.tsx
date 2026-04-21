@@ -6,6 +6,7 @@ const navItems = [
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/consultas', icon: '🔍', label: 'Consultas' },
   { to: '/alertas', icon: '🚨', label: 'Alertas IA' },
+  { to: '/auditoria', icon: '🔎', label: 'Auditoria' },
   { to: '/documentos', icon: '📄', label: 'Documentos' },
 ]
 
@@ -17,6 +18,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
     '/dashboard': 'Painel de Dados',
     '/consultas': 'Consultas de Licitações',
     '/alertas': 'Alertas Inteligentes',
+    '/auditoria': 'Auditoria de Dados',
     '/documentos': 'Documentos das Licitações',
   }
 

@@ -463,6 +463,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--resume", action="store_true", help="Retomar de onde parou")
     parser.add_argument("--limit", type=int, default=None, help="Limite de processos")
+    parser.add_argument("--licitacao-ids", type=str, default=None, help="IDs de licitações específicas (comma-separated)")
     args = parser.parse_args()
 
     log("=" * 70)
