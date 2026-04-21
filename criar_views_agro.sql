@@ -30,6 +30,33 @@ WHERE il.relevante_agro = true
 ORDER BY l.dt_abertura, l.processo, il.seq;
 
 -- ──────────────────────────────────────────────────────────────
+-- VIEW 1b: Itens agrícolas PUROS (sem processados)
+--          Filtra apenas categorias naturais
+--          use: SELECT * FROM vw_itens_agro_puros
+-- ──────────────────────────────────────────────────────────────
+CREATE OR REPLACE VIEW vw_itens_agro_puros AS
+SELECT
+    l.id            AS licitacao_id,
+    l.processo,
+    l.canal,
+    l.dt_abertura,
+    l.situacao,
+    il.id           AS item_id,
+    il.seq,
+    il.descricao,
+    il.cultura,
+    il.categoria_v2,
+    il.qt_solicitada,
+    il.unidade_medida,
+    il.valor_unitario,
+    il.valor_total
+FROM itens_licitacao il
+JOIN licitacoes l ON l.id = il.licitacao_id
+WHERE il.relevante_agro = true
+  AND il.categoria_v2 IN ('FRUTAS', 'HORTIFRUTI', 'PROTEINA_ANIMAL', 'GRAOS_CEREAIS', 'LATICINIOS')
+ORDER BY l.dt_abertura, l.processo, il.seq;
+
+-- ──────────────────────────────────────────────────────────────
 -- VIEW 2: Demanda por cultura × canal × ano
 --         Substitui a query Q3 — use: SELECT * FROM vw_demanda_agro_ano
 -- ──────────────────────────────────────────────────────────────
@@ -83,7 +110,9 @@ FROM itens_licitacao;
 --         relevantes à agricultura (relevante_agro = true)
 --         use: SELECT * FROM vw_licitacoes_agro_documentos
 -- ──────────────────────────────────────────────────────────────
-CREATE OR REPLACE VIEW vw_licitacoes_agro_documentos AS
+DROP VIEW IF EXISTS vw_licitacoes_agro_documentos CASCADE;
+
+CREATE VIEW vw_licitacoes_agro_documentos AS
 SELECT DISTINCT
     d.id,
     d.licitacao_id,

@@ -45,7 +45,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await supabase.from('vw_itens_agro')
+        const { data } = await supabase.from('vw_itens_agro_puros')
           .select('cultura, canal, valor_total, dt_abertura, qt_solicitada')
         if (data) setRaw(data as RawItem[])
       } finally {
