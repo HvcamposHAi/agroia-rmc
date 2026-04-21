@@ -235,69 +235,75 @@ async def executar_auditoria() -> AuditoriaResultado:
         sb = get_supabase_client()
         alertas = []
 
-        # Q1: Sumário geral
-        q1 = sb.from_('itens_licitacao').select('DISTINCT licitacao_id').eq('relevante_agro', True).execute()
-        total_lics_agro = len(set(r['licitacao_id'] for r in q1.data or []))
+        # Q1: Licitações agrícolas
+        q_lics_agro = sb.from_('itens_licitacao').select('licitacao_id').eq('relevante_agro', True).execute()
+        lics_agro_ids = set(r['licitacao_id'] for r in (q_lics_agro.data or []))
+        total_lics_agro = len(lics_agro_ids)
 
-        q_docs = sb.from_('documentos_licitacao').select('DISTINCT licitacao_id').execute()
-        total_docs_agro = len([d for d in q_docs.data or [] if any(
-            sb.from_('itens_licitacao').select('id').eq('licitacao_id', d['licitacao_id']).eq('relevante_agro', True).execute().data
-        )])
+        # Q2: Licitações com documentos
+        q_docs = sb.from_('documentos_licitacao').select('licitacao_id').execute()
+        lics_com_docs = set(d['licitacao_id'] for d in (q_docs.data or []))
+        total_docs_agro = len(lics_com_docs & lics_agro_ids)
 
         taxa_cobertura = (total_docs_agro / total_lics_agro * 100) if total_lics_agro > 0 else 0
 
-        # Q2: Empenhos sem docs (CRÍTICO)
-        q_emp = sb.from_('empenhos').select(
-            'id, item_id, nr_empenho, valor_empenhado'
-        ).execute()
+        # Q3: Empenhos
+        q_emp = sb.from_('empenhos').select('id, item_id, nr_empenho').execute()
         empenhos = q_emp.data or []
+        total_empenhos = len(empenhos)
+
+        # Q4: Itens com empenhos
+        q_itens_emp = sb.from_('empenhos').select('DISTINCT item_id').execute()
+        itens_com_emp = set(e.get('item_id') for e in (q_itens_emp.data or []) if e.get('item_id'))
+
+        # Q5: Mapear itens para licitações
+        q_itens = sb.from_('itens_licitacao').select('id, licitacao_id').execute()
+        item_to_lic = {i['id']: i['licitacao_id'] for i in (q_itens.data or [])}
+
+        # Identificar licitações com empenhos
         lics_com_empenhos = set()
+        for item_id in itens_com_emp:
+            if item_id in item_to_lic:
+                lics_com_empenhos.add(item_to_lic[item_id])
+
+        # Empenhos sem documentação
         empenhos_sem_docs = 0
+        for lic_id in lics_com_empenhos:
+            if lic_id not in lics_com_docs:
+                empenhos_sem_docs += 1
+                q_lic = sb.from_('licitacoes').select('processo').eq('id', lic_id).limit(1).execute()
+                if q_lic.data:
+                    alertas.append(AuditoriaAlerta(
+                        tipo='ERRO_BD',
+                        severidade='CRITICO',
+                        mensagem=f"CRÍTICO: Licitação {q_lic.data[0]['processo']} com empenho(s) mas SEM documentação",
+                        processo=q_lic.data[0]['processo']
+                    ))
 
-        for emp in empenhos:
-            item_id = emp.get('item_id')
-            if item_id:
-                q_item = sb.from_('itens_licitacao').select('licitacao_id').eq('id', item_id).execute()
-                if q_item.data:
-                    lic_id = q_item.data[0]['licitacao_id']
-                    lics_com_empenhos.add(lic_id)
-                    q_doc = sb.from_('documentos_licitacao').select('id').eq('licitacao_id', lic_id).execute()
-                    if not q_doc.data:
-                        empenhos_sem_docs += 1
-                        q_lic = sb.from_('licitacoes').select('processo, nr_empenhos').eq('id', lic_id).execute()
-                        if q_lic.data:
-                            alertas.append(AuditoriaAlerta(
-                                tipo='ERRO_BD',
-                                severidade='CRITICO',
-                                mensagem=f"CRÍTICO: Licitação {q_lic.data[0].get('processo', 'N/A')} tem {emp.get('nr_empenho', '?')} mas SEM documentação",
-                                processo=q_lic.data[0].get('processo'),
-                                qtd_empenhos=1
-                            ))
-
-        # Q3: Lics concluídas sem docs (GRAVE)
-        q_conc = sb.from_('licitacoes').select('id, processo, situacao').eq('situacao', 'Concluído').execute()
-        for lic in q_conc.data or []:
-            q_doc = sb.from_('documentos_licitacao').select('id').eq('licitacao_id', lic['id']).execute()
-            if not q_doc.data:
+        # Licitações concluídas sem docs
+        q_conc = sb.from_('licitacoes').select('id, processo').eq('situacao', 'Concluído').execute()
+        for lic in (q_conc.data or []):
+            if lic['id'] in lics_agro_ids and lic['id'] not in lics_com_docs:
                 alertas.append(AuditoriaAlerta(
                     tipo='ERRO_BD',
                     severidade='GRAVE',
-                    mensagem=f"GRAVE: Licitação {lic.get('processo')} finalizada SEM documentação",
-                    processo=lic.get('processo')
+                    mensagem=f"GRAVE: Licitação {lic['processo']} finalizada SEM documentação",
+                    processo=lic['processo']
                 ))
 
-        # Contar alertas críticos e graves
+        # Contar alertas
         alertas_criticos = sum(1 for a in alertas if a.severidade == 'CRITICO')
         alertas_graves = sum(1 for a in alertas if a.severidade == 'GRAVE')
+        lics_concluidas_sem_docs = alertas_graves
 
         metricas = AuditoriaMetricas(
             total_licitacoes_agro=total_lics_agro,
             lics_com_docs=total_docs_agro,
             taxa_cobertura_pct=round(taxa_cobertura, 1),
-            total_empenhos=len(empenhos),
+            total_empenhos=total_empenhos,
             lics_com_empenhos=len(lics_com_empenhos),
             empenhos_sem_docs=empenhos_sem_docs,
-            lics_concluidas_sem_docs=len([a for a in alertas if a.severidade == 'GRAVE']),
+            lics_concluidas_sem_docs=lics_concluidas_sem_docs,
             alertas_criticos=alertas_criticos,
             alertas_graves=alertas_graves
         )
@@ -308,6 +314,8 @@ async def executar_auditoria() -> AuditoriaResultado:
             executado_em=datetime.now().isoformat()
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/auditoria/chat")
