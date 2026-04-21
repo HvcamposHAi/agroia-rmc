@@ -7206,3 +7206,97 @@ Coletando documentos (limit=None)...
 [19:06:02] [INFO] 
 [57] PE 34/2019 - SMSAN/FAAC
 [19:06:06] [INFO]   PE 34/2019 - SMSAN/FAAC: 1 documento(s)
+[19:06:50] [WARN]     Documento já existe no BD (ID=1951)
+[19:06:50] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:06:52] [INFO] 
+[58] PE 35/2019 - SMSAN/FAAC
+[19:06:56] [INFO]   PE 35/2019 - SMSAN/FAAC: 1 documento(s)
+[19:07:34] [WARN]     Documento já existe no BD (ID=1952)
+[19:07:34] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:07:36] [INFO] 
+[59] PE 36/2019 - SMSAN/FAAC
+[19:07:40] [INFO]   PE 36/2019 - SMSAN/FAAC: 1 documento(s)
+[19:08:10] [WARN]     Documento já existe no BD (ID=1953)
+[19:08:10] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:08:13] [INFO] 
+[60] PE 37/2019 - SMSAN/FAAC
+[19:08:17] [INFO]   PE 37/2019 - SMSAN/FAAC: 1 documento(s)
+[19:08:40] [WARN]     Documento já existe no BD (ID=1954)
+[19:08:40] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:08:43] [INFO] Checkpoint salvo: 60 processados
+[19:08:45] [INFO] 
+[61] PE 38/2019 - SMSAN/FAAC
+[19:08:51] [INFO] 
+[62] PE 39/2019 - SMSAN/FAAC
+[19:08:55] [INFO]   PE 39/2019 - SMSAN/FAAC: 1 documento(s)
+[19:09:46] [WARN]     Documento já existe no BD (ID=1955)
+[19:09:46] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:09:49] [INFO] 
+[63] PE 40/2019 - SMSAN/FAAC
+[19:09:52] [INFO]   PE 40/2019 - SMSAN/FAAC: 1 documento(s)
+[19:10:20] [WARN]     Documento já existe no BD (ID=1956)
+[19:10:20] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:10:23] [INFO] 
+[64] PE 41/2019 - SMSAN/FAAC
+[19:10:27] [INFO]   PE 41/2019 - SMSAN/FAAC: 1 documento(s)
+[19:10:53] [WARN]     Documento já existe no BD (ID=1957)
+[19:10:53] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:10:55] [INFO] 
+[65] PE 42/2019 - SMSAN/FAAC
+[19:10:59] [INFO]   PE 42/2019 - SMSAN/FAAC: 1 documento(s)
+[19:11:38] [WARN]     Documento já existe no BD (ID=1958)
+[19:11:38] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:11:43] [INFO] 
+[66] PE 43/2019 - SMSAN/FAAC
+[19:11:47] [INFO]   PE 43/2019 - SMSAN/FAAC: 1 documento(s)
+[19:13:18] [WARN]     Documento já existe no BD (ID=1967)
+[19:13:18] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:13:20] [INFO] 
+[67] PE 44/2019 - SMSAN/FAAC
+[19:13:24] [INFO]   PE 44/2019 - SMSAN/FAAC: 1 documento(s)
+[19:14:04] [WARN]     Documento já existe no BD (ID=1968)
+[19:14:04] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:14:07] [INFO] 
+[68] PE 45/2019 - SMSAN/FAAC
+[19:14:11] [INFO]   PE 45/2019 - SMSAN/FAAC: 1 documento(s)
+[19:17:05] [WARN]     Documento já existe no BD (ID=1959)
+[19:17:05] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:17:08] [INFO] 
+[69] PE 46/2019 - SMSAN/FAAC
+[19:17:12] [INFO]   PE 46/2019 - SMSAN/FAAC: 1 documento(s)
+[19:17:42] [WARN]     Documento já existe no BD (ID=1960)
+[19:17:42] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:17:44] [INFO] 
+[70] PE 47/2019 - SMSAN/FAAC
+[19:17:48] [INFO]   PE 47/2019 - SMSAN/FAAC: 1 documento(s)
+[19:18:17] [WARN]     Documento já existe no BD (ID=1961)
+[19:18:17] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:18:20] [INFO] Checkpoint salvo: 70 processados
+[19:18:22] [INFO] 
+[71] PE 48/2019 - SMSAN/FAAC
+[19:18:26] [INFO]   PE 48/2019 - SMSAN/FAAC: 1 documento(s)
+[19:22:33] [WARN]     Documento já existe no BD (ID=1962)
+[19:22:33] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:22:36] [INFO] 
+[72] PE 49/2019 - SMSAN/FAAC
+[19:22:41] [INFO]   PE 49/2019 - SMSAN/FAAC: 1 documento(s)
+[19:23:20] [WARN]     Documento já existe no BD (ID=1969)
+[19:23:20] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:23:22] [INFO] 
+[73] PE 50/2019 - SMSAN/FAAC
+[19:23:26] [INFO]   PE 50/2019 - SMSAN/FAAC: 1 documento(s)
+[19:27:47] [WARN]     Documento já existe no BD (ID=1963)
+[19:27:47] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:27:50] [INFO] 
+[74] PE 51/2019 - SMSAN/FAAC
+[19:27:54] [INFO]   PE 51/2019 - SMSAN/FAAC: 1 documento(s)
+[19:28:14] [WARN]     Documento já existe no BD (ID=1964)
+[19:28:14] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:28:17] [INFO] 
+[75] PE 52/2019 - SMSAN/FAAC
+[19:28:21] [INFO]   PE 52/2019 - SMSAN/FAAC: 1 documento(s)
+[19:29:54] [WARN]     Documento já existe no BD (ID=1965)
+[19:29:54] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[19:29:59] [INFO] 
+[76] PE 53/2019 - SMSAN/FAAC
+[19:30:04] [INFO]   PE 53/2019 - SMSAN/FAAC: 1 documento(s)

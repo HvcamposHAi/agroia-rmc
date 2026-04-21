@@ -1,6 +1,23 @@
 import json
+import logging
+import re
 from typing import Any
 from chat.db import get_supabase_client
+
+logger = logging.getLogger(__name__)
+
+def sanitizar_string(valor: str, max_length: int = 100) -> str:
+    """Sanitiza strings para prevenir SQL injection básico."""
+    if not valor:
+        return ""
+    valor = str(valor).strip()
+    if len(valor) > max_length:
+        valor = valor[:max_length]
+    # Rejeitar patterns suspeitos (muito básico, não substitui parameterização)
+    if re.search(r"[;'\"\\]", valor):
+        logger.warning(f"Potentially malicious input detected: {valor[:50]}")
+        raise ValueError(f"Invalid characters in input")
+    return valor
 
 def query_itens_agro(
     cultura: str | None = None,
@@ -18,10 +35,13 @@ def query_itens_agro(
     if agregacao == "detalhado":
         query = sb.from_("vw_itens_agro").select("*")
         if cultura:
+            cultura = sanitizar_string(cultura)
             query = query.ilike("cultura", f"%{cultura}%")
         if categoria:
+            categoria = sanitizar_string(categoria, 50)
             query = query.eq("categoria_v2", categoria)
         if canal:
+            canal = sanitizar_string(canal, 50)
             query = query.eq("canal", canal)
         result = query.limit(50).execute()
         return result.data if result.data else []
@@ -226,13 +246,32 @@ def query_licitacoes(
     query = query.neq("canal", "OUTRO")
 
     if processo:
+        processo = sanitizar_string(processo, 100)
         query = query.ilike("processo", f"%{processo}%")
     if canal:
+        canal = sanitizar_string(canal, 50)
         query = query.eq("canal", canal)
     if ano_inicio:
-        query = query.gte("dt_abertura", f"{ano_inicio}-01-01")
+        # Validar ano como inteiro
+        try:
+            ano_inicio = int(ano_inicio)
+            if not 1900 <= ano_inicio <= 2100:
+                logger.warning(f"Invalid year: {ano_inicio}")
+                ano_inicio = None
+            else:
+                query = query.gte("dt_abertura", f"{ano_inicio}-01-01")
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid ano_inicio: {ano_inicio}")
     if ano_fim:
-        query = query.lte("dt_abertura", f"{ano_fim}-12-31")
+        try:
+            ano_fim = int(ano_fim)
+            if not 1900 <= ano_fim <= 2100:
+                logger.warning(f"Invalid year: {ano_fim}")
+                ano_fim = None
+            else:
+                query = query.lte("dt_abertura", f"{ano_fim}-12-31")
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid ano_fim: {ano_fim}")
 
     query = query.order("dt_abertura", desc=True).limit(50)
     result = query.execute()

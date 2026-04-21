@@ -1,6 +1,7 @@
 import uuid
 import os
 import json
+import logging
 from collections import defaultdict
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,20 @@ from chat.agent import chat
 from chat.db import get_supabase_client
 
 load_dotenv()
+
+# Validar variáveis críticas no startup
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError("Missing required env vars: SUPABASE_URL, SUPABASE_KEY")
+if not ANTHROPIC_KEY:
+    raise RuntimeError("Missing required env var: ANTHROPIC_API_KEY")
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="AgroIA-RMC Chat",
@@ -102,19 +117,45 @@ def salvar_turno(session_id: str, role: str, content: str, tools_usadas: list[st
 @app.post("/chat")
 def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """Endpoint de chat com persistência de histórico."""
+    session_id = request.session_id or str(uuid.uuid4())
     try:
-        session_id = request.session_id or str(uuid.uuid4())
+        logger.info(f"[{session_id}] Chat request: {request.pergunta[:100]}")
         historico = request.historico or carregar_historico(session_id)
         resultado = chat(request.pergunta, historico)
+
+        # Validar resposta
+        if not resultado or not isinstance(resultado, dict):
+            logger.error(f"[{session_id}] chat() returned invalid type: {type(resultado)}")
+            raise HTTPException(status_code=500, detail="Agent returned invalid response")
+
+        if "resposta" not in resultado:
+            logger.error(f"[{session_id}] chat() missing 'resposta' field: {resultado.keys()}")
+            raise HTTPException(status_code=500, detail="Agent returned empty response")
+
+        resposta = resultado.get("resposta", "").strip()
+        if not resposta:
+            logger.error(f"[{session_id}] chat() returned empty resposta field")
+            raise HTTPException(status_code=500, detail="Agent returned empty response")
+
+        tools_usadas = resultado.get("tools_usadas", [])
+
         salvar_turno(session_id, "user", request.pergunta)
-        salvar_turno(session_id, "assistant", resultado["resposta"], resultado["tools_usadas"])
+        salvar_turno(session_id, "assistant", resposta, tools_usadas)
+        logger.info(f"[{session_id}] Chat response successful ({len(tools_usadas)} tools used)")
+
         return ChatResponse(
-            resposta=resultado["resposta"],
-            tools_usadas=resultado["tools_usadas"],
+            resposta=resposta,
+            tools_usadas=tools_usadas,
             session_id=session_id
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"[{session_id}] Chat error", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat error: {str(e)[:100]}"
+        )
 
 @app.get("/conversas/{session_id}")
 def obter_conversa(session_id: str) -> list[dict]:

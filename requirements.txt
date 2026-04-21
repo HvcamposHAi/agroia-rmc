@@ -1,9 +1,40 @@
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-supabase
-anthropic>=0.30.0
-langchain
-langchain-anthropic
-langchain-community
+# AgroIA-RMC Production Dependencies
+
+# API Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# Environment & Configuration
+python-dotenv==1.0.0
+
+# Database
+supabase==2.4.0
+
+# AI & LLM
+anthropic==0.21.0
+
+# Web Scraping & Browser Automation
+playwright==1.40.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Google Drive Integration
+google-api-python-client==1.12.1
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
+
+# PDF Processing & Embedding
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+sentence-transformers==2.2.2
+
+# Data & ML
+numpy==1.24.3
+pandas==2.1.0
+
+# Logging & Monitoring
+python-json-logger==2.0.7
+
+# Security & Best Practices
+requests==2.31.0
