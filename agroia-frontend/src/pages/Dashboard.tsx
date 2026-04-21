@@ -32,6 +32,7 @@ interface RawItem {
   valor_total: number
   dt_abertura: string
   qt_solicitada: number
+  categoria_v2: string
 }
 
 export default function Dashboard() {
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [filAno, setFilAno] = useState('todos')
   const [filCanal, setFilCanal] = useState('todos')
+  const [filCategoria, setFilCategoria] = useState('todas')
   const [filCultura, setFilCultura] = useState('todas')
   const [topN, setTopN] = useState(10)
 
@@ -46,7 +48,7 @@ export default function Dashboard() {
     async function load() {
       try {
         const { data } = await supabase.from('vw_itens_agro_puros')
-          .select('cultura, canal, valor_total, dt_abertura, qt_solicitada')
+          .select('cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2')
         if (data) setRaw(data as RawItem[])
       } finally {
         setLoading(false)
@@ -59,15 +61,21 @@ export default function Dashboard() {
     [...new Set(raw.map(r => r.dt_abertura?.slice(0, 4)).filter(Boolean))].sort(), [raw])
   const canais = useMemo(() =>
     [...new Set(raw.map(r => r.canal).filter(Boolean))].sort(), [raw])
-  const culturas = useMemo(() =>
-    [...new Set(raw.map(r => r.cultura).filter(Boolean))].sort(), [raw])
+  const categorias = useMemo(() =>
+    [...new Set(raw.map(r => r.categoria_v2).filter(Boolean))].sort(), [raw])
+  const culturas = useMemo(() => {
+    let filtered = raw
+    if (filCategoria !== 'todas') filtered = filtered.filter(r => r.categoria_v2 === filCategoria)
+    return [...new Set(filtered.map(r => r.cultura).filter(Boolean))].sort()
+  }, [raw, filCategoria])
 
   const filtered = useMemo(() => raw.filter(r => {
     if (filAno !== 'todos' && r.dt_abertura?.slice(0, 4) !== filAno) return false
     if (filCanal !== 'todos' && r.canal !== filCanal) return false
+    if (filCategoria !== 'todas' && r.categoria_v2 !== filCategoria) return false
     if (filCultura !== 'todas' && r.cultura !== filCultura) return false
     return true
-  }), [raw, filAno, filCanal, filCultura])
+  }), [raw, filAno, filCanal, filCategoria, filCultura])
 
   const valorTotal = useMemo(() => filtered.reduce((s, r) => s + (r.valor_total ?? 0), 0), [filtered])
   const totalItens = filtered.length
@@ -130,12 +138,16 @@ export default function Dashboard() {
           <option value="todos">🏪 Todos os canais</option>
           {canais.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        <select className="filter-select" value={filCategoria} onChange={e => { setFilCategoria(e.target.value); setFilCultura('todas') }}>
+          <option value="todas">📂 Todas as categorias</option>
+          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
         <select className="filter-select" value={filCultura} onChange={e => setFilCultura(e.target.value)}>
           <option value="todas">🌱 Todas as culturas</option>
           {culturas.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        {(filAno !== 'todos' || filCanal !== 'todos' || filCultura !== 'todas') && (
-          <button onClick={() => { setFilAno('todos'); setFilCanal('todos'); setFilCultura('todas') }}
+        {(filAno !== 'todos' || filCanal !== 'todos' || filCategoria !== 'todas' || filCultura !== 'todas') && (
+          <button onClick={() => { setFilAno('todos'); setFilCanal('todos'); setFilCategoria('todas'); setFilCultura('todas') }}
             style={{ background: 'var(--terra-claro)', border: '1px solid #e0c9bc', borderRadius: 8, padding: '8px 14px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
             ✕ Limpar
           </button>

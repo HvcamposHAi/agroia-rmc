@@ -113,7 +113,7 @@ async def gerar_alertas():
         sb = get_supabase_client()
 
         # Busca dados da view
-        r = sb.from_('vw_itens_agro').select(
+        r = sb.from_('vw_itens_agro_puros').select(
             'cultura, valor_total, qt_solicitada, dt_abertura'
         ).not_.is_('cultura', 'null').gt('qt_solicitada', 0).gt('valor_total', 0).execute()
 

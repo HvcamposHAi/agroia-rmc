@@ -42,7 +42,7 @@ export default function Consultas() {
     async function load() {
       try {
         const { data } = await supabase
-          .from('vw_itens_agro')
+          .from('vw_itens_agro_puros')
           .select('*')
           .order('dt_abertura', { ascending: false })
           .limit(1000)
