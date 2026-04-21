@@ -3,8 +3,12 @@ import os
 import json
 import logging
 from collections import defaultdict
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from chat.agent import chat
@@ -16,11 +20,14 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
+API_SECRET_KEY = os.getenv("API_SECRET_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("Missing required env vars: SUPABASE_URL, SUPABASE_KEY")
 if not ANTHROPIC_KEY:
     raise RuntimeError("Missing required env var: ANTHROPIC_API_KEY")
+if not API_SECRET_KEY:
+    raise RuntimeError("Missing required env var: API_SECRET_KEY")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -32,13 +39,31 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# SEC-001: Configure CORS with explicit allowed origins
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
+
+# SEC-003: Setup rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_exceeded_handler(request, exc):
+    return {"status": "error", "detail": "Rate limit exceeded"}
+
+# SEC-002: API Key authentication
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def verify_api_key(api_key: str = Security(api_key_header)) -> str:
+    if not api_key or api_key != API_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+    return api_key
 
 class ChatRequest(BaseModel):
     pergunta: str
@@ -85,7 +110,8 @@ def health():
         result = sb.table("licitacoes").select("id").limit(1).execute()
         return {"status": "ok", "database": "connected"}
     except Exception as e:
-        return {"status": "error", "database": str(e)}
+        logger.error("Health check failed", exc_info=True)
+        return {"status": "error", "database": "unavailable"}
 
 def carregar_historico(session_id: str) -> list[dict]:
     """Carrega histórico de conversa do Supabase."""
@@ -115,11 +141,12 @@ def salvar_turno(session_id: str, role: str, content: str, tools_usadas: list[st
         print(f"Aviso: não consegui salvar histórico: {e}")
 
 @app.post("/chat")
-def chat_endpoint(request: ChatRequest) -> ChatResponse:
+@limiter.limit("60/minute")
+def chat_endpoint(req: Request, request: ChatRequest, _: str = Depends(verify_api_key)) -> ChatResponse:
     """Endpoint de chat com persistência de histórico."""
     session_id = request.session_id or str(uuid.uuid4())
     try:
-        logger.info(f"[{session_id}] Chat request: {request.pergunta[:100]}")
+        logger.info(f"[{session_id}] Chat request recebido (len={len(request.pergunta)})")
         historico = request.historico or carregar_historico(session_id)
         resultado = chat(request.pergunta, historico)
 
@@ -158,12 +185,14 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
         )
 
 @app.get("/conversas/{session_id}")
-def obter_conversa(session_id: str) -> list[dict]:
+@limiter.limit("30/minute")
+def obter_conversa(req: Request, session_id: str, _: str = Depends(verify_api_key)) -> list[dict]:
     """Retorna histórico completo de uma conversa."""
     return carregar_historico(session_id)
 
 @app.delete("/conversas/{session_id}")
-def deletar_conversa(session_id: str) -> dict:
+@limiter.limit("10/minute")
+def deletar_conversa(req: Request, session_id: str, _: str = Depends(verify_api_key)) -> dict:
     """Deleta histórico de uma conversa."""
     try:
         sb = get_supabase_client()
@@ -173,7 +202,8 @@ def deletar_conversa(session_id: str) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/alertas")
-async def gerar_alertas():
+@limiter.limit("10/hour")
+async def gerar_alertas(req: Request, _: str = Depends(verify_api_key)):
     """Analisa dados históricos e gera alertas com IA."""
     import anthropic as ant
 
@@ -269,7 +299,8 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/auditoria/executar")
-async def executar_auditoria() -> AuditoriaResultado:
+@limiter.limit("10/hour")
+async def executar_auditoria(req: Request, _: str = Depends(verify_api_key)) -> AuditoriaResultado:
     """Executa auditoria de qualidade dos dados e licitações agrícolas."""
     from datetime import datetime
     try:
@@ -352,12 +383,12 @@ async def executar_auditoria() -> AuditoriaResultado:
             executado_em=datetime.now().isoformat()
         )
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Auditoria error", exc_info=True)
+        raise HTTPException(status_code=500, detail="Auditoria execution failed")
 
 @app.post("/auditoria/chat")
-async def auditoria_chat(request: AuditoriaChatRequest) -> dict:
+@limiter.limit("20/hour")
+async def auditoria_chat(req: Request, request: AuditoriaChatRequest, _: str = Depends(verify_api_key)) -> dict:
     """Discute resultados da auditoria com IA."""
     import anthropic as ant
 

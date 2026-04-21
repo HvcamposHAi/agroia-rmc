@@ -1,0 +1,251 @@
+{
+  "auditoria": {
+    "data": "2026-04-21",
+    "projeto": "AgroIA-RMC",
+    "total_acoes": 22
+  },
+  "acoes": [
+    {
+      "id": "SEC-001",
+      "categoria": "API",
+      "prioridade": "CRITICA",
+      "titulo": "CORS aberto para qualquer origem (wildcard)",
+      "problema": "api/main.py:35-41 — `allow_origins=[\"*\"]` combinado com `allow_credentials=True`. Essa combinação é rejeitada por browsers modernos em requisições credenciadas, mas abre a API para chamadas cross-origin sem restrição, permitindo CSRF e exfiltração de dados por sites maliciosos.",
+      "acao": "Substituir `allow_origins=[\"*\"]` por lista explícita de origens permitidas (ex.: domínio do frontend). Nunca use wildcard junto de `allow_credentials=True`.",
+      "codigo_sugerido": "ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000').split(',')\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=ALLOWED_ORIGINS,\n    allow_credentials=True,\n    allow_methods=['GET', 'POST', 'DELETE'],\n    allow_headers=['Authorization', 'Content-Type'],\n)",
+      "arquivo_afetado": "api/main.py",
+      "esforco": "1h"
+    },
+    {
+      "id": "SEC-002",
+      "categoria": "API",
+      "prioridade": "CRITICA",
+      "titulo": "Nenhuma autenticação nos endpoints da API",
+      "problema": "api/main.py — Todos os endpoints (`/chat`, `/alertas`, `/auditoria/executar`, `/auditoria/chat`, `/conversas/{session_id}`, `DELETE /conversas/{session_id}`) são públicos sem qualquer token, API key ou JWT. Qualquer pessoa com acesso à URL pode ler históricos de conversas, apagar dados e disparar análises custosas com a API da Anthropic.",
+      "acao": "Implementar autenticação via API Key no header `X-API-Key` usando FastAPI `Security`/`Depends`, ou integrar com Supabase Auth (JWT Bearer token). Rotacionar a chave via variável de ambiente.",
+      "codigo_sugerido": "from fastapi import Security, HTTPException\nfrom fastapi.security import APIKeyHeader\n\napi_key_header = APIKeyHeader(name='X-API-Key')\n\ndef verify_api_key(api_key: str = Security(api_key_header)):\n    expected = os.getenv('API_SECRET_KEY')\n    if not expected or api_key != expected:\n        raise HTTPException(status_code=403, detail='Forbidden')\n    return api_key\n\n# Usar em cada endpoint:\n@app.post('/chat')\ndef chat_endpoint(request: ChatRequest, _=Depends(verify_api_key)):",
+      "arquivo_afetado": "api/main.py",
+      "esforco": "4h"
+    },
+    {
+      "id": "SEC-003",
+      "categoria": "API",
+      "prioridade": "CRITICA",
+      "titulo": "Sem rate limiting — endpoints custosos sem proteção",
+      "problema": "api/main.py — `/alertas` e `/auditoria/executar` fazem bulk-queries no Supabase e chamadas à API Anthropic a cada request. Sem rate limiting, um atacante pode gerar custos ilimitados (API billing) ou causar DoS no banco de dados. O `/chat` também não tem limite de requisições por sessão/IP.",
+      "acao": "Adicionar `slowapi` (rate limiter para FastAPI) com limites por IP. Endpoints de IA devem ter limite estrito (ex.: 10/hora); chat pode ter 60/minuto.",
+      "codigo_sugerido": "from slowapi import Limiter\nfrom slowapi.util import get_remote_address\nfrom slowapi.errors import RateLimitExceeded\n\nlimiter = Limiter(key_func=get_remote_address)\napp.state.limiter = limiter\napp.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)\n\n@app.post('/alertas')\n@limiter.limit('10/hour')\nasync def gerar_alertas(request: Request):",
+      "arquivo_afetado": "api/main.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-004",
+      "categoria": "Secrets",
+      "prioridade": "CRITICA",
+      "titulo": "SUPABASE_URL hardcoded com fallback em produção",
+      "problema": "etapa2_itens_v9.py:37 — `SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://rsphlvcekuomvpvjqxqm.supabase.co')`. A URL real do Supabase está hardcoded como valor padrão. Qualquer pessoa que veja o código (ex.: repositório público, log) conhece o endpoint do banco de dados. Isso facilita ataques direcionados.",
+      "acao": "Remover o valor padrão hardcoded. Falhar explicitamente se `SUPABASE_URL` não estiver definida, como já é feito em `api/main.py:20-21`.",
+      "codigo_sugerido": "SUPABASE_URL = os.getenv('SUPABASE_URL')\nif not SUPABASE_URL:\n    raise RuntimeError('SUPABASE_URL não definida')",
+      "arquivo_afetado": "etapa2_itens_v9.py",
+      "esforco": "1h"
+    },
+    {
+      "id": "SEC-005",
+      "categoria": "Secrets",
+      "prioridade": "ALTA",
+      "titulo": "credentials.json do Google OAuth não está no .gitignore",
+      "problema": ".gitignore — O arquivo `credentials.json` (credenciais OAuth do Google Cloud) referenciado em `indexar_pdfs.py:50` e `reconciliar_drive_supabase.py:46` não está listado no `.gitignore`. Se este arquivo for comitado acidentalmente, as credenciais do app OAuth ficam expostas publicamente.",
+      "acao": "Adicionar `credentials.json` e `service_account*.json` ao `.gitignore` imediatamente. Verificar se já foi comitado com `git log --all --full-history -- credentials.json`.",
+      "codigo_sugerido": "# Adicionar ao .gitignore:\ncredentials.json\nservice_account*.json\n*.pickle",
+      "arquivo_afetado": ".gitignore",
+      "esforco": "1h"
+    },
+    {
+      "id": "SEC-006",
+      "categoria": "Secrets",
+      "prioridade": "ALTA",
+      "titulo": "token.pickle no .gitignore mas ainda presente no repositório",
+      "problema": "Raiz do projeto — O arquivo `token.pickle` está listado no `.gitignore` (linha 5), porém o `ls` mostra que `token.pickle` existe na raiz. Tokens OAuth serializados com `pickle` contêm refresh tokens de longa duração do Google. Se o arquivo foi comitado antes de ser adicionado ao `.gitignore`, ainda estará no histórico git.",
+      "acao": "Verificar `git log --all -- token.pickle`. Se comitado, usar `git filter-branch` ou `git-filter-repo` para remover do histórico e revogar o token no Google Console.",
+      "codigo_sugerido": null,
+      "arquivo_afetado": "token.pickle",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-007",
+      "categoria": "Secrets",
+      "prioridade": "ALTA",
+      "titulo": "Sem pre-commit hooks para prevenção de vazamento de secrets",
+      "problema": "Raiz do projeto — Não existe configuração de pre-commit hooks (`.pre-commit-config.yaml` ausente). Sem hooks como `detect-secrets` ou `gitleaks`, segredos como API keys e tokens podem ser comitados acidentalmente.",
+      "acao": "Instalar `pre-commit` com `detect-secrets` e `gitleaks`. Executar baseline scan e configurar CI para bloquear commits com secrets.",
+      "codigo_sugerido": "# .pre-commit-config.yaml\nrepos:\n  - repo: https://github.com/Yelp/detect-secrets\n    rev: v1.4.0\n    hooks:\n      - id: detect-secrets\n        args: ['--baseline', '.secrets.baseline']\n  - repo: https://github.com/gitleaks/gitleaks\n    rev: v8.18.0\n    hooks:\n      - id: gitleaks",
+      "arquivo_afetado": null,
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-008",
+      "categoria": "API",
+      "prioridade": "ALTA",
+      "titulo": "Security headers ausentes (X-Content-Type-Options, CSP, HSTS, etc.)",
+      "problema": "api/main.py — A API não adiciona nenhum security header HTTP. Sem headers como `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security` e `Content-Security-Policy`, respostas da API ficam vulneráveis a clickjacking, MIME sniffing e ataques de downgrade HTTPS.",
+      "acao": "Adicionar middleware `secure` (biblioteca) ou middleware customizado para injetar security headers em todas as respostas.",
+      "codigo_sugerido": "from starlette.middleware.base import BaseHTTPMiddleware\n\nclass SecurityHeadersMiddleware(BaseHTTPMiddleware):\n    async def dispatch(self, request, call_next):\n        response = await call_next(request)\n        response.headers['X-Content-Type-Options'] = 'nosniff'\n        response.headers['X-Frame-Options'] = 'DENY'\n        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'\n        response.headers['Content-Security-Policy'] = \"default-src 'none'\"\n        return response\n\napp.add_middleware(SecurityHeadersMiddleware)",
+      "arquivo_afetado": "api/main.py",
+      "esforco": "1h"
+    },
+    {
+      "id": "SEC-009",
+      "categoria": "API",
+      "prioridade": "ALTA",
+      "titulo": "session_id não validado — qualquer usuário acessa histórico de outro",
+      "problema": "api/main.py:160-163 — `GET /conversas/{session_id}` e `DELETE /conversas/{session_id}` aceitam qualquer `session_id` sem verificar se pertence ao solicitante. Um atacante que descubra ou enumere um `session_id` (são UUIDs, mas gerados sem autenticação) pode ler ou apagar conversas de outros usuários.",
+      "acao": "Após implementar autenticação (SEC-002), vincular `session_id` ao usuário autenticado e rejeitar acesso a sessões de terceiros.",
+      "codigo_sugerido": null,
+      "arquivo_afetado": "api/main.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-010",
+      "categoria": "API",
+      "prioridade": "ALTA",
+      "titulo": "Pergunta do usuário logada integralmente (dados sensíveis em logs)",
+      "problema": "api/main.py:122 — `logger.info(f'[{session_id}] Chat request: {request.pergunta[:100]}')`. O conteúdo das perguntas (incluindo possíveis CPFs, nomes, dados sensíveis) é gravado nos logs. O arquivo `api.log`/`api_server.log` existe no repositório e pode conter PII.",
+      "acao": "Logar apenas metadados da requisição (session_id, comprimento, timestamp) sem o conteúdo da pergunta. Adicionar `*.log` ao `.gitignore` (já está, mas verificar se `api.log` já foi comitado).",
+      "codigo_sugerido": "logger.info(f'[{session_id}] Chat request recebido (len={len(request.pergunta)})')",
+      "arquivo_afetado": "api/main.py",
+      "esforco": "1h"
+    },
+    {
+      "id": "SEC-011",
+      "categoria": "RLS",
+      "prioridade": "ALTA",
+      "titulo": "Supabase client usa mesma chave para API pública e scripts internos",
+      "problema": "chat/db.py:7-8, etapa2_itens_v9.py:38, etapa3_producao.py:36, enriquecer_classificacao.py:22 — Todos os módulos (API pública de chat, scripts de coleta com DELETE/INSERT massivo) usam a mesma `SUPABASE_KEY` da variável de ambiente. Se for a `service_role` key, a API pública tem acesso total ignorando RLS. Se for a `anon` key, os scripts de coleta precisam de RLS configurado para escrever.",
+      "acao": "Separar chaves: scripts de coleta interna usam `SUPABASE_SERVICE_ROLE_KEY`; API pública usa `SUPABASE_ANON_KEY` com RLS habilitado em todas as tabelas. Verificar no Supabase Dashboard se RLS está ativo em `licitacoes`, `itens_licitacao`, `fornecedores`, `conversas`, `pdf_chunks`.",
+      "codigo_sugerido": "# Para API pública (chat/db.py):\nSUPABASE_KEY = os.getenv('SUPABASE_ANON_KEY')  # com RLS\n\n# Para scripts internos (etapa2, etapa3, indexar_pdfs):\nSUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')  # bypass RLS controlado",
+      "arquivo_afetado": "chat/db.py",
+      "esforco": "4h"
+    },
+    {
+      "id": "SEC-012",
+      "categoria": "RLS",
+      "prioridade": "ALTA",
+      "titulo": "Tabela `conversas` sem isolamento por usuário",
+      "problema": "api/main.py:94-102 — A query `sb.table('conversas').select('role, content').eq('session_id', session_id)` não filtra por usuário autenticado. Sem RLS na tabela `conversas` vinculando `session_id` a um `user_id`, qualquer requisição autenticada (ou não autenticada, dado SEC-002) pode acessar conversas de qualquer sessão.",
+      "acao": "Habilitar RLS na tabela `conversas` com política: `user_id = auth.uid()`. Adicionar coluna `user_id` à tabela e populá-la no momento de criação da sessão.",
+      "codigo_sugerido": "-- SQL no Supabase:\nALTER TABLE conversas ENABLE ROW LEVEL SECURITY;\nCREATE POLICY 'users_own_conversations' ON conversas\n  USING (user_id = auth.uid());",
+      "arquivo_afetado": "api/main.py",
+      "esforco": "4h"
+    },
+    {
+      "id": "SEC-013",
+      "categoria": "GoogleDrive",
+      "prioridade": "ALTA",
+      "titulo": "PDFs carregados com permissão pública (anyone reader) sem controle de acesso",
+      "problema": "etapa3_producao.py:118-120 — `drive_service.permissions().create(fileId=file_id, body={'type': 'anyone', 'role': 'reader'}).execute()`. Cada PDF de licitação é tornado publicamente acessível na internet sem autenticação. Embora sejam dados públicos, isso elimina qualquer controle de acesso futuro e pode violar políticas de dados governamentais.",
+      "acao": "Remover a criação de permissão pública automática. Usar URLs assinadas (signed URLs) ou restringir acesso ao domínio da organização (`type: 'domain'`). Se o acesso público for necessário, documentar a decisão explicitamente.",
+      "codigo_sugerido": null,
+      "arquivo_afetado": "etapa3_producao.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-014",
+      "categoria": "GoogleDrive",
+      "prioridade": "ALTA",
+      "titulo": "Autenticação Google com pickle inseguro e sem validação de escopo",
+      "problema": "indexar_pdfs.py:39-55, reconciliar_drive_supabase.py:33-51, etapa3_producao.py:84-97 — O `token.pickle` é carregado com `pickle.load()` sem validação de integridade. `pickle` é vulnerável a execução de código arbitrário se o arquivo for adulterado. Adicionalmente, o fluxo `InstalledAppFlow.run_local_server()` em scripts automatizados exige interação humana e não é adequado para produção.",
+      "acao": "Migrar para Service Account com JSON key (sem OAuth interativo) para scripts de servidor. Armazenar a key no `.env` ou Secret Manager, nunca em `token.pickle`. Adicionar `service_account*.json` ao `.gitignore`.",
+      "codigo_sugerido": "from google.oauth2 import service_account\n\ncreds = service_account.Credentials.from_service_account_file(\n    os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON'),\n    scopes=['https://www.googleapis.com/auth/drive.readonly']\n)",
+      "arquivo_afetado": "indexar_pdfs.py",
+      "esforco": "4h"
+    },
+    {
+      "id": "SEC-015",
+      "categoria": "Dependencias",
+      "prioridade": "ALTA",
+      "titulo": "Dependências desatualizadas com CVEs conhecidos",
+      "problema": "requirements.txt — Versões fixadas há mais de 1 ano com múltiplas vulnerabilidades conhecidas: `anthropic==0.21.0` (atual: 0.49+), `google-api-python-client==1.12.1` (versão de 2021, EOL — CVEs de SSRF), `PyPDF2==3.0.1` (projeto descontinuado, substituído por `pypdf`), `sentence-transformers==2.2.2` (atual: 3.x), `lxml==4.9.3` (CVE-2022-2309 e outros). Nenhuma dependência usa hashes de integridade.",
+      "acao": "Executar `pip-audit` para mapear CVEs. Atualizar `google-api-python-client` para `>=2.0`, migrar de `PyPDF2` para `pypdf`. Regenerar `requirements.txt` com `pip-compile --generate-hashes` (pip-tools).",
+      "codigo_sugerido": "# Instalar pip-audit e verificar:\npip install pip-audit\npip-audit -r requirements.txt\n\n# Gerar requirements com hashes:\npip install pip-tools\npip-compile --generate-hashes requirements.in",
+      "arquivo_afetado": "requirements.txt",
+      "esforco": "4h"
+    },
+    {
+      "id": "SEC-016",
+      "categoria": "Dependencias",
+      "prioridade": "MEDIA",
+      "titulo": "Sem arquivo requirements_lock ou hashes de integridade",
+      "problema": "requirements.txt — Embora as versões estejam fixadas (sem `>=`), não há hashes SHA256 para verificação de integridade dos pacotes. Um ataque de supply chain (ex.: typosquatting ou comprometimento do PyPI) poderia instalar um pacote malicioso.",
+      "acao": "Gerar `requirements.txt` com hashes via `pip-compile --generate-hashes`. Adicionar `pip-audit` ao pipeline CI/CD.",
+      "codigo_sugerido": null,
+      "arquivo_afetado": "requirements.txt",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-017",
+      "categoria": "Scraping",
+      "prioridade": "MEDIA",
+      "titulo": "Rate limiting no scraping insuficiente e sem backoff exponencial robusto",
+      "problema": "etapa2_itens_v9.py:46 — `DELAY = 2.0` (fixo). etapa3_producao.py:539,563 — delays fixos de 0.5s e 2s entre requests. Não há backoff exponencial em caso de erro HTTP 429 ou 503 do portal, nem User-Agent customizado. O script não respeita `robots.txt` ou rate limits declarados pelo servidor.",
+      "acao": "Implementar backoff exponencial com jitter em caso de falhas. Adicionar User-Agent identificando o projeto. Verificar `robots.txt` do portal antes de cada sessão de coleta.",
+      "codigo_sugerido": "import random\n\ndef delay_com_jitter(base=2.0, jitter=0.5):\n    time.sleep(base + random.uniform(-jitter, jitter))\n\ndef retry_com_backoff(func, max_attempts=5):\n    for i in range(max_attempts):\n        try:\n            return func()\n        except Exception as e:\n            wait = (2 ** i) + random.uniform(0, 1)\n            time.sleep(min(wait, 60))",
+      "arquivo_afetado": "etapa2_itens_v9.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-018",
+      "categoria": "Scraping",
+      "prioridade": "MEDIA",
+      "titulo": "Logs de scraping gravam dados de licitações em arquivos de texto sem controle",
+      "problema": "etapa3_producao.py:49 — `LOG_FILE = 'coleta_producao.log'`. coleta_criticos.py:46 — `LOG_FILE = 'coleta_criticos.log'`. Os logs incluem nomes de documentos, processos e erros detalhados. Há 15+ arquivos `.log` na raiz do projeto. Logs não têm rotação, tamanho máximo ou criptografia. Dados sensíveis de licitações (valores, fornecedores) podem vazar via logs.",
+      "acao": "Implementar log rotation com `logging.handlers.RotatingFileHandler`. Sanitizar dados sensíveis antes de logar (truncar nomes de fornecedores, mascarar valores). Mover logs para diretório `logs/` com permissões restritas.",
+      "codigo_sugerido": "from logging.handlers import RotatingFileHandler\n\nhandler = RotatingFileHandler(\n    'logs/coleta.log',\n    maxBytes=10*1024*1024,  # 10MB\n    backupCount=5\n)\nlogging.basicConfig(handlers=[handler], level=logging.INFO)",
+      "arquivo_afetado": "etapa3_producao.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-019",
+      "categoria": "RAG",
+      "prioridade": "MEDIA",
+      "titulo": "Modelo de embedding carregado sem versionamento ou validação de integridade",
+      "problema": "chat/tools.py:292-293 — `model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')` é carregado a cada chamada de `buscar_documentos_vetor()` sem cache. Além do custo de performance, o modelo é baixado da internet sem verificação de hash, vulnerável a ataques de modelo envenenado (model poisoning) se o cache local for comprometido.",
+      "acao": "Carregar o modelo uma vez no startup e fazer cache. Fixar a revisão do modelo (commit hash do HuggingFace). Verificar hash SHA256 do modelo após download.",
+      "codigo_sugerido": "# Carregar globalmente no startup:\n_embedding_model = None\n\ndef get_embedding_model():\n    global _embedding_model\n    if _embedding_model is None:\n        _embedding_model = SentenceTransformer(\n            'paraphrase-multilingual-MiniLM-L12-v2',\n            cache_folder=os.getenv('MODEL_CACHE_DIR', '.model_cache')\n        )\n    return _embedding_model",
+      "arquivo_afetado": "chat/tools.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-020",
+      "categoria": "RAG",
+      "prioridade": "MEDIA",
+      "titulo": "Conteúdo de PDFs não é sanitizado antes de gerar embeddings (risco de PII)",
+      "problema": "indexar_pdfs.py:254-260 — O texto extraído de PDFs via Claude Vision é enviado diretamente para embeddings e armazenado em `pdf_chunks.chunk_text` sem nenhuma filtragem de PII (CPF, CNPJ de pessoas físicas, endereços). Editais de licitação podem conter dados pessoais de agricultores familiares.",
+      "acao": "Implementar detecção e mascaramento de PII (CPF, CNPJ PF) antes de armazenar em `chunk_text`. Usar regex para detectar padrões `\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}` e substituir por `[CPF REDACTED]`.",
+      "codigo_sugerido": "import re\n\ndef sanitizar_pii(texto: str) -> str:\n    # Mascarar CPF\n    texto = re.sub(r'\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}', '[CPF]', texto)\n    # Mascarar RG\n    texto = re.sub(r'\\d{1,2}\\.\\d{3}\\.\\d{3}-[\\dXx]', '[RG]', texto)\n    return texto",
+      "arquivo_afetado": "indexar_pdfs.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-021",
+      "categoria": "Dados",
+      "prioridade": "MEDIA",
+      "titulo": "CPF/CNPJ de fornecedores exposto diretamente nas respostas da API",
+      "problema": "chat/tools.py:220,224 — `query_fornecedores()` retorna `cpf_cnpj` diretamente no resultado, que vai para o agente LLM e pode ser devolvido ao usuário final nas respostas de chat. CPF/CNPJ são dados pessoais sensíveis sob a LGPD.",
+      "acao": "Mascarar CPF/CNPJ nas respostas da API: mostrar apenas os últimos 4 dígitos ou o tipo do documento. Aplicar mascaramento também no LLM system prompt para instruir o agente a não repetir documentos completos.",
+      "codigo_sugerido": "def mascarar_documento(doc: str) -> str:\n    if doc and len(doc) == 14:  # CNPJ\n        return f'**.***.{doc[-6:-4]}/{doc[-4:-2]}-{doc[-2:]}'\n    if doc and len(doc) == 11:  # CPF\n        return f'***.***.{doc[-5:-2]}-{doc[-2:]}'\n    return doc or ''",
+      "arquivo_afetado": "chat/tools.py",
+      "esforco": "2h"
+    },
+    {
+      "id": "SEC-022",
+      "categoria": "Dados",
+      "prioridade": "BAIXA",
+      "titulo": "Endpoint /health expõe stack trace e detalhes de infraestrutura em erros",
+      "problema": "api/main.py:83-88 — Em caso de erro de conexão com Supabase, `health()` retorna `str(e)` diretamente, que pode conter URL do banco, mensagens internas do driver ou stack trace. `auditoria/executar` na linha 356 também faz `traceback.print_exc()` para stdout.",
+      "acao": "No health check, retornar apenas status genérico ('error') sem detalhes da exceção. Remover `traceback.print_exc()` de produção — usar logger estruturado no lugar.",
+      "codigo_sugerido": "# api/main.py:83-88\nexcept Exception as e:\n    logger.error('Health check failed', exc_info=True)\n    return {'status': 'error', 'database': 'unavailable'}\n\n# auditoria/executar — remover:\n# traceback.print_exc()  # NUNCA em produção",
+      "arquivo_afetado": "api/main.py",
+      "esforco": "1h"
+    }
+  ]
+}
