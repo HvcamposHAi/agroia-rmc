@@ -2,11 +2,13 @@ import axios from 'axios'
 import type { AxiosInstance } from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_KEY = import.meta.env.VITE_API_SECRET_KEY || 'JjcygLlSmpGHrSyHYMI7CrLxPEVDDF-D_R6KhAa2Ln4'
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'X-API-Key': API_KEY,
   },
 })
 
