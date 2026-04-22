@@ -47,61 +47,79 @@ def query_itens_agro(
         return result.data if result.data else []
 
     if agregacao == "por_cultura":
-        top_10_culturas = sb.from_("vw_itens_agro").select(
-            "cultura, categoria_v2"
-        ).execute().data or []
+        # Otimizado: uma única query com agregação
+        items_all = sb.from_("vw_itens_agro").select(
+            "cultura, categoria_v2, valor_total, valor_unitario"
+        ).limit(10000).execute().data or []
 
-        culturas_unicas = {}
-        for item in top_10_culturas:
+        culturas_dict = {}
+        for item in items_all:
             cult = item.get("cultura", "")
-            cat = item.get("categoria_v2", "")
-            culturas_unicas[cult] = cat
+            if not cult:
+                continue
+
+            if cult not in culturas_dict:
+                culturas_dict[cult] = {
+                    "categoria_v2": item.get("categoria_v2", ""),
+                    "qtd_itens": 0,
+                    "valor_total": 0.0
+                }
+
+            culturas_dict[cult]["qtd_itens"] += 1
+            culturas_dict[cult]["valor_total"] += float(item.get("valor_total", 0))
 
         resultado = []
-        for cult, cat in list(culturas_unicas.items())[:20]:
-            items = sb.from_("vw_itens_agro").select(
-                "valor_total, valor_unitario"
-            ).eq("cultura", cult).execute().data or []
-
-            qtd = len(items)
-            valor_total = sum(float(i.get("valor_total", 0)) for i in items)
-            preco_medio = valor_total / qtd if qtd > 0 else 0
-
+        for cult, data in culturas_dict.items():
+            qtd = data["qtd_itens"]
             resultado.append({
                 "cultura": cult,
-                "categoria_v2": cat,
+                "categoria_v2": data["categoria_v2"],
                 "qtd_itens": qtd,
-                "valor_total_R$": round(valor_total, 2),
-                "preco_medio_unit": round(preco_medio, 2)
+                "valor_total_R$": round(data["valor_total"], 2),
+                "preco_medio_unit": round(data["valor_total"] / qtd if qtd > 0 else 0, 2)
             })
 
-        return sorted(resultado, key=lambda x: x["valor_total_R$"], reverse=True)
+        return sorted(resultado, key=lambda x: x["valor_total_R$"], reverse=True)[:20]
 
     if agregacao == "por_canal":
-        canais = ["PNAE", "PAA", "ARMAZEM_FAMILIA", "BANCO_ALIMENTOS", "MESA_SOLIDARIA"]
-        resultado = []
+        # Otimizado: uma única query
+        items_all = sb.from_("vw_itens_agro").select(
+            "canal, licitacao_id, valor_total"
+        ).limit(10000).execute().data or []
 
-        for c in canais:
-            items = sb.from_("vw_itens_agro").select(
-                "licitacao_id, valor_total"
-            ).eq("canal", c).execute().data or []
+        canais_dict = {}
+        for item in items_all:
+            canal = item.get("canal", "")
+            if not canal:
+                continue
 
-            if items:
-                licitacoes_unicas = len(set(i["licitacao_id"] for i in items))
-                valor_total = sum(float(i.get("valor_total", 0)) for i in items)
-                resultado.append({
-                    "canal": c,
-                    "qtd_licitacoes": licitacoes_unicas,
-                    "qtd_itens": len(items),
-                    "valor_total_R$": round(valor_total, 2)
-                })
+            if canal not in canais_dict:
+                canais_dict[canal] = {
+                    "qtd_items": 0,
+                    "licitacoes": set(),
+                    "valor_total": 0.0
+                }
+
+            canais_dict[canal]["qtd_items"] += 1
+            canais_dict[canal]["licitacoes"].add(item.get("licitacao_id"))
+            canais_dict[canal]["valor_total"] += float(item.get("valor_total", 0))
+
+        resultado = [
+            {
+                "canal": canal,
+                "qtd_licitacoes": len(data["licitacoes"]),
+                "qtd_itens": data["qtd_items"],
+                "valor_total_R$": round(data["valor_total"], 2)
+            }
+            for canal, data in canais_dict.items()
+        ]
 
         return sorted(resultado, key=lambda x: x["valor_total_R$"], reverse=True)
 
     if agregacao == "por_ano":
         items = sb.from_("vw_itens_agro").select(
             "dt_abertura, licitacao_id, valor_total"
-        ).execute().data or []
+        ).limit(10000).execute().data or []
 
         anos_dict = {}
         for item in items:
@@ -127,7 +145,7 @@ def query_itens_agro(
     if agregacao == "por_categoria":
         items = sb.from_("vw_itens_agro").select(
             "categoria_v2, licitacao_id, valor_total"
-        ).execute().data or []
+        ).limit(10000).execute().data or []
 
         categorias_dict = {}
         for item in items:

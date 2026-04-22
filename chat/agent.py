@@ -39,7 +39,7 @@ def chat(pergunta: str, historico: list[dict] = None) -> dict:
                     system=SYSTEM_PROMPT,
                     tools=TOOLS_SCHEMA,
                     messages=messages,
-                    timeout=15  # Timeout na chamada ao Claude
+                    timeout=30  # Aumentado para 30s (API pode ser lenta)
                 )
             except Exception as e:
                 logger.error(f"Claude API error: {str(e)}", exc_info=True)
