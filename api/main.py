@@ -141,7 +141,6 @@ def salvar_turno(session_id: str, role: str, content: str, tools_usadas: list[st
         print(f"Aviso: não consegui salvar histórico: {e}")
 
 @app.post("/chat")
-@limiter.limit("60/minute")
 def chat_endpoint(request_http: Request, request: ChatRequest, _: str = Depends(verify_api_key)) -> ChatResponse:
     """Endpoint de chat com persistência de histórico."""
     session_id = request.session_id or str(uuid.uuid4())
@@ -185,13 +184,11 @@ def chat_endpoint(request_http: Request, request: ChatRequest, _: str = Depends(
         )
 
 @app.get("/conversas/{session_id}")
-@limiter.limit("30/minute")
 def obter_conversa(request: Request, session_id: str, _: str = Depends(verify_api_key)) -> list[dict]:
     """Retorna histórico completo de uma conversa."""
     return carregar_historico(session_id)
 
 @app.delete("/conversas/{session_id}")
-@limiter.limit("10/minute")
 def deletar_conversa(request: Request, session_id: str, _: str = Depends(verify_api_key)) -> dict:
     """Deleta histórico de uma conversa."""
     try:
@@ -202,7 +199,6 @@ def deletar_conversa(request: Request, session_id: str, _: str = Depends(verify_
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/alertas")
-@limiter.limit("10/hour")
 async def gerar_alertas(request: Request, _: str = Depends(verify_api_key)):
     """Analisa dados históricos e gera alertas com IA."""
     import anthropic as ant
@@ -299,7 +295,6 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/auditoria/executar")
-@limiter.limit("10/hour")
 async def executar_auditoria(request: Request, _: str = Depends(verify_api_key)) -> AuditoriaResultado:
     """Executa auditoria de qualidade dos dados e licitações agrícolas."""
     from datetime import datetime
@@ -387,7 +382,6 @@ async def executar_auditoria(request: Request, _: str = Depends(verify_api_key))
         raise HTTPException(status_code=500, detail="Auditoria execution failed")
 
 @app.post("/auditoria/chat")
-@limiter.limit("20/hour")
 async def auditoria_chat(request_obj: Request, request: AuditoriaChatRequest, _: str = Depends(verify_api_key)) -> dict:
     """Discute resultados da auditoria com IA."""
     import anthropic as ant
