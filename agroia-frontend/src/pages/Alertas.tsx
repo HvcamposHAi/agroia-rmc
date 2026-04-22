@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiClient } from '../lib/apiClient'
 
 interface Alerta {
   tipo: 'ALTA_PRECO' | 'DESABASTECIMENTO' | 'SUPERFATURAMENTO'
@@ -38,11 +39,8 @@ export default function Alertas() {
     setErro('')
     setResultado(null)
     try {
-      const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-      const res = await fetch(`${API}/alertas`, { method: 'POST' })
-      if (!res.ok) throw new Error(`Erro ${res.status}`)
-      const data = await res.json()
-      setResultado(data)
+      const data = await apiClient.post<ResultadoAlertas>('/alertas')
+      setResultado(data.data)
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro ao conectar ao servidor')
     } finally {

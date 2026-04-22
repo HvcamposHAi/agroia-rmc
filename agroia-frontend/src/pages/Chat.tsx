@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { apiClient } from '../lib/apiClient'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -35,14 +36,8 @@ export default function Chat() {
     setLoading(true)
 
     try {
-      const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-      const res = await fetch(`${API}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pergunta: trimmed, historico: messages }),
-      })
-      const data = await res.json()
-      setMessages(prev => [...prev, { role: 'assistant', content: data.resposta ?? 'Sem resposta do servidor.' }])
+      const data = await apiClient.post('/chat', { pergunta: trimmed, historico: messages })
+      setMessages(prev => [...prev, { role: 'assistant', content: data.data.resposta ?? 'Sem resposta do servidor.' }])
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Não foi possível conectar ao servidor. Verifique se o backend está rodando.' }])
     } finally {
