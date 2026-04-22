@@ -3,7 +3,7 @@
 # API Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-pydantic==2.5.0
+pydantic==2.15.0
 slowapi==0.1.9
 
 # Environment & Configuration
