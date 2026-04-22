@@ -187,13 +187,13 @@ def chat_endpoint(req: Request, request: ChatRequest, _: str = Depends(verify_ap
 
 @app.get("/conversas/{session_id}")
 @limiter.limit("30/minute")
-def obter_conversa(req: Request, session_id: str, _: str = Depends(verify_api_key)) -> list[dict]:
+def obter_conversa(request: Request, session_id: str, _: str = Depends(verify_api_key)) -> list[dict]:
     """Retorna histórico completo de uma conversa."""
     return carregar_historico(session_id)
 
 @app.delete("/conversas/{session_id}")
 @limiter.limit("10/minute")
-def deletar_conversa(req: Request, session_id: str, _: str = Depends(verify_api_key)) -> dict:
+def deletar_conversa(request: Request, session_id: str, _: str = Depends(verify_api_key)) -> dict:
     """Deleta histórico de uma conversa."""
     try:
         sb = get_supabase_client()
@@ -204,7 +204,7 @@ def deletar_conversa(req: Request, session_id: str, _: str = Depends(verify_api_
 
 @app.post("/alertas")
 @limiter.limit("10/hour")
-async def gerar_alertas(req: Request, _: str = Depends(verify_api_key)):
+async def gerar_alertas(request: Request, _: str = Depends(verify_api_key)):
     """Analisa dados históricos e gera alertas com IA."""
     import anthropic as ant
 
@@ -301,7 +301,7 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
 
 @app.post("/auditoria/executar")
 @limiter.limit("10/hour")
-async def executar_auditoria(req: Request, _: str = Depends(verify_api_key)) -> AuditoriaResultado:
+async def executar_auditoria(request: Request, _: str = Depends(verify_api_key)) -> AuditoriaResultado:
     """Executa auditoria de qualidade dos dados e licitações agrícolas."""
     from datetime import datetime
     try:
@@ -389,7 +389,7 @@ async def executar_auditoria(req: Request, _: str = Depends(verify_api_key)) -> 
 
 @app.post("/auditoria/chat")
 @limiter.limit("20/hour")
-async def auditoria_chat(req: Request, request: AuditoriaChatRequest, _: str = Depends(verify_api_key)) -> dict:
+async def auditoria_chat(request_obj: Request, request: AuditoriaChatRequest, _: str = Depends(verify_api_key)) -> dict:
     """Discute resultados da auditoria com IA."""
     import anthropic as ant
 
