@@ -6,9 +6,6 @@ from collections import defaultdict
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from chat.agent import chat
@@ -48,14 +45,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
-
-# SEC-003: Setup rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-
-@app.exception_handler(RateLimitExceeded)
-async def _rate_limit_exceeded_handler(request, exc):
-    return {"status": "error", "detail": "Rate limit exceeded"}
 
 # SEC-002: API Key authentication
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
