@@ -142,7 +142,7 @@ def salvar_turno(session_id: str, role: str, content: str, tools_usadas: list[st
 
 @app.post("/chat")
 @limiter.limit("60/minute")
-def chat_endpoint(req: Request, request: ChatRequest, _: str = Depends(verify_api_key)) -> ChatResponse:
+def chat_endpoint(request_http: Request, request: ChatRequest, _: str = Depends(verify_api_key)) -> ChatResponse:
     """Endpoint de chat com persistência de histórico."""
     session_id = request.session_id or str(uuid.uuid4())
     try:
