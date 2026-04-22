@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { apiClient } from '../lib/apiClient'
 
 interface Message {
@@ -70,7 +71,13 @@ export default function Chat() {
             <div className="msg-avatar">
               {msg.role === 'assistant' ? '🌾' : '👤'}
             </div>
-            <div className="msg-bubble">{msg.content}</div>
+            <div className="msg-bubble">
+              {msg.role === 'assistant' ? (
+                <ReactMarkdown className="markdown-content">{msg.content}</ReactMarkdown>
+              ) : (
+                msg.content
+              )}
+            </div>
           </div>
         ))}
 
