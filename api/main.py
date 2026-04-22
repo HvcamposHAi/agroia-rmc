@@ -52,7 +52,6 @@ app.add_middleware(
 # SEC-003: Setup rate limiter
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
-app.include_router(limiter.router)
 
 @app.exception_handler(RateLimitExceeded)
 async def _rate_limit_exceeded_handler(request, exc):
