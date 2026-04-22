@@ -7300,3 +7300,1254 @@ Coletando documentos (limit=None)...
 [19:29:59] [INFO] 
 [76] PE 53/2019 - SMSAN/FAAC
 [19:30:04] [INFO]   PE 53/2019 - SMSAN/FAAC: 1 documento(s)
+[09:02:38] [INFO] ======================================================================
+[09:02:38] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[09:02:38] [INFO] ======================================================================
+[09:02:38] [INFO] Retomando de checkpoint: 320 processados
+[09:02:38] [INFO] Google Drive conectado
+[09:02:49] [INFO] Acessando portal...
+[09:02:55] [INFO] Pesquisando...
+[09:03:04] [INFO] Pesquisa: 0 licitações encontradas
+[09:03:04] [ERROR] Nenhuma licitação encontrada
+[09:19:38] [INFO] ======================================================================
+[09:19:38] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[09:19:38] [INFO] ======================================================================
+[09:19:38] [INFO] Retomando de checkpoint: 320 processados
+[09:19:38] [INFO] Google Drive conectado
+[09:19:49] [INFO] Acessando portal...
+[09:19:55] [INFO] Pesquisando...
+[09:20:04] [INFO] Pesquisa: 1244 licitações encontradas
+[09:20:04] [INFO] 
+Coletando documentos (limit=100)...
+[09:20:04] [INFO] Limite atingido (100)
+[09:20:04] [INFO] 
+======================================================================
+[09:20:04] [INFO] RESUMO DA COLETA
+[09:20:04] [INFO] ======================================================================
+[09:20:04] [INFO] Processados: 320
+[09:20:04] [INFO] Documentos: 95
+[09:20:04] [INFO] Erros: 0
+[09:20:04] [INFO] Taxa sucesso: 29.7%
+[09:25:51] [INFO] ======================================================================
+[09:25:51] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[09:25:51] [INFO] ======================================================================
+[09:25:51] [INFO] Google Drive conectado
+[09:25:52] [INFO] Acessando portal...
+[09:25:55] [INFO] Pesquisando...
+[09:26:05] [INFO] Pesquisa: 1244 licitações encontradas
+[09:26:05] [INFO] 
+Coletando documentos (limit=None)...
+[09:26:05] [INFO] 
+[1] AD 3/2019 - SMSAN/FAAC
+[09:26:13] [INFO] 
+[2] DE 4/2019 - SMSAN/FAAC
+[09:26:17] [INFO]   DE 4/2019 - SMSAN/FAAC: 1 documento(s)
+[09:27:22] [WARN]     Documento já existe no BD (ID=1714)
+[09:27:22] [INFO]     [1] D.E 4: OK (DB salvo)
+[09:27:24] [INFO] 
+[3] DE 5/2019 - SMSAN/FAAC
+[09:27:30] [INFO]   DE 5/2019 - SMSAN/FAAC: 1 documento(s)
+[09:28:11] [WARN]     Documento já existe no BD (ID=1715)
+[09:28:11] [INFO]     [1] D.E. 5: OK (DB salvo)
+[09:28:14] [INFO] 
+[4] DE 6/2019 - SMSAN/FAAC
+[09:28:18] [INFO]   DE 6/2019 - SMSAN/FAAC: 1 documento(s)
+[09:28:48] [WARN]     Documento já existe no BD (ID=1938)
+[09:28:48] [INFO]     [1] : OK (DB salvo)
+[09:28:50] [INFO] 
+[5] DS 70/2019 - SMSAN/FAAC
+[09:28:59] [INFO] 
+[6] DS 73/2019 - SMSAN/FAAC
+[09:29:05] [INFO] 
+[7] DS 75/2019 - SMSAN/FAAC
+[09:29:12] [INFO] 
+[8] DS 77/2019 - SMSAN/FAAC
+[09:29:25] [INFO] 
+[9] DS 78/2019 - SMSAN/FAAC
+[09:29:42] [INFO] 
+[10] DS 79/2019 - SMSAN/FAAC
+[09:29:54] [INFO] Checkpoint salvo: 10 processados
+[09:29:56] [INFO] 
+[11] DS 73/2019 - SMSAN/FAAC
+[09:30:26] [INFO] 
+[11] DS 75/2019 - SMSAN/FAAC
+[09:30:26] [INFO] 
+[11] DS 77/2019 - SMSAN/FAAC
+[09:30:26] [INFO] 
+[11] DS 78/2019 - SMSAN/FAAC
+[09:30:26] [INFO] 
+[11] DS 79/2019 - SMSAN/FAAC
+[09:30:28] [INFO] 
+[11] DS 81/2019 - SMSAN/FAAC
+[09:30:58] [INFO] 
+[11] DS 83/2019 - SMSAN/FAAC
+[09:30:58] [INFO] 
+[11] DS 84/2019 - SMSAN/FAAC
+[09:30:58] [INFO] 
+[11] DS 86/2019 - SMSAN/FAAC
+[09:30:58] [INFO] 
+[11] DS 87/2019 - SMSAN/FAAC
+[09:31:00] [INFO] 
+[11] DS 88/2019 - SMSAN/FAAC
+[09:31:30] [INFO] 
+[11] DS 89/2019 - SMSAN/FAAC
+[09:31:30] [INFO] 
+[11] DS 90/2019 - SMSAN/FAAC
+[09:31:30] [INFO] 
+[11] DS 91/2019 - SMSAN/FAAC
+[09:31:31] [INFO] 
+[11] DS 92/2019 - SMSAN/FAAC
+[09:31:33] [INFO] 
+[11] DS 93/2019 - SMSAN/FAAC
+[09:32:03] [INFO] 
+[11] DS 94/2019 - SMSAN/FAAC
+[09:32:03] [INFO] 
+[11] DS 95/2019 - SMSAN/FAAC
+[09:32:03] [INFO] 
+[11] DS 96/2019 - SMSAN/FAAC
+[09:32:03] [INFO] 
+[11] DS 97/2019 - SMSAN/FAAC
+[09:32:05] [INFO] 
+[11] DS 98/2019 - SMSAN/FAAC
+[09:32:35] [INFO] 
+[11] DS 99/2019 - SMSAN/FAAC
+[09:32:35] [INFO] 
+[11] DS 100/2019 - SMSAN/FAAC
+[09:32:35] [INFO] 
+[11] DS 101/2019 - SMSAN/FAAC
+[09:32:35] [INFO] 
+[11] DS 102/2019 - SMSAN/FAAC
+[09:32:37] [INFO] 
+[11] DS 103/2019 - SMSAN/FAAC
+[09:33:07] [INFO] 
+[11] DS 104/2019 - SMSAN/FAAC
+[09:33:07] [INFO] 
+[11] DS 105/2019 - SMSAN/FAAC
+[09:33:07] [INFO] 
+[11] DS 106/2019 - SMSAN/FAAC
+[09:33:07] [INFO] 
+[11] DS 107/2019 - SMSAN/FAAC
+[09:33:09] [INFO] 
+[11] DS 108/2019 - SMSAN/FAAC
+[09:33:39] [INFO] 
+[11] DS 109/2019 - SMSAN/FAAC
+[09:33:39] [INFO] 
+[11] DS 110/2019 - SMSAN/FAAC
+[09:33:39] [INFO] 
+[11] DS 111/2019 - SMSAN/FAAC
+[09:33:39] [INFO] 
+[11] DS 112/2019 - SMSAN/FAAC
+[09:33:41] [INFO] 
+[11] DT 1/2019 - SMSAN/FAAC
+[09:34:11] [INFO] 
+[11] DT 2/2019 - SMSAN/FAAC
+[09:34:11] [INFO] 
+[11] FN 4/2019 - SMSAN/FAAC
+[09:34:11] [INFO] 
+[11] FN 5/2019 - SMSAN/FAAC
+[09:34:11] [INFO] 
+[11] IN 1/2019 - SMSAN/FAAC
+[09:34:13] [INFO] 
+[11] PE 21/2019 - SMSAN/FAAC
+[09:34:44] [INFO] 
+[11] PE 22/2019 - SMSAN/FAAC
+[09:34:44] [INFO] 
+[11] PE 23/2019 - SMSAN/FAAC
+[09:34:44] [INFO] 
+[11] PE 24/2019 - SMSAN/FAAC
+[09:34:44] [INFO] 
+[11] PE 25/2019 - SMSAN/FAAC
+[09:34:46] [INFO] 
+[11] PE 33/2019 - SMSAN/FAAC
+[09:34:51] [INFO]   PE 33/2019 - SMSAN/FAAC: 1 documento(s)
+[09:35:04] [WARN]     Documento já existe no BD (ID=1950)
+[09:35:04] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:35:07] [INFO] 
+[12] PE 34/2019 - SMSAN/FAAC
+[09:35:11] [INFO]   PE 34/2019 - SMSAN/FAAC: 1 documento(s)
+[09:35:37] [WARN]     Documento já existe no BD (ID=1951)
+[09:35:37] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:35:39] [INFO] 
+[13] PE 35/2019 - SMSAN/FAAC
+[09:35:43] [INFO]   PE 35/2019 - SMSAN/FAAC: 1 documento(s)
+[09:36:07] [WARN]     Documento já existe no BD (ID=1952)
+[09:36:07] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:36:09] [INFO] 
+[14] PE 36/2019 - SMSAN/FAAC
+[09:36:13] [INFO]   PE 36/2019 - SMSAN/FAAC: 1 documento(s)
+[09:36:39] [WARN]     Documento já existe no BD (ID=1953)
+[09:36:39] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:36:42] [INFO] 
+[15] PE 37/2019 - SMSAN/FAAC
+[09:36:46] [INFO]   PE 37/2019 - SMSAN/FAAC: 1 documento(s)
+[09:37:08] [WARN]     Documento já existe no BD (ID=1954)
+[09:37:08] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:37:13] [INFO] 
+[16] PE 38/2019 - SMSAN/FAAC
+[09:37:19] [INFO] 
+[17] PE 39/2019 - SMSAN/FAAC
+[09:37:53] [INFO] 
+[18] PE 40/2019 - SMSAN/FAAC
+[09:37:57] [INFO]   PE 40/2019 - SMSAN/FAAC: 1 documento(s)
+[09:38:43] [WARN]     Documento já existe no BD (ID=1956)
+[09:38:43] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:38:46] [INFO] 
+[19] PE 41/2019 - SMSAN/FAAC
+[09:38:50] [INFO]   PE 41/2019 - SMSAN/FAAC: 1 documento(s)
+[09:40:05] [WARN]     Documento já existe no BD (ID=1957)
+[09:40:05] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:40:08] [INFO] 
+[20] PE 42/2019 - SMSAN/FAAC
+[09:40:12] [INFO]   PE 42/2019 - SMSAN/FAAC: 1 documento(s)
+[09:43:17] [WARN]     Documento já existe no BD (ID=1958)
+[09:43:17] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:43:20] [INFO] Checkpoint salvo: 20 processados
+[09:43:22] [INFO] 
+[21] PE 43/2019 - SMSAN/FAAC
+[09:43:26] [INFO]   PE 43/2019 - SMSAN/FAAC: 1 documento(s)
+[09:47:16] [WARN]     Documento já existe no BD (ID=1967)
+[09:47:16] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:47:18] [INFO] 
+[22] PE 44/2019 - SMSAN/FAAC
+[09:47:22] [INFO]   PE 44/2019 - SMSAN/FAAC: 1 documento(s)
+[09:48:39] [WARN]     Documento já existe no BD (ID=1968)
+[09:48:39] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[09:48:42] [INFO] 
+[23] PE 45/2019 - SMSAN/FAAC
+[09:49:19] [INFO] 
+[24] PE 46/2019 - SMSAN/FAAC
+[09:49:49] [INFO] 
+[24] PE 47/2019 - SMSAN/FAAC
+[09:50:49] [WARN] Erro ao clicar próxima página: Locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator(".rich-datascr-button").nth(2).first
+    - locator resolved to <td class=" rich-datascr-button" onclick="Event.fire(this, 'rich:datascroller:onscroll', {'page': 'next'});">…</td>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not visible
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not visible
+    - retrying click action
+      - waiting 100ms
+    57 × waiting for element to be visible, enabled and stable
+       - element is not visible
+     - retrying click action
+       - waiting 500ms
+
+[09:50:49] [INFO] 
+======================================================================
+[09:50:49] [INFO] RESUMO DA COLETA
+[09:50:49] [INFO] ======================================================================
+[09:50:49] [INFO] Processados: 23
+[09:50:49] [INFO] Documentos: 13
+[09:50:49] [INFO] Erros: 47
+[09:50:49] [INFO] Taxa sucesso: 56.5%
+[10:23:32] [INFO] ======================================================================
+[10:23:32] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[10:23:32] [INFO] ======================================================================
+[10:23:32] [INFO] Retomando de checkpoint: 23 processados
+[10:23:33] [INFO] Google Drive conectado
+[10:23:34] [INFO] Acessando portal...
+[10:23:41] [INFO] Pesquisando...
+[10:23:50] [INFO] Pesquisa: 1244 licitações encontradas
+[10:23:50] [INFO] 
+Coletando documentos (limit=None)...
+[10:23:50] [INFO] 
+[24] AD 3/2019 - SMSAN/FAAC
+[10:23:58] [INFO] 
+[25] DE 4/2019 - SMSAN/FAAC
+[10:24:02] [INFO]   DE 4/2019 - SMSAN/FAAC: 1 documento(s)
+[10:25:12] [WARN]     Documento já existe no BD (ID=1714)
+[10:25:12] [INFO]     [1] D.E 4: OK (DB salvo)
+[10:25:15] [INFO] 
+[26] DE 5/2019 - SMSAN/FAAC
+[10:25:20] [INFO]   DE 5/2019 - SMSAN/FAAC: 1 documento(s)
+[10:26:01] [WARN]     Documento já existe no BD (ID=1715)
+[10:26:01] [INFO]     [1] D.E. 5: OK (DB salvo)
+[10:26:04] [INFO] 
+[27] DE 6/2019 - SMSAN/FAAC
+[10:26:08] [INFO]   DE 6/2019 - SMSAN/FAAC: 1 documento(s)
+[10:26:32] [WARN]     Documento já existe no BD (ID=1938)
+[10:26:32] [INFO]     [1] : OK (DB salvo)
+[10:26:35] [INFO] 
+[28] DS 70/2019 - SMSAN/FAAC
+[10:26:43] [INFO] 
+[29] DS 73/2019 - SMSAN/FAAC
+[10:26:50] [INFO] 
+[30] DS 75/2019 - SMSAN/FAAC
+[10:26:56] [INFO] Checkpoint salvo: 30 processados
+[10:26:56] [INFO] 
+[31] DS 77/2019 - SMSAN/FAAC
+[10:27:00] [INFO]   DS 77/2019 - SMSAN/FAAC: 1 documento(s)
+[10:27:23] [WARN]     Documento já existe no BD (ID=1718)
+[10:27:23] [INFO]     [1] DS 77: OK (DB salvo)
+[10:27:26] [INFO] 
+[32] DS 78/2019 - SMSAN/FAAC
+[10:27:29] [INFO]   DS 78/2019 - SMSAN/FAAC: 1 documento(s)
+[10:27:59] [WARN]     Documento já existe no BD (ID=1719)
+[10:27:59] [INFO]     [1] DS 78: OK (DB salvo)
+[10:28:01] [INFO] 
+[33] DS 79/2019 - SMSAN/FAAC
+[10:28:10] [INFO] 
+[34] DS 81/2019 - SMSAN/FAAC
+[10:28:16] [INFO] 
+[35] DS 83/2019 - SMSAN/FAAC
+[10:28:23] [INFO] 
+[36] DS 84/2019 - SMSAN/FAAC
+[10:28:27] [INFO]   DS 84/2019 - SMSAN/FAAC: 1 documento(s)
+[10:28:48] [WARN]     Documento já existe no BD (ID=1720)
+[10:28:48] [INFO]     [1] DISPENSA 84: OK (DB salvo)
+[10:28:50] [INFO] 
+[37] DS 86/2019 - SMSAN/FAAC
+[10:28:57] [INFO] 
+[38] DS 87/2019 - SMSAN/FAAC
+[10:29:05] [INFO] 
+[39] DS 88/2019 - SMSAN/FAAC
+[10:29:12] [INFO] 
+[40] DS 89/2019 - SMSAN/FAAC
+[10:29:18] [INFO] Checkpoint salvo: 40 processados
+[10:29:18] [INFO] 
+[41] DS 90/2019 - SMSAN/FAAC
+[10:29:25] [INFO] 
+[42] DS 91/2019 - SMSAN/FAAC
+[10:29:31] [INFO] 
+[43] DS 92/2019 - SMSAN/FAAC
+[10:29:40] [INFO] 
+[44] DS 93/2019 - SMSAN/FAAC
+[10:29:47] [INFO] 
+[45] DS 94/2019 - SMSAN/FAAC
+[10:29:53] [INFO] 
+[46] DS 95/2019 - SMSAN/FAAC
+[10:30:03] [INFO] 
+[47] DS 96/2019 - SMSAN/FAAC
+[10:30:14] [INFO] 
+[48] DS 97/2019 - SMSAN/FAAC
+[10:30:21] [INFO]   DS 97/2019 - SMSAN/FAAC: 1 documento(s)
+[10:31:24] [WARN]     Documento já existe no BD (ID=1721)
+[10:31:24] [INFO]     [1] DS 97: OK (DB salvo)
+[10:31:29] [INFO] 
+[49] DS 98/2019 - SMSAN/FAAC
+[10:31:36] [INFO] 
+[50] DS 99/2019 - SMSAN/FAAC
+[10:31:42] [INFO] Checkpoint salvo: 50 processados
+[10:31:42] [INFO] 
+[51] DS 100/2019 - SMSAN/FAAC
+[10:31:48] [INFO] 
+[52] DS 101/2019 - SMSAN/FAAC
+[10:31:55] [INFO] 
+[53] DS 102/2019 - SMSAN/FAAC
+[10:32:03] [INFO] 
+[54] DS 103/2019 - SMSAN/FAAC
+[10:32:07] [INFO]   DS 103/2019 - SMSAN/FAAC: 1 documento(s)
+[10:32:23] [WARN]     Documento já existe no BD (ID=1939)
+[10:32:23] [INFO]     [1] : OK (DB salvo)
+[10:32:25] [INFO] 
+[55] DS 104/2019 - SMSAN/FAAC
+[10:32:29] [INFO]   DS 104/2019 - SMSAN/FAAC: 1 documento(s)
+[10:32:46] [WARN]     Documento já existe no BD (ID=1723)
+[10:32:46] [INFO]     [1] DISPENSA 104: OK (DB salvo)
+[10:32:49] [INFO] 
+[56] DS 105/2019 - SMSAN/FAAC
+[10:32:56] [INFO] 
+[57] DS 106/2019 - SMSAN/FAAC
+[10:33:02] [INFO] 
+[58] DS 107/2019 - SMSAN/FAAC
+[10:33:11] [INFO] 
+[59] DS 108/2019 - SMSAN/FAAC
+[10:33:17] [INFO] 
+[60] DS 109/2019 - SMSAN/FAAC
+[10:33:24] [INFO] Checkpoint salvo: 60 processados
+[10:33:24] [INFO] 
+[61] DS 110/2019 - SMSAN/FAAC
+[10:33:31] [INFO] 
+[62] DS 111/2019 - SMSAN/FAAC
+[10:33:37] [INFO] 
+[63] DS 112/2019 - SMSAN/FAAC
+[10:33:46] [INFO] 
+[64] DT 1/2019 - SMSAN/FAAC
+[10:33:50] [INFO]   DT 1/2019 - SMSAN/FAAC: 1 documento(s)
+[10:34:33] [WARN]     Documento já existe no BD (ID=1940)
+[10:34:33] [INFO]     [1] D..t 01: OK (DB salvo)
+[10:34:35] [INFO] 
+[65] DT 2/2019 - SMSAN/FAAC
+[10:34:39] [INFO]   DT 2/2019 - SMSAN/FAAC: 1 documento(s)
+[10:35:12] [WARN]     Documento já existe no BD (ID=1725)
+[10:35:12] [INFO]     [1] DT 02: OK (DB salvo)
+[10:35:15] [INFO] 
+[66] FN 4/2019 - SMSAN/FAAC
+[10:35:21] [INFO] 
+[67] FN 5/2019 - SMSAN/FAAC
+[10:35:28] [INFO] 
+[68] IN 1/2019 - SMSAN/FAAC
+[10:35:32] [INFO]   IN 1/2019 - SMSAN/FAAC: 1 documento(s)
+[10:36:37] [WARN]     Documento já existe no BD (ID=1726)
+[10:36:37] [INFO]     [1] i.n.: OK (DB salvo)
+[10:36:41] [INFO] 
+[69] PE 21/2019 - SMSAN/FAAC
+[10:36:45] [INFO]   PE 21/2019 - SMSAN/FAAC: 1 documento(s)
+[10:37:06] [WARN]     Documento já existe no BD (ID=1941)
+[10:37:06] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[10:37:09] [INFO] 
+[70] PE 22/2019 - SMSAN/FAAC
+[10:37:15] [INFO] Checkpoint salvo: 70 processados
+[10:37:15] [INFO] 
+[71] PE 23/2019 - SMSAN/FAAC
+[10:37:20] [INFO]   PE 23/2019 - SMSAN/FAAC: 1 documento(s)
+[10:37:49] [WARN]     Documento já existe no BD (ID=1942)
+[10:37:49] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[10:37:51] [INFO] 
+[72] PE 24/2019 - SMSAN/FAAC
+[10:37:55] [INFO]   PE 24/2019 - SMSAN/FAAC: 1 documento(s)
+[10:38:25] [WARN]     Documento já existe no BD (ID=1943)
+[10:38:25] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[10:38:27] [INFO] 
+[73] PE 25/2019 - SMSAN/FAAC
+[10:38:31] [INFO]   PE 25/2019 - SMSAN/FAAC: 1 documento(s)
+[10:39:06] [WARN]     Documento já existe no BD (ID=1944)
+[10:39:06] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[10:39:11] [INFO] 
+[74] PE 26/2019 - SMSAN/FAAC
+[10:39:15] [INFO]   PE 26/2019 - SMSAN/FAAC: 1 documento(s)
+[10:39:47] [WARN]     Documento já existe no BD (ID=1945)
+[10:39:47] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[10:39:49] [INFO] 
+[75] PE 28/2019 - SMSAN/FAAC
+[10:39:53] [INFO]   PE 28/2019 - SMSAN/FAAC: 1 documento(s)
+[10:40:03] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:40:06] [INFO] 
+[76] PE 30/2019 - SMSAN/FAAC
+[10:40:10] [INFO]   PE 30/2019 - SMSAN/FAAC: 1 documento(s)
+[10:40:20] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:40:22] [INFO] 
+[77] PE 31/2019 - SMSAN/FAAC
+[10:40:26] [INFO]   PE 31/2019 - SMSAN/FAAC: 1 documento(s)
+[10:40:36] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:40:39] [INFO] 
+[78] PE 32/2019 - SMSAN/FAAC
+[10:40:43] [INFO]   PE 32/2019 - SMSAN/FAAC: 1 documento(s)
+[10:40:53] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:40:57] [INFO] 
+[79] PE 33/2019 - SMSAN/FAAC
+[10:41:01] [INFO]   PE 33/2019 - SMSAN/FAAC: 1 documento(s)
+[10:41:11] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:41:14] [INFO] 
+[80] PE 34/2019 - SMSAN/FAAC
+[10:41:18] [INFO]   PE 34/2019 - SMSAN/FAAC: 1 documento(s)
+[10:41:28] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:41:30] [INFO] Checkpoint salvo: 80 processados
+[10:41:30] [INFO] 
+[81] PE 35/2019 - SMSAN/FAAC
+[10:41:34] [INFO]   PE 35/2019 - SMSAN/FAAC: 1 documento(s)
+[10:41:44] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:41:47] [INFO] 
+[82] PE 36/2019 - SMSAN/FAAC
+[10:41:51] [INFO]   PE 36/2019 - SMSAN/FAAC: 1 documento(s)
+[10:42:01] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:42:04] [INFO] 
+[83] PE 37/2019 - SMSAN/FAAC
+[10:42:08] [INFO]   PE 37/2019 - SMSAN/FAAC: 1 documento(s)
+[10:42:18] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:42:22] [INFO] 
+[84] PE 38/2019 - SMSAN/FAAC
+[10:42:29] [INFO] 
+[85] PE 39/2019 - SMSAN/FAAC
+[10:42:33] [INFO]   PE 39/2019 - SMSAN/FAAC: 1 documento(s)
+[10:42:43] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:42:46] [INFO] 
+[86] PE 40/2019 - SMSAN/FAAC
+[10:42:50] [INFO]   PE 40/2019 - SMSAN/FAAC: 1 documento(s)
+[10:43:00] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:43:02] [INFO] 
+[87] PE 41/2019 - SMSAN/FAAC
+[10:43:06] [INFO]   PE 41/2019 - SMSAN/FAAC: 1 documento(s)
+[10:43:16] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:43:19] [INFO] 
+[88] PE 42/2019 - SMSAN/FAAC
+[10:43:23] [INFO]   PE 42/2019 - SMSAN/FAAC: 1 documento(s)
+[10:43:33] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:43:37] [INFO] 
+[89] PE 43/2019 - SMSAN/FAAC
+[10:43:41] [INFO]   PE 43/2019 - SMSAN/FAAC: 1 documento(s)
+[10:43:51] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:43:54] [INFO] 
+[90] PE 44/2019 - SMSAN/FAAC
+[10:43:58] [INFO]   PE 44/2019 - SMSAN/FAAC: 1 documento(s)
+[10:44:08] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:44:11] [INFO] Checkpoint salvo: 90 processados
+[10:44:11] [INFO] 
+[91] PE 45/2019 - SMSAN/FAAC
+[10:44:15] [INFO]   PE 45/2019 - SMSAN/FAAC: 1 documento(s)
+[10:44:25] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:44:27] [INFO] 
+[92] PE 46/2019 - SMSAN/FAAC
+[10:44:32] [INFO]   PE 46/2019 - SMSAN/FAAC: 1 documento(s)
+[10:44:42] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:44:45] [INFO] 
+[93] PE 47/2019 - SMSAN/FAAC
+[10:44:49] [INFO]   PE 47/2019 - SMSAN/FAAC: 1 documento(s)
+[10:44:59] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:45:03] [INFO] 
+[94] PE 48/2019 - SMSAN/FAAC
+[10:45:08] [INFO]   PE 48/2019 - SMSAN/FAAC: 1 documento(s)
+[10:45:18] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:45:22] [INFO] 
+[95] PE 49/2019 - SMSAN/FAAC
+[10:45:26] [INFO]   PE 49/2019 - SMSAN/FAAC: 1 documento(s)
+[10:45:36] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:45:38] [INFO] 
+[96] PE 50/2019 - SMSAN/FAAC
+[10:45:42] [INFO]   PE 50/2019 - SMSAN/FAAC: 1 documento(s)
+[10:45:52] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:45:55] [INFO] 
+[97] PE 51/2019 - SMSAN/FAAC
+[10:45:59] [INFO]   PE 51/2019 - SMSAN/FAAC: 1 documento(s)
+[10:46:09] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:46:11] [INFO] 
+[98] PE 52/2019 - SMSAN/FAAC
+[10:46:15] [INFO]   PE 52/2019 - SMSAN/FAAC: 1 documento(s)
+[10:46:25] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:46:30] [INFO] 
+[99] PE 53/2019 - SMSAN/FAAC
+[10:46:34] [INFO]   PE 53/2019 - SMSAN/FAAC: 1 documento(s)
+[10:46:44] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:46:46] [INFO] 
+[100] PE 54/2019 - SMSAN/FAAC
+[10:46:50] [INFO]   PE 54/2019 - SMSAN/FAAC: 1 documento(s)
+[10:47:00] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:47:03] [INFO] Checkpoint salvo: 100 processados
+[10:47:03] [INFO] 
+[101] PE 55/2019 - SMSAN/FAAC
+[10:47:07] [INFO]   PE 55/2019 - SMSAN/FAAC: 1 documento(s)
+[10:47:17] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:47:19] [INFO] 
+[102] PE 56/2019 - SMSAN/FAAC
+[10:47:23] [INFO]   PE 56/2019 - SMSAN/FAAC: 1 documento(s)
+[10:47:34] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:47:36] [INFO] 
+[103] PE 57/2019 - SMSAN/FAAC
+[10:47:45] [INFO] 
+[104] PE 58/2019 - SMSAN/FAAC
+[10:47:49] [INFO]   PE 58/2019 - SMSAN/FAAC: 1 documento(s)
+[10:47:59] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:48:01] [INFO] 
+[105] PE 59/2019 - SMSAN/FAAC
+[10:48:06] [INFO]   PE 59/2019 - SMSAN/FAAC: 1 documento(s)
+[10:48:16] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:48:19] [INFO] 
+[106] AD 1/2020 - SMSAN/FAAC
+[10:48:27] [INFO] 
+[107] AD 2/2020 - SMSAN/FAAC
+[10:48:34] [INFO] 
+[108] AD 3/2020 - SMSAN/FAAC
+[10:48:43] [INFO] 
+[109] AD 4/2020 - SMSAN/FAAC
+[10:48:49] [INFO] 
+[110] AD 5/2020 - SMSAN/FAAC
+[10:48:56] [INFO] Checkpoint salvo: 110 processados
+[10:48:56] [INFO] 
+[111] AD 6/2020 - SMSAN/FAAC
+[10:49:02] [INFO] 
+[112] AD 7/2020 - SMSAN/FAAC
+[10:49:10] [INFO] 
+[113] AD 8/2020 - SMSAN/FAAC
+[10:49:18] [INFO] 
+[114] AD 9/2020 - SMSAN/FAAC
+[10:49:25] [INFO] 
+[115] AD 10/2020 - SMSAN/FAAC
+[10:49:31] [INFO] 
+[116] AD 11/2020 - SMSAN/FAAC
+[10:49:38] [INFO] 
+[117] AD 12/2020 - SMSAN/FAAC
+[10:49:45] [INFO] 
+[118] AD 13/2020 - SMSAN/FAAC
+[10:49:53] [INFO] 
+[119] AD 14/2020 - SMSAN/FAAC
+[10:50:00] [INFO] 
+[120] AD 15/2020 - SMSAN/FAAC
+[10:50:08] [INFO] Checkpoint salvo: 120 processados
+[10:50:08] [INFO] 
+[121] AD 16/2020 - SMSAN/FAAC
+[10:50:14] [INFO] 
+[122] AD 17/2020 - SMSAN/FAAC
+[10:50:21] [INFO] 
+[123] AD 18/2020 - SMSAN/FAAC
+[10:50:29] [INFO] 
+[124] AD 19/2020 - SMSAN/FAAC
+[10:50:36] [INFO] 
+[125] AD 20/2020 - SMSAN/FAAC
+[10:50:43] [INFO] 
+[126] AD 21/2020 - SMSAN/FAAC
+[10:50:49] [INFO] 
+[127] AD 22/2020 - SMSAN/FAAC
+[10:50:55] [INFO] 
+[128] AD 23/2020 - SMSAN/FAAC
+[10:51:04] [INFO] 
+[129] AD 24/2020 - SMSAN/FAAC
+[10:51:11] [INFO] 
+[130] AD 25/2020 - SMSAN/FAAC
+[10:51:18] [INFO] Checkpoint salvo: 130 processados
+[10:51:18] [INFO] 
+[131] AD 26/2020 - SMSAN/FAAC
+[10:51:25] [INFO] 
+[132] AD 27/2020 - SMSAN/FAAC
+[10:51:31] [INFO] 
+[133] AD 28/2020 - SMSAN/FAAC
+[10:51:40] [INFO] 
+[134] AD 29/2020 - SMSAN/FAAC
+[10:51:46] [INFO] 
+[135] AD 30/2020 - SMSAN/FAAC
+[10:51:53] [INFO] 
+[136] AD 31/2020 - SMSAN/FAAC
+[10:52:01] [INFO] 
+[137] AD 32/2020 - SMSAN/FAAC
+[10:52:07] [INFO] 
+[138] DE 1/2020 - SMSAN/FAAC
+[10:52:11] [INFO]   DE 1/2020 - SMSAN/FAAC: 1 documento(s)
+[10:52:21] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:52:26] [INFO] 
+[139] DE 2/2020 - SMSAN/FAAC
+[10:52:30] [INFO]   DE 2/2020 - SMSAN/FAAC: 1 documento(s)
+[10:52:40] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:52:42] [INFO] 
+[140] DE 3/2020 - SMSAN/FAAC
+[10:52:46] [INFO]   DE 3/2020 - SMSAN/FAAC: 1 documento(s)
+[10:52:56] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:52:59] [INFO] Checkpoint salvo: 140 processados
+[10:52:59] [INFO] 
+[141] DE 4/2020 - SMSAN/FAAC
+[10:53:03] [INFO]   DE 4/2020 - SMSAN/FAAC: 1 documento(s)
+[10:53:13] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:53:15] [INFO] 
+[142] DE 5/2020 - SMSAN/FAAC
+[10:53:19] [INFO]   DE 5/2020 - SMSAN/FAAC: 1 documento(s)
+[10:53:29] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:53:32] [INFO] 
+[143] DE 6/2020 - SMSAN/FAAC
+[10:53:36] [INFO]   DE 6/2020 - SMSAN/FAAC: 1 documento(s)
+[10:53:46] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:53:51] [INFO] 
+[144] DE 7/2020 - SMSAN/FAAC
+[10:53:55] [INFO]   DE 7/2020 - SMSAN/FAAC: 1 documento(s)
+[10:54:05] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:54:07] [INFO] 
+[145] DE 8/2020 - SMSAN/FAAC
+[10:54:11] [INFO]   DE 8/2020 - SMSAN/FAAC: 1 documento(s)
+[10:54:21] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:54:24] [INFO] 
+[146] DS 1/2020 - SMSAN/FAAC
+[10:54:31] [INFO] 
+[147] DS 2/2020 - SMSAN/FAAC
+[10:54:37] [INFO] 
+[148] DS 3/2020 - SMSAN/FAAC
+[10:54:46] [INFO] 
+[149] DS 4/2020 - SMSAN/FAAC
+[10:54:52] [INFO] 
+[150] DS 5/2020 - SMSAN/FAAC
+[10:54:59] [INFO] Checkpoint salvo: 150 processados
+[10:54:59] [INFO] 
+[151] DS 6/2020 - SMSAN/FAAC
+[10:55:05] [INFO] 
+[152] DS 7/2020 - SMSAN/FAAC
+[10:55:12] [INFO] 
+[153] DS 8/2020 - SMSAN/FAAC
+[10:55:16] [INFO]   DS 8/2020 - SMSAN/FAAC: 1 documento(s)
+[10:55:26] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:55:31] [INFO] 
+[154] DS 8/2020 - SMSAN/FAAC
+[10:55:37] [INFO] 
+[155] DS 9/2020 - SMSAN/FAAC
+[10:55:44] [INFO] 
+[156] DS 10/2020 - SMSAN/FAAC
+[10:55:51] [INFO] 
+[157] DS 11/2020 - SMSAN/FAAC
+[10:55:57] [INFO] 
+[158] DS 12/2020 - SMSAN/FAAC
+[10:56:06] [INFO] 
+[159] DS 14/2020 - SMSAN/FAAC
+[10:56:15] [INFO] 
+[160] DS 15/2020 - SMSAN/FAAC
+[10:56:22] [INFO] Checkpoint salvo: 160 processados
+[10:56:22] [INFO] 
+[161] DS 16/2020 - SMSAN/FAAC
+[10:56:25] [INFO]   DS 16/2020 - SMSAN/FAAC: 1 documento(s)
+[10:56:35] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:56:38] [INFO] 
+[162] DS 17/2020 - SMSAN/FAAC
+[10:56:42] [INFO]   DS 17/2020 - SMSAN/FAAC: 1 documento(s)
+[10:56:52] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[10:56:55] [INFO] 
+[163] DS 18/2020 - SMSAN/FAAC
+[10:57:03] [INFO] 
+[164] DS 19/2020 - SMSAN/FAAC
+[10:57:10] [INFO] 
+[165] DS 20/2020 - SMSAN/FAAC
+[10:57:16] [INFO] 
+[166] DS 22/2020 - SMSAN/FAAC
+[10:57:24] [INFO] 
+[167] DS 23/2020 - SMSAN/FAAC
+[10:57:30] [INFO] 
+[168] DS 24/2020 - SMSAN/FAAC
+[10:57:39] [INFO] 
+[169] DS 25/2020 - SMSAN/FAAC
+[10:57:46] [INFO] 
+[170] DS 26/2020 - SMSAN/FAAC
+[10:57:52] [INFO] Checkpoint salvo: 170 processados
+[10:57:52] [INFO] 
+[171] DS 27/2020 - SMSAN/FAAC
+[10:57:59] [INFO] 
+[172] DS 28/2020 - SMSAN/FAAC
+[10:58:06] [INFO] 
+[173] DS 29/2020 - SMSAN/FAAC
+[10:58:15] [INFO] 
+[174] DS 30/2020 - SMSAN/FAAC
+[10:58:21] [INFO] 
+[175] DS 31/2020 - SMSAN/FAAC
+[10:58:28] [INFO] 
+[176] DS 32/2020 - SMSAN/FAAC
+[10:58:34] [INFO] 
+[177] DS 33/2020 - SMSAN/FAAC
+[10:58:41] [INFO] 
+[178] DS 34/2020 - SMSAN/FAAC
+[10:58:51] [INFO] 
+[179] DS 35/2020 - SMSAN/FAAC
+[10:58:57] [INFO] 
+[180] DS 36/2020 - SMSAN/FAAC
+[10:59:04] [INFO] Checkpoint salvo: 180 processados
+[10:59:04] [INFO] 
+[181] DS 37/2020 - SMSAN/FAAC
+[10:59:10] [INFO] 
+[182] DS 38/2020 - SMSAN/FAAC
+[10:59:17] [INFO] 
+[183] DS 39/2020 - SMSAN/FAAC
+[10:59:25] [INFO] 
+[184] DS 40/2020 - SMSAN/FAAC
+[10:59:33] [INFO] 
+[185] DS 41/2020 - SMSAN/FAAC
+[10:59:40] [INFO] 
+[186] DS 42/2020 - SMSAN/FAAC
+[10:59:47] [INFO] 
+[187] DS 43/2020 - SMSAN/FAAC
+[10:59:53] [INFO] 
+[188] DS 44/2020 - SMSAN/FAAC
+[11:00:02] [INFO] 
+[189] DS 45/2020 - SMSAN/FAAC
+[11:00:06] [INFO]   DS 45/2020 - SMSAN/FAAC: 1 documento(s)
+[11:00:16] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:00:18] [INFO] 
+[190] DS 46/2020 - SMSAN/FAAC
+[11:00:25] [INFO] Checkpoint salvo: 190 processados
+[11:00:25] [INFO] 
+[191] DS 47/2020 - SMSAN/FAAC
+[11:00:32] [INFO] 
+[192] DS 48/2020 - SMSAN/FAAC
+[11:00:36] [INFO]   DS 48/2020 - SMSAN/FAAC: 1 documento(s)
+[11:00:46] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:00:48] [INFO] 
+[193] DS 49/2020 - SMSAN/FAAC
+[11:00:52] [INFO]   DS 49/2020 - SMSAN/FAAC: 1 documento(s)
+[11:01:02] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:01:07] [INFO] 
+[194] DS 50/2020 - SMSAN/FAAC
+[11:01:14] [INFO] 
+[195] DS 51/2020 - SMSAN/FAAC
+[11:01:18] [INFO]   DS 51/2020 - SMSAN/FAAC: 1 documento(s)
+[11:01:28] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:01:31] [INFO] 
+[196] DS 52/2020 - SMSAN/FAAC
+[11:01:35] [INFO]   DS 52/2020 - SMSAN/FAAC: 1 documento(s)
+[11:01:45] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:01:47] [INFO] 
+[197] DS 53/2020 - SMSAN/FAAC
+[11:01:59] [INFO] 
+[198] DS 54/2020 - SMSAN/FAAC
+[11:02:09] [INFO] 
+[199] DS 55/2020 - SMSAN/FAAC
+[11:02:16] [INFO] 
+[200] DS 56/2020 - SMSAN/FAAC
+[11:02:20] [INFO]   DS 56/2020 - SMSAN/FAAC: 1 documento(s)
+[11:02:30] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:02:32] [INFO] Checkpoint salvo: 200 processados
+[11:02:32] [INFO] 
+[201] DS 57/2020 - SMSAN/FAAC
+[11:02:39] [INFO] 
+[202] DS 58/2020 - SMSAN/FAAC
+[11:02:46] [INFO] 
+[203] DS 59/2020 - SMSAN/FAAC
+[11:02:50] [INFO]   DS 59/2020 - SMSAN/FAAC: 1 documento(s)
+[11:03:00] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:03:05] [INFO] 
+[204] DS 60/2020 - SMSAN/FAAC
+[11:03:11] [INFO] 
+[205] DS 61/2020 - SMSAN/FAAC
+[11:03:18] [INFO] 
+[206] DS 62/2020 - SMSAN/FAAC
+[11:03:22] [INFO]   DS 62/2020 - SMSAN/FAAC: 1 documento(s)
+[11:03:32] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:03:34] [INFO] 
+[207] DS 63/2020 - SMSAN/FAAC
+[11:03:41] [INFO] 
+[208] DS 64/2020 - SMSAN/FAAC
+[11:03:45] [INFO]   DS 64/2020 - SMSAN/FAAC: 1 documento(s)
+[11:03:55] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:04:00] [INFO] 
+[209] DS 65/2020 - SMSAN/FAAC
+[11:04:06] [INFO] 
+[210] DS 66/2020 - SMSAN/FAAC
+[11:04:13] [INFO] Checkpoint salvo: 210 processados
+[11:04:13] [INFO] 
+[211] DS 67/2020 - SMSAN/FAAC
+[11:04:19] [INFO] 
+[212] DS 68/2020 - SMSAN/FAAC
+[11:04:23] [INFO]   DS 68/2020 - SMSAN/FAAC: 1 documento(s)
+[11:04:33] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:04:36] [INFO] 
+[213] DS 69/2020 - SMSAN/FAAC
+[11:04:45] [INFO] 
+[214] DS 70/2020 - SMSAN/FAAC
+[11:04:51] [INFO] 
+[215] DS 71/2020 - SMSAN/FAAC
+[11:04:58] [INFO] 
+[216] DS 72/2020 - SMSAN/FAAC
+[11:05:04] [INFO] 
+[217] DS 73/2020 - SMSAN/FAAC
+[11:05:11] [INFO] 
+[218] DS 74/2020 - SMSAN/FAAC
+[11:05:20] [INFO] 
+[219] DS 75/2020 - SMSAN/FAAC
+[11:05:26] [INFO] 
+[220] DS 76/2020 - SMSAN/FAAC
+[11:05:33] [INFO] Checkpoint salvo: 220 processados
+[11:05:33] [INFO] 
+[221] DS 77/2020 - SMSAN/FAAC
+[11:05:40] [INFO] 
+[222] DS 78/2020 - SMSAN/FAAC
+[11:05:46] [INFO] 
+[223] DS 79/2020 - SMSAN/FAAC
+[11:05:55] [INFO] 
+[224] DS 80/2020 - SMSAN/FAAC
+[11:06:02] [INFO] 
+[225] DS 81/2020 - SMSAN/FAAC
+[11:06:08] [INFO] 
+[226] DS 82/2020 - SMSAN/FAAC
+[11:06:15] [INFO] 
+[227] DS 83/2020 - SMSAN/FAAC
+[11:06:22] [INFO] 
+[228] DS 84/2020 - SMSAN/FAAC
+[11:06:30] [INFO] 
+[229] DS 85/2020 - SMSAN/FAAC
+[11:06:34] [INFO]   DS 85/2020 - SMSAN/FAAC: 1 documento(s)
+[11:06:44] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:06:47] [INFO] 
+[230] DS 86/2020 - SMSAN/FAAC
+[11:06:54] [INFO] Checkpoint salvo: 230 processados
+[11:06:54] [INFO] 
+[231] DS 87/2020 - SMSAN/FAAC
+[11:07:00] [INFO] 
+[232] DS 88/2020 - SMSAN/FAAC
+[11:07:06] [INFO] 
+[233] DS 89/2020 - SMSAN/FAAC
+[11:07:15] [INFO] 
+[234] DS 90/2020 - SMSAN/FAAC
+[11:07:22] [INFO] 
+[235] DS 91/2020 - SMSAN/FAAC
+[11:07:28] [INFO] 
+[236] DS 92/2020 - SMSAN/FAAC
+[11:07:35] [INFO] 
+[237] DS 93/2020 - SMSAN/FAAC
+[11:07:42] [INFO] 
+[238] DS 94/2020 - SMSAN/FAAC
+[11:07:54] [INFO] 
+[239] DS 95/2020 - SMSAN/FAAC
+[11:08:01] [INFO] 
+[240] DS 96/2020 - SMSAN/FAAC
+[11:08:07] [INFO] Checkpoint salvo: 240 processados
+[11:08:07] [INFO] 
+[241] DS 97/2020 - SMSAN/FAAC
+[11:08:11] [INFO]   DS 97/2020 - SMSAN/FAAC: 1 documento(s)
+[11:08:21] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:08:24] [INFO] 
+[242] DS 98/2020 - SMSAN/FAAC
+[11:08:28] [INFO]   DS 98/2020 - SMSAN/FAAC: 1 documento(s)
+[11:08:38] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:08:40] [INFO] 
+[243] DS 99/2020 - SMSAN/FAAC
+[11:08:49] [INFO] 
+[244] DS 100/2020 - SMSAN/FAAC
+[11:08:53] [INFO]   DS 100/2020 - SMSAN/FAAC: 2 documento(s)
+[11:09:03] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:09:13] [WARN]     [2] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:09:15] [INFO] 
+[245] DS 101/2020 - SMSAN/FAAC
+[11:09:22] [INFO] 
+[246] DS 102/2020 - SMSAN/FAAC
+[11:09:29] [INFO] 
+[247] DS 103/2020 - SMSAN/FAAC
+[11:09:35] [INFO] 
+[248] DS 104/2020 - SMSAN/FAAC
+[11:09:39] [INFO]   DS 104/2020 - SMSAN/FAAC: 1 documento(s)
+[11:09:49] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:09:54] [INFO] 
+[249] DS 105/2020 - SMSAN/FAAC
+[11:10:01] [INFO] 
+[250] DS 106/2020 - SMSAN/FAAC
+[11:10:07] [INFO] Checkpoint salvo: 250 processados
+[11:10:07] [INFO] 
+[251] DS 107/2020 - SMSAN/FAAC
+[11:10:14] [INFO] 
+[252] DS 108/2020 - SMSAN/FAAC
+[11:10:20] [INFO] 
+[253] DS 109/2020 - SMSAN/FAAC
+[11:10:29] [INFO] 
+[254] DS 110/2020 - SMSAN/FAAC
+[11:10:36] [INFO] 
+[255] DS 111/2020 - SMSAN/FAAC
+[11:10:42] [INFO] 
+[256] DS 112/2020 - SMSAN/FAAC
+[11:10:49] [INFO] 
+[257] DS 113/2020 - SMSAN/FAAC
+[11:10:55] [INFO] 
+[258] DS 114/2020 - SMSAN/FAAC
+[11:11:04] [INFO] 
+[259] DS 115/2020 - SMSAN/FAAC
+[11:11:10] [INFO] 
+[260] DS 116/2020 - SMSAN/FAAC
+[11:11:17] [INFO] Checkpoint salvo: 260 processados
+[11:11:17] [INFO] 
+[261] DS 117/2020 - SMSAN/FAAC
+[11:11:21] [INFO]   DS 117/2020 - SMSAN/FAAC: 1 documento(s)
+[11:11:31] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:11:33] [INFO] 
+[262] DT 1/2020 - SMSAN/FAAC
+[11:11:37] [INFO]   DT 1/2020 - SMSAN/FAAC: 1 documento(s)
+[11:11:47] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:11:50] [INFO] 
+[263] DT 2/2020 - SMSAN/FAAC
+[11:11:57] [INFO]   DT 2/2020 - SMSAN/FAAC: 1 documento(s)
+[11:12:07] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:12:12] [INFO] 
+[264] DT 3/2020 - SMSAN/FAAC
+[11:12:15] [INFO]   DT 3/2020 - SMSAN/FAAC: 1 documento(s)
+[11:12:26] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:12:28] [INFO] 
+[265] DT 4/2020 - SMSAN/FAAC
+[11:12:32] [INFO]   DT 4/2020 - SMSAN/FAAC: 1 documento(s)
+[11:12:42] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:12:45] [INFO] 
+[266] DT 5/2020 - SMSAN/FAAC
+[11:12:49] [INFO]   DT 5/2020 - SMSAN/FAAC: 2 documento(s)
+[11:12:59] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:13:09] [WARN]     [2] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:13:11] [INFO] 
+[267] DT 6/2020 - SMSAN/FAAC
+[11:13:18] [INFO] 
+[268] DT 7/2020 - SMSAN/FAAC
+[11:13:22] [INFO]   DT 7/2020 - SMSAN/FAAC: 1 documento(s)
+[11:13:32] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:13:37] [INFO] 
+[269] DT 8/2020 - SMSAN/FAAC
+[11:13:41] [INFO]   DT 8/2020 - SMSAN/FAAC: 2 documento(s)
+[11:13:51] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:14:01] [WARN]     [2] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:14:04] [INFO] 
+[270] DT 9/2020 - SMSAN/FAAC
+[11:14:08] [INFO]   DT 9/2020 - SMSAN/FAAC: 1 documento(s)
+[11:14:18] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:14:20] [INFO] Checkpoint salvo: 270 processados
+[11:14:20] [INFO] 
+[271] DT 10/2020 - SMSAN/FAAC
+[11:14:24] [INFO]   DT 10/2020 - SMSAN/FAAC: 2 documento(s)
+[11:14:34] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:14:44] [WARN]     [2] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:14:47] [INFO] 
+[272] FN 1/2020 - SMSAN/FAAC
+[11:14:54] [INFO] 
+[273] FN 2/2020 - SMSAN/FAAC
+[11:14:57] [INFO]   FN 2/2020 - SMSAN/FAAC: 2 documento(s)
+[11:15:08] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:15:18] [WARN]     [2] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:15:22] [INFO] 
+[274] FN 3/2020 - SMSAN/FAAC
+[11:15:26] [INFO]   FN 3/2020 - SMSAN/FAAC: 1 documento(s)
+[11:15:36] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:15:39] [INFO] 
+[275] FN 4/2020 - SMSAN/FAAC
+[11:15:45] [INFO] 
+[276] FN 5/2020 - SMSAN/FAAC
+[11:15:52] [INFO] 
+[277] FN 6/2020 - SMSAN/FAAC
+[11:15:56] [INFO]   FN 6/2020 - SMSAN/FAAC: 1 documento(s)
+[11:16:06] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:16:09] [INFO] 
+[278] FN 7/2020 - SMSAN/FAAC
+[11:16:13] [INFO]   FN 7/2020 - SMSAN/FAAC: 2 documento(s)
+[11:16:23] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:16:33] [WARN]     [2] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:16:37] [INFO] 
+[279] PE 1/2020 - SMSAN/FAAC
+[11:16:42] [INFO]   PE 1/2020 - SMSAN/FAAC: 1 documento(s)
+[11:16:52] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:16:55] [INFO] 
+[280] PE 2/2020 - SMSAN/FAAC
+[11:16:59] [INFO]   PE 2/2020 - SMSAN/FAAC: 1 documento(s)
+[11:17:09] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:17:11] [INFO] Checkpoint salvo: 280 processados
+[11:17:11] [INFO] 
+[281] PE 3/2020 - SMSAN/FAAC
+[11:17:15] [INFO]   PE 3/2020 - SMSAN/FAAC: 1 documento(s)
+[11:17:25] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:17:31] [INFO] 
+[282] PE 4/2020 - SMSAN/FAAC
+[11:17:35] [INFO]   PE 4/2020 - SMSAN/FAAC: 1 documento(s)
+[11:17:45] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:17:48] [INFO] 
+[283] PE 5/2020 - SMSAN/FAAC
+[11:17:52] [INFO]   PE 5/2020 - SMSAN/FAAC: 1 documento(s)
+[11:18:02] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:18:06] [INFO] 
+[284] PE 6/2020 - SMSAN/FAAC
+[11:18:10] [INFO]   PE 6/2020 - SMSAN/FAAC: 1 documento(s)
+[11:18:20] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:18:23] [INFO] 
+[285] PE 7/2020 - SMSAN/FAAC
+[11:18:27] [INFO]   PE 7/2020 - SMSAN/FAAC: 1 documento(s)
+[11:18:37] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:18:40] [INFO] 
+[286] PE 8/2020 - SMSAN/FAAC
+[11:18:44] [INFO]   PE 8/2020 - SMSAN/FAAC: 1 documento(s)
+[11:18:54] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:18:56] [INFO] 
+[287] PE 9/2020 - SMSAN/FAAC
+[11:19:00] [INFO]   PE 9/2020 - SMSAN/FAAC: 1 documento(s)
+[11:19:10] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:19:13] [INFO] 
+[288] PE 10/2020 - SMSAN/FAAC
+[11:19:17] [INFO]   PE 10/2020 - SMSAN/FAAC: 1 documento(s)
+[11:19:27] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:19:31] [INFO] 
+[289] PE 11/2020 - SMSAN/FAAC
+[11:19:35] [INFO]   PE 11/2020 - SMSAN/FAAC: 1 documento(s)
+[11:19:45] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:19:48] [INFO] 
+[290] PE 12/2020 - SMSAN/FAAC
+[11:19:52] [INFO]   PE 12/2020 - SMSAN/FAAC: 1 documento(s)
+[11:20:02] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:20:05] [INFO] Checkpoint salvo: 290 processados
+[11:20:05] [INFO] 
+[291] PE 13/2020 - SMSAN/FAAC
+[11:20:08] [INFO]   PE 13/2020 - SMSAN/FAAC: 1 documento(s)
+[11:20:19] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:20:21] [INFO] 
+[292] PE 14/2020 - SMSAN/FAAC
+[11:20:25] [INFO]   PE 14/2020 - SMSAN/FAAC: 1 documento(s)
+[11:20:35] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:20:38] [INFO] 
+[293] PE 15/2020 - SMSAN/FAAC
+[11:20:42] [INFO]   PE 15/2020 - SMSAN/FAAC: 1 documento(s)
+[11:20:52] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:20:56] [INFO] 
+[294] PE 16/2020 - SMSAN/FAAC
+[11:21:03] [INFO] 
+[295] PE 17/2020 - SMSAN/FAAC
+[11:21:08] [INFO]   PE 17/2020 - SMSAN/FAAC: 1 documento(s)
+[11:21:18] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:21:21] [INFO] 
+[296] PE 18/2020 - SMSAN/FAAC
+[11:21:25] [INFO]   PE 18/2020 - SMSAN/FAAC: 1 documento(s)
+[11:21:35] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:21:37] [INFO] 
+[297] PE 19/2020 - SMSAN/FAAC
+[11:21:41] [INFO]   PE 19/2020 - SMSAN/FAAC: 1 documento(s)
+[11:21:51] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:21:54] [INFO] 
+[298] PE 20/2020 - SMSAN/FAAC
+[11:21:58] [INFO]   PE 20/2020 - SMSAN/FAAC: 1 documento(s)
+[11:22:08] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:22:13] [INFO] 
+[299] PE 21/2020 - SMSAN/FAAC
+[11:22:17] [INFO]   PE 21/2020 - SMSAN/FAAC: 1 documento(s)
+[11:22:27] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:22:29] [INFO] 
+[300] PE 22/2020 - SMSAN/FAAC
+[11:22:33] [INFO]   PE 22/2020 - SMSAN/FAAC: 1 documento(s)
+[11:22:43] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:22:46] [INFO] Checkpoint salvo: 300 processados
+[11:22:46] [INFO] 
+[301] PE 23/2020 - SMSAN/FAAC
+[11:22:50] [INFO]   PE 23/2020 - SMSAN/FAAC: 1 documento(s)
+[11:23:00] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:23:02] [INFO] 
+[302] PE 24/2020 - SMSAN/FAAC
+[11:23:06] [INFO]   PE 24/2020 - SMSAN/FAAC: 1 documento(s)
+[11:23:16] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:23:19] [INFO] 
+[303] PE 25/2020 - SMSAN/FAAC
+[11:23:23] [INFO]   PE 25/2020 - SMSAN/FAAC: 1 documento(s)
+[11:23:33] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:23:38] [INFO] 
+[304] PE 26/2020 - SMSAN/FAAC
+[11:23:42] [INFO]   PE 26/2020 - SMSAN/FAAC: 1 documento(s)
+[11:23:52] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:23:54] [INFO] 
+[305] PE 27/2020 - SMSAN/FAAC
+[11:23:58] [INFO]   PE 27/2020 - SMSAN/FAAC: 1 documento(s)
+[11:24:08] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:24:11] [INFO] 
+[306] PE 28/2020 - SMSAN/FAAC
+[11:24:15] [INFO]   PE 28/2020 - SMSAN/FAAC: 1 documento(s)
+[11:24:25] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:24:28] [INFO] 
+[307] PE 29/2020 - SMSAN/FAAC
+[11:24:32] [INFO]   PE 29/2020 - SMSAN/FAAC: 1 documento(s)
+[11:24:42] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:24:44] [INFO] 
+[308] PE 30/2020 - SMSAN/FAAC
+[11:24:48] [INFO]   PE 30/2020 - SMSAN/FAAC: 1 documento(s)
+[11:24:58] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:25:03] [INFO] 
+[309] PE 31/2020 - SMSAN/FAAC
+[11:25:07] [INFO]   PE 31/2020 - SMSAN/FAAC: 1 documento(s)
+[11:25:17] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:25:20] [INFO] 
+[310] PE 32/2020 - SMSAN/FAAC
+[11:25:24] [INFO]   PE 32/2020 - SMSAN/FAAC: 1 documento(s)
+[11:25:34] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:25:36] [INFO] Checkpoint salvo: 310 processados
+[11:25:36] [INFO] 
+[311] PE 33/2020 - SMSAN/FAAC
+[11:25:40] [INFO]   PE 33/2020 - SMSAN/FAAC: 1 documento(s)
+[11:25:50] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:25:53] [INFO] 
+[312] PE 34/2020 - SMSAN/FAAC
+[11:25:58] [INFO]   PE 34/2020 - SMSAN/FAAC: 1 documento(s)
+[11:26:08] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:26:10] [INFO] 
+[313] AD 1/2021 - SMSAN/FAAC
+[11:26:19] [INFO] 
+[314] AD 16/2021 - SMSAN/FAAC
+[11:26:26] [INFO] 
+[315] DE 1/2021 - SMSAN/FAAC
+[11:26:30] [INFO]   DE 1/2021 - SMSAN/FAAC: 1 documento(s)
+[11:26:40] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:26:42] [INFO] 
+[316] DE 2/2021 - SMSAN/FAAC
+[11:26:46] [INFO]   DE 2/2021 - SMSAN/FAAC: 1 documento(s)
+[11:26:56] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:26:59] [INFO] 
+[317] DE 3/2021 - SMSAN/FAAC
+[11:27:03] [INFO]   DE 3/2021 - SMSAN/FAAC: 1 documento(s)
+[11:27:13] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:27:16] [INFO] 
+[318] DE 4/2021 - SMSAN/FAAC
+[11:27:20] [INFO]   DE 4/2021 - SMSAN/FAAC: 1 documento(s)
+[11:27:30] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:27:34] [INFO] 
+[319] DE 5/2021 - SMSAN/FAAC
+[11:27:38] [INFO]   DE 5/2021 - SMSAN/FAAC: 1 documento(s)
+[11:27:48] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:27:51] [INFO] 
+[320] DE 6/2021 - SMSAN/FAAC
+[11:27:55] [INFO]   DE 6/2021 - SMSAN/FAAC: 1 documento(s)
+[11:28:05] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:28:08] [INFO] Checkpoint salvo: 320 processados
+[11:28:08] [INFO] 
+[321] DE 7/2021 - SMSAN/FAAC
+[11:28:12] [INFO]   DE 7/2021 - SMSAN/FAAC: 1 documento(s)
+[11:28:22] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:28:24] [INFO] 
+[322] DE 8/2021 - SMSAN/FAAC
+[11:28:28] [INFO]   DE 8/2021 - SMSAN/FAAC: 1 documento(s)
+[11:28:38] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:28:41] [INFO] 
+[323] DS 1/2021 - SMSAN/FAAC
+[11:28:50] [INFO] 
+[324] DS 2/2021 - SMSAN/FAAC
+[11:28:56] [INFO] 
+[325] DS 3/2021 - SMSAN/FAAC
+[11:29:03] [INFO] 
+[326] DS 4/2021 - SMSAN/FAAC
+[11:29:13] [INFO] 
+[327] DS 5/2021 - SMSAN/FAAC
+[11:29:19] [INFO] 
+[328] DS 6/2021 - SMSAN/FAAC
+[11:29:28] [INFO] 
+[329] DS 7/2021 - SMSAN/FAAC
+[11:29:35] [INFO] 
+[330] DS 8/2021 - SMSAN/FAAC
+[11:29:42] [INFO] Checkpoint salvo: 330 processados
+[11:29:42] [INFO] 
+[331] DS 9/2021 - SMSAN/FAAC
+[11:29:56] [INFO] 
+[332] DS 10/2021 - SMSAN/FAAC
+[11:30:03] [INFO] 
+[333] DS 11/2021 - SMSAN/FAAC
+[11:30:45] [INFO] 
+[334] DS 12/2021 - SMSAN/FAAC
+[11:30:54] [INFO] 
+[335] DS 13/2021 - SMSAN/FAAC
+[11:31:00] [INFO] 
+[336] DS 14/2021 - SMSAN/FAAC
+[11:31:07] [INFO] 
+[337] DS 15/2021 - SMSAN/FAAC
+[11:31:14] [INFO] 
+[338] DS 16/2021 - SMSAN/FAAC
+[11:31:22] [INFO] 
+[339] DS 17/2021 - SMSAN/FAAC
+[11:31:29] [INFO] 
+[340] DS 18/2021 - SMSAN/FAAC
+[11:31:36] [INFO] Checkpoint salvo: 340 processados
+[11:31:36] [INFO] 
+[341] DS 19/2021 - SMSAN/FAAC
+[11:31:43] [INFO] 
+[342] DS 20/2021 - SMSAN/FAAC
+[11:31:49] [INFO] 
+[343] DS 21/2021 - SMSAN/FAAC
+[11:31:58] [INFO] 
+[344] DS 22/2021 - SMSAN/FAAC
+[11:32:04] [INFO] 
+[345] DS 23/2021 - SMSAN/FAAC
+[11:32:11] [INFO] 
+[346] DS 24/2021 - SMSAN/FAAC
+[11:32:18] [INFO] 
+[347] DS 25/2021 - SMSAN/FAAC
+[11:32:25] [INFO] 
+[348] DS 26/2021 - SMSAN/FAAC
+[11:32:40] [INFO] 
+[349] DS 27/2021 - SMSAN/FAAC
+[11:32:44] [INFO]   DS 27/2021 - SMSAN/FAAC: 1 documento(s)
+[11:32:54] [WARN]     [1] Erro: Timeout 10000ms exceeded while waiting for event "page"
+[11:32:57] [INFO] 
+[350] DS 28/2021 - SMSAN/FAAC
+[11:33:04] [INFO] Checkpoint salvo: 350 processados
+[11:33:04] [INFO] 
+[351] DS 29/2021 - SMSAN/FAAC
+[11:33:11] [INFO] 
+[352] DS 30/2021 - SMSAN/FAAC
+[11:33:18] [INFO] 
+[353] DS 31/2021 - SMSAN/FAAC
+[11:33:28] [INFO] 
+[354] DS 32/2021 - SMSAN/FAAC
+[11:33:35] [INFO] 
+[355] DS 33/2021 - SMSAN/FAAC
+[11:33:42] [INFO] 
+[356] DS 34/2021 - SMSAN/FAAC
+[11:33:49] [INFO] 
+[357] DS 35/2021 - SMSAN/FAAC
+[11:33:56] [INFO] 
+[358] DS 36/2021 - SMSAN/FAAC
+[11:34:06] [INFO] 
+[359] DS 37/2021 - SMSAN/FAAC
+[11:34:14] [INFO] 
+[360] DS 38/2021 - SMSAN/FAAC
+[11:34:21] [INFO] Checkpoint salvo: 360 processados
+[11:34:21] [INFO] 
+[361] DS 39/2021 - SMSAN/FAAC
+[11:34:28] [INFO] 
+[362] DS 40/2021 - SMSAN/FAAC
+[11:34:35] [INFO] 
+[363] DS 41/2021 - SMSAN/FAAC
+[11:34:45] [INFO] 
+[364] DS 42/2021 - SMSAN/FAAC
+[11:34:49] [INFO]   DS 42/2021 - SMSAN/FAAC: 1 documento(s)
+                                                                                         

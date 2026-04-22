@@ -188,7 +188,7 @@ def deletar_conversa(request: Request, session_id: str, _: str = Depends(verify_
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/alertas")
-async def gerar_alertas(request: Request):
+async def gerar_alertas(request: Request, _: str = Depends(verify_api_key)):
     """Analisa dados históricos e gera alertas com IA."""
     import anthropic as ant
 
