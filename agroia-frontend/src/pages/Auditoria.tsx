@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Send } from 'lucide-react'
+import { apiClient } from '../lib/apiClient'
 
 interface AuditoriaAlerta {
   tipo: string
@@ -59,11 +60,8 @@ export default function Auditoria() {
     setErro('')
     setChatMsgs([])
     try {
-      const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-      const res = await fetch(`${API}/auditoria/executar`, { method: 'POST' })
-      if (!res.ok) throw new Error(`Erro ${res.status}`)
-      const data = await res.json()
-      setResultado(data)
+      const data = await apiClient.post<AuditoriaResultado>('/auditoria/executar')
+      setResultado(data.data)
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro ao executar auditoria')
     } finally {
@@ -80,15 +78,8 @@ export default function Auditoria() {
     setChatLoading(true)
 
     try {
-      const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-      const res = await fetch(`${API}/auditoria/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pergunta: chatInput, contexto: resultado })
-      })
-      if (!res.ok) throw new Error(`Erro ${res.status}`)
-      const data = await res.json()
-      setChatMsgs(prev => [...prev, { role: 'assistant', content: data.resposta }])
+      const data = await apiClient.post('/auditoria/chat', { pergunta: chatInput, contexto: resultado })
+      setChatMsgs(prev => [...prev, { role: 'assistant', content: data.data.resposta }])
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : 'Erro na IA'
       setChatMsgs(prev => [...prev, { role: 'assistant', content: `Erro: ${errMsg}` }])
