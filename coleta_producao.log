@@ -9833,3 +9833,213 @@ Coletando documentos (limit=None)...
 [17:51:56] [INFO] 
 [767] PE 18/2021 - SMSAN/FAAC
 [17:52:00] [INFO]   PE 18/2021 - SMSAN/FAAC: 2 documento(s)
+[17:57:30] [INFO]     [1] PROCESSO LICITATÓRIO - PARTE 1: OK (DB salvo)
+[18:00:04] [WARN]     [2] Erro: Download.save_as: canceled
+[18:00:07] [INFO] 
+[768] PE 19/2021 - SMSAN/FAAC
+[22:10:19] [WARN]     Retry em 1s (tentativa 1/3): ConnectError
+[22:10:29] [INFO] 
+[769] PE 20/2021 - SMSAN/FAAC
+[22:10:38] [INFO] 
+[770] PE 21/2021 - SMSAN/FAAC
+[22:10:47] [INFO] Checkpoint salvo: 770 processados
+[22:10:49] [INFO] Nenhum processo nesta página
+[22:10:49] [INFO] 
+======================================================================
+[22:10:49] [INFO] RESUMO DA COLETA
+[22:10:49] [INFO] ======================================================================
+[22:10:49] [INFO] Processados: 770
+[22:10:49] [INFO] Documentos: 196
+[22:10:49] [INFO] Erros: 47
+[22:10:49] [INFO] Taxa sucesso: 25.5%
+[22:11:43] [INFO] ======================================================================
+[22:11:43] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[22:11:43] [INFO] ======================================================================
+[22:11:43] [INFO] Retomando de checkpoint: 770 processados
+[22:11:43] [INFO] Google Drive conectado
+[22:12:10] [INFO] ======================================================================
+[22:12:10] [INFO] COLETA DE DOCUMENTOS - PRODUÇÃO
+[22:12:10] [INFO] ======================================================================
+[22:12:10] [INFO] Retomando de checkpoint: 770 processados
+[22:12:10] [INFO] Google Drive conectado
+[22:12:28] [INFO] Acessando portal...
+[22:12:32] [INFO] Pesquisando...
+[22:12:41] [INFO] Pesquisa: 1245 licitações encontradas
+[22:12:41] [INFO] 
+Coletando documentos (limit=None)...
+[22:12:41] [INFO] 
+[771] AD 3/2019 - SMSAN/FAAC
+[22:12:49] [INFO] 
+[772] DE 4/2019 - SMSAN/FAAC
+[22:12:53] [INFO]   DE 4/2019 - SMSAN/FAAC: 1 documento(s)
+[22:14:04] [WARN]     Documento já existe no BD (ID=1714)
+[22:14:04] [INFO]     [1] D.E 4: OK (DB salvo)
+[22:14:06] [INFO] 
+[773] DE 5/2019 - SMSAN/FAAC
+[22:14:10] [INFO]   DE 5/2019 - SMSAN/FAAC: 1 documento(s)
+[22:14:49] [WARN]     Documento já existe no BD (ID=1715)
+[22:14:49] [INFO]     [1] D.E. 5: OK (DB salvo)
+[22:14:52] [INFO] 
+[774] DE 6/2019 - SMSAN/FAAC
+[22:14:55] [INFO]   DE 6/2019 - SMSAN/FAAC: 1 documento(s)
+[22:15:28] [WARN]     Documento já existe no BD (ID=1938)
+[22:15:28] [INFO]     [1] : OK (DB salvo)
+[22:15:30] [INFO] 
+[775] DS 70/2019 - SMSAN/FAAC
+[22:15:39] [INFO] 
+[776] DS 73/2019 - SMSAN/FAAC
+[22:15:46] [INFO] 
+[777] DS 75/2019 - SMSAN/FAAC
+[22:15:52] [INFO] 
+[778] DS 77/2019 - SMSAN/FAAC
+[22:15:56] [INFO]   DS 77/2019 - SMSAN/FAAC: 1 documento(s)
+[22:16:17] [WARN]     Documento já existe no BD (ID=1718)
+[22:16:17] [INFO]     [1] DS 77: OK (DB salvo)
+[22:16:20] [INFO] 
+[779] DS 78/2019 - SMSAN/FAAC
+[22:16:24] [INFO]   DS 78/2019 - SMSAN/FAAC: 1 documento(s)
+[22:16:44] [WARN]     Documento já existe no BD (ID=1719)
+[22:16:44] [INFO]     [1] DS 78: OK (DB salvo)
+[22:16:47] [INFO] 
+[780] DS 79/2019 - SMSAN/FAAC
+[22:16:53] [INFO] Checkpoint salvo: 780 processados
+[22:16:55] [INFO] 
+[781] DS 81/2019 - SMSAN/FAAC
+[22:17:02] [INFO] 
+[782] DS 83/2019 - SMSAN/FAAC
+[22:17:08] [INFO] 
+[783] DS 84/2019 - SMSAN/FAAC
+[22:17:12] [INFO]   DS 84/2019 - SMSAN/FAAC: 1 documento(s)
+[22:17:33] [WARN]     Documento já existe no BD (ID=1720)
+[22:17:33] [INFO]     [1] DISPENSA 84: OK (DB salvo)
+[22:17:36] [INFO] 
+[784] DS 86/2019 - SMSAN/FAAC
+[22:17:42] [INFO] 
+[785] DS 87/2019 - SMSAN/FAAC
+[22:17:51] [INFO] 
+[786] DS 88/2019 - SMSAN/FAAC
+[22:17:57] [INFO] 
+[787] DS 89/2019 - SMSAN/FAAC
+[22:18:04] [INFO] 
+[788] DS 90/2019 - SMSAN/FAAC
+[22:18:10] [INFO] 
+[789] DS 91/2019 - SMSAN/FAAC
+[22:18:17] [INFO] 
+[790] DS 92/2019 - SMSAN/FAAC
+[22:18:23] [INFO] Checkpoint salvo: 790 processados
+[22:18:25] [INFO] 
+[791] DS 93/2019 - SMSAN/FAAC
+[22:18:32] [INFO] 
+[792] DS 94/2019 - SMSAN/FAAC
+[22:18:38] [INFO] 
+[793] DS 95/2019 - SMSAN/FAAC
+[22:18:44] [INFO] 
+[794] DS 96/2019 - SMSAN/FAAC
+[22:18:51] [INFO] 
+[795] DS 97/2019 - SMSAN/FAAC
+[22:18:55] [INFO]   DS 97/2019 - SMSAN/FAAC: 1 documento(s)
+[22:19:13] [WARN]     Documento já existe no BD (ID=1721)
+[22:19:13] [INFO]     [1] DS 97: OK (DB salvo)
+[22:19:18] [INFO] 
+[796] DS 98/2019 - SMSAN/FAAC
+[22:19:25] [INFO] 
+[797] DS 99/2019 - SMSAN/FAAC
+[22:19:31] [INFO] 
+[798] DS 100/2019 - SMSAN/FAAC
+[22:19:38] [INFO] 
+[799] DS 101/2019 - SMSAN/FAAC
+[22:19:44] [INFO] 
+[800] DS 102/2019 - SMSAN/FAAC
+[22:19:51] [INFO] Checkpoint salvo: 800 processados
+[22:19:53] [INFO] 
+[801] DS 103/2019 - SMSAN/FAAC
+[22:19:57] [INFO]   DS 103/2019 - SMSAN/FAAC: 1 documento(s)
+[22:20:17] [WARN]     Documento já existe no BD (ID=1939)
+[22:20:17] [INFO]     [1] : OK (DB salvo)
+[22:20:20] [INFO] 
+[802] DS 104/2019 - SMSAN/FAAC
+[22:20:24] [INFO]   DS 104/2019 - SMSAN/FAAC: 1 documento(s)
+[22:20:44] [WARN]     Documento já existe no BD (ID=1723)
+[22:20:44] [INFO]     [1] DISPENSA 104: OK (DB salvo)
+[22:20:47] [INFO] 
+[803] DS 105/2019 - SMSAN/FAAC
+[22:20:53] [INFO] 
+[804] DS 106/2019 - SMSAN/FAAC
+[22:21:00] [INFO] 
+[805] DS 107/2019 - SMSAN/FAAC
+[22:21:08] [INFO] 
+[806] DS 108/2019 - SMSAN/FAAC
+[22:21:15] [INFO] 
+[807] DS 109/2019 - SMSAN/FAAC
+[22:21:21] [INFO] 
+[808] DS 110/2019 - SMSAN/FAAC
+[22:21:28] [INFO] 
+[809] DS 111/2019 - SMSAN/FAAC
+[22:21:34] [INFO] 
+[810] DS 112/2019 - SMSAN/FAAC
+[22:21:41] [INFO] Checkpoint salvo: 810 processados
+[22:21:43] [INFO] 
+[811] DT 1/2019 - SMSAN/FAAC
+[22:21:47] [INFO]   DT 1/2019 - SMSAN/FAAC: 1 documento(s)
+[22:22:29] [WARN]     Documento já existe no BD (ID=1940)
+[22:22:29] [INFO]     [1] D..t 01: OK (DB salvo)
+[22:22:31] [INFO] 
+[812] DT 2/2019 - SMSAN/FAAC
+[22:22:35] [INFO]   DT 2/2019 - SMSAN/FAAC: 1 documento(s)
+[22:23:10] [WARN]     Documento já existe no BD (ID=1725)
+[22:23:10] [INFO]     [1] DT 02: OK (DB salvo)
+[22:23:12] [INFO] 
+[813] FN 4/2019 - SMSAN/FAAC
+[22:23:19] [INFO] 
+[814] FN 5/2019 - SMSAN/FAAC
+[22:23:25] [INFO] 
+[815] IN 1/2019 - SMSAN/FAAC
+[22:23:29] [INFO]   IN 1/2019 - SMSAN/FAAC: 1 documento(s)
+[22:24:28] [WARN]     Documento já existe no BD (ID=1726)
+[22:24:28] [INFO]     [1] i.n.: OK (DB salvo)
+[22:24:32] [INFO] 
+[816] PE 21/2019 - SMSAN/FAAC
+[22:24:36] [INFO]   PE 21/2019 - SMSAN/FAAC: 1 documento(s)
+[22:24:57] [WARN]     Documento já existe no BD (ID=1941)
+[22:24:57] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:25:00] [INFO] 
+[817] PE 22/2019 - SMSAN/FAAC
+[22:25:06] [INFO] 
+[818] PE 23/2019 - SMSAN/FAAC
+[22:25:10] [INFO]   PE 23/2019 - SMSAN/FAAC: 1 documento(s)
+[22:25:35] [WARN]     Documento já existe no BD (ID=1942)
+[22:25:35] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:25:37] [INFO] 
+[819] PE 24/2019 - SMSAN/FAAC
+[22:25:41] [INFO]   PE 24/2019 - SMSAN/FAAC: 1 documento(s)
+[22:26:10] [WARN]     Documento já existe no BD (ID=1943)
+[22:26:10] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:26:13] [INFO] 
+[820] PE 25/2019 - SMSAN/FAAC
+[22:26:17] [INFO]   PE 25/2019 - SMSAN/FAAC: 1 documento(s)
+[22:26:49] [WARN]     Documento já existe no BD (ID=1944)
+[22:26:49] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:26:51] [INFO] Checkpoint salvo: 820 processados
+[22:26:54] [INFO] 
+[821] PE 26/2019 - SMSAN/FAAC
+[22:26:57] [INFO]   PE 26/2019 - SMSAN/FAAC: 1 documento(s)
+[22:27:27] [WARN]     Documento já existe no BD (ID=1945)
+[22:27:27] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:27:29] [INFO] 
+[822] PE 28/2019 - SMSAN/FAAC
+[22:27:33] [INFO]   PE 28/2019 - SMSAN/FAAC: 1 documento(s)
+[22:32:38] [WARN]     Documento já existe no BD (ID=1946)
+[22:32:38] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:32:40] [INFO] 
+[823] PE 30/2019 - SMSAN/FAAC
+[22:32:44] [INFO]   PE 30/2019 - SMSAN/FAAC: 1 documento(s)
+[22:33:57] [WARN]     Documento já existe no BD (ID=1947)
+[22:33:57] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:33:59] [INFO] 
+[824] PE 31/2019 - SMSAN/FAAC
+[22:34:03] [INFO]   PE 31/2019 - SMSAN/FAAC: 1 documento(s)
+[22:34:40] [WARN]     Documento já existe no BD (ID=1948)
+[22:34:40] [INFO]     [1] PROCESSO LICITATÓRIO: OK (DB salvo)
+[22:34:42] [INFO] 
+[825] PE 32/2019 - SMSAN/FAAC
+[22:34:46] [INFO]   PE 32/2019 - SMSAN/FAAC: 1 documento(s)

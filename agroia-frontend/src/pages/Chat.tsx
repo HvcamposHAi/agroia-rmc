@@ -107,7 +107,7 @@ export default function Chat() {
             </div>
             <div className="msg-bubble">
               {msg.role === 'assistant' ? (
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <ResponseRenderer content={msg.content} />
               ) : (
                 msg.content
               )}
