@@ -93,6 +93,16 @@ class AuditoriaChatRequest(BaseModel):
     pergunta: str
     contexto: AuditoriaResultado
 
+class ConsistenciaVerificacao(BaseModel):
+    nome: str
+    status: str  # 'OK', 'AVISO', 'CRITICO'
+    detalhe: str
+
+class ConsistenciaResultado(BaseModel):
+    gerado_em: str
+    status_geral: str
+    verificacoes: list[ConsistenciaVerificacao]
+
 @app.get("/health")
 def health():
     """Verifica conectividade com Supabase."""
@@ -275,12 +285,16 @@ async def gerar_alertas(request: Request, _: str = Depends(verify_api_key)):
 
         client = ant.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
+        from datetime import datetime, timedelta
+
+        limiar_desabastecimento = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+
         prompt = f"""Você é um sistema de análise de inteligência de abastecimento para a SMSAN/FAAC de Curitiba.
 
 Analise os dados históricos de licitações de alimentos abaixo e identifique alertas em três categorias:
 
 1. ALTA_PRECO: culturas com aumento de preço/kg acima de 20% entre anos consecutivos
-2. DESABASTECIMENTO: culturas sem compras nos últimos 12 meses (ultima_compra antes de 2025)
+2. DESABASTECIMENTO: culturas sem compras nos últimos 12 meses (ultima_compra antes de {limiar_desabastecimento})
 3. SUPERFATURAMENTO: itens com preço/kg muito acima da média histórica da mesma cultura (desvio acima de 50%)
 
 Dados (cultura, ano, preco_medio_kg, qtd_itens, ultima_compra):
@@ -453,6 +467,101 @@ Responda em português de forma clara, direta e executiva. Se a pergunta se refe
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/auditoria/consistencia")
+async def validar_consistencia(request: Request, _: str = Depends(verify_api_key)) -> ConsistenciaResultado:
+    """Valida consistência entre Supabase e frontend."""
+    from datetime import datetime
+    verificacoes = []
+
+    try:
+        sb = get_supabase_client()
+
+        # 1. Cobertura temporal
+        try:
+            resp_lic = sb.from_('licitacoes').select('dt_abertura').execute()
+            lic_dates = [row['dt_abertura'] for row in (resp_lic.data or []) if row['dt_abertura']]
+            lic_min, lic_max = (min(lic_dates), max(lic_dates)) if lic_dates else (None, None)
+
+            resp_puros = sb.from_('vw_itens_agro_puros').select('dt_abertura').limit(10000).execute()
+            puros_dates = [row['dt_abertura'] for row in (resp_puros.data or []) if row['dt_abertura']]
+            puros_min, puros_max = (min(puros_dates), max(puros_dates)) if puros_dates else (None, None)
+
+            detalhe = f"licitacoes: {lic_min} a {lic_max} | vw_itens_agro_puros: {puros_min} a {puros_max}"
+            status = 'CRITICO' if puros_max and puros_max < '2025' else 'OK'
+            verificacoes.append(ConsistenciaVerificacao(nome='cobertura_temporal', status=status, detalhe=detalhe))
+        except Exception as e:
+            verificacoes.append(ConsistenciaVerificacao(nome='cobertura_temporal', status='CRITICO', detalhe=f"Erro: {str(e)[:50]}"))
+
+        # 2. Simulação Dashboard (sem ORDER, sem LIMIT explícito)
+        try:
+            resp = sb.from_('vw_itens_agro_puros').select('cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2').execute()
+            rows_returned = len(resp.data) if resp.data else 0
+
+            resp_total = sb.from_('vw_itens_agro_puros').select('id').execute()
+            total_real = len(resp_total.data) if resp_total.data else 0
+
+            status = 'AVISO' if (rows_returned == 1000 and total_real > 1000) else 'OK'
+            detalhe = f"Dashboard retorna {rows_returned} de {total_real} rows (limitado por PostgREST)"
+            if status == 'AVISO':
+                detalhe += " | ⚠️ Dados de 2025-2026 podem estar fora"
+            verificacoes.append(ConsistenciaVerificacao(nome='simulacao_dashboard', status=status, detalhe=detalhe))
+        except Exception as e:
+            verificacoes.append(ConsistenciaVerificacao(nome='simulacao_dashboard', status='CRITICO', detalhe=f"Erro: {str(e)[:50]}"))
+
+        # 3. Row counts
+        try:
+            counts = {}
+            for table in ['licitacoes', 'itens_licitacao', 'fornecedores', 'participacoes']:
+                resp = sb.from_(table).select('id', count='exact').limit(0).execute()
+                counts[table] = resp.count if resp.count is not None else -1
+
+            detalhe = ' | '.join([f"{k}={v}" for k, v in counts.items()])
+            status = 'CRITICO' if any(v == 0 for v in counts.values()) else 'OK'
+            verificacoes.append(ConsistenciaVerificacao(nome='row_counts', status=status, detalhe=detalhe))
+        except Exception as e:
+            verificacoes.append(ConsistenciaVerificacao(nome='row_counts', status='AVISO', detalhe=f"Erro: {str(e)[:50]}"))
+
+        # 4. Views funcionam
+        try:
+            status_views = {}
+            for view in ['vw_itens_agro', 'vw_itens_agro_puros']:
+                resp = sb.from_(view).select('*').limit(1).execute()
+                status_views[view] = 'OK' if resp.data else 'VAZIA'
+
+            detalhe = ' | '.join([f"{k}={v}" for k, v in status_views.items()])
+            status = 'CRITICO' if any(v == 'VAZIA' for v in status_views.values()) else 'OK'
+            verificacoes.append(ConsistenciaVerificacao(nome='views_funcionam', status=status, detalhe=detalhe))
+        except Exception as e:
+            verificacoes.append(ConsistenciaVerificacao(nome='views_funcionam', status='CRITICO', detalhe=f"Erro: {str(e)[:50]}"))
+
+        # 5. Threshold alertas
+        try:
+            resp = sb.from_('vw_itens_agro_puros').select('dt_abertura').limit(10000).execute()
+            dates = [row['dt_abertura'] for row in (resp.data or []) if row['dt_abertura']]
+            max_date = max(dates) if dates else None
+
+            status = 'AVISO' if max_date and max_date >= '2025' else 'OK'
+            detalhe = f"Ano máximo: {max_date[:4] if max_date else '?'}"
+            if status == 'AVISO':
+                detalhe += " | ⚠️ /alertas usa threshold rolling de 12 meses (OK)"
+            verificacoes.append(ConsistenciaVerificacao(nome='threshold_alertas', status=status, detalhe=detalhe))
+        except Exception as e:
+            verificacoes.append(ConsistenciaVerificacao(nome='threshold_alertas', status='AVISO', detalhe=f"Erro: {str(e)[:50]}"))
+
+    except Exception as e:
+        logger.error("Validação consistência error", exc_info=True)
+        raise HTTPException(status_code=500, detail="Consistência validation failed")
+
+    # Status geral
+    status_geral = 'CRITICO' if any(v.status == 'CRITICO' for v in verificacoes) else \
+                   'AVISO' if any(v.status == 'AVISO' for v in verificacoes) else 'OK'
+
+    return ConsistenciaResultado(
+        gerado_em=datetime.now().isoformat(),
+        status_geral=status_geral,
+        verificacoes=verificacoes
+    )
+
 @app.get("/")
 def root():
     """Documentação da API."""
@@ -464,6 +573,7 @@ def root():
             "POST /alertas": "Gerar alertas inteligentes com IA",
             "POST /auditoria/executar": "Executar auditoria sob demanda",
             "POST /auditoria/chat": "Discutir resultados da auditoria com IA",
+            "GET /auditoria/consistencia": "Validar consistência entre Supabase e frontend",
             "GET /docs": "Documentação Swagger"
         }
     }

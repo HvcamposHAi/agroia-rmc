@@ -49,6 +49,7 @@ export default function Dashboard() {
       try {
         const { data } = await supabase.from('vw_itens_agro_puros')
           .select('cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2')
+          .order('dt_abertura', { ascending: false })
         if (data) setRaw(data as RawItem[])
       } finally {
         setLoading(false)
