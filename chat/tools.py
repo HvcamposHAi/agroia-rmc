@@ -67,7 +67,7 @@ def query_itens_agro(
     sb = get_supabase_client()
 
     if agregacao == "detalhado":
-        query = sb.from_("vw_itens_agro").select("*")
+        query = sb.from_("vw_itens_agro").select("*").eq("relevante_agro", True)
         if cultura:
             cultura = sanitizar_string(cultura)
             query = query.ilike("cultura", f"%{cultura}%")
@@ -82,9 +82,10 @@ def query_itens_agro(
 
     if agregacao == "por_cultura":
         # Otimizado: uma única query com agregação
+        # Garante que está filtrando apenas items agrícolas
         items_all = sb.from_("vw_itens_agro").select(
             "cultura, categoria_v2, valor_total, valor_unitario"
-        ).limit(10000).execute().data or []
+        ).eq("relevante_agro", True).limit(10000).execute().data or []
 
         culturas_dict = {}
         for item in items_all:
@@ -119,7 +120,7 @@ def query_itens_agro(
         # Otimizado: uma única query
         items_all = sb.from_("vw_itens_agro").select(
             "canal, licitacao_id, valor_total"
-        ).limit(10000).execute().data or []
+        ).eq("relevante_agro", True).limit(10000).execute().data or []
 
         canais_dict = {}
         for item in items_all:
@@ -153,7 +154,7 @@ def query_itens_agro(
     if agregacao == "por_ano":
         items = sb.from_("vw_itens_agro").select(
             "dt_abertura, licitacao_id, valor_total"
-        ).limit(10000).execute().data or []
+        ).eq("relevante_agro", True).limit(10000).execute().data or []
 
         anos_dict = {}
         for item in items:
@@ -179,7 +180,7 @@ def query_itens_agro(
     if agregacao == "por_categoria":
         items = sb.from_("vw_itens_agro").select(
             "categoria_v2, licitacao_id, valor_total"
-        ).limit(10000).execute().data or []
+        ).eq("relevante_agro", True).limit(10000).execute().data or []
 
         categorias_dict = {}
         for item in items:
