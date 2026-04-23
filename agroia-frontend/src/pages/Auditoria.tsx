@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Send } from 'lucide-react'
-import { apiClient } from '../lib/apiClient'
+import { apiClient, streamPost } from '../lib/apiClient'
 
 interface AuditoriaAlerta {
   tipo: string
@@ -33,6 +33,12 @@ interface ChatMsg {
   content: string
 }
 
+interface StreamEvent {
+  tipo: 'status' | 'resultado' | 'erro' | 'fim'
+  msg?: string
+  dados?: AuditoriaResultado
+}
+
 const TIPO_CONFIG = {
   ERRO_BD: { icon: '🚨', label: 'Erro BD', cor: '#b91c1c', bg: '#fef2f2', borda: '#fca5a5' },
   INCONSISTENCIA_PORTAL: { icon: '⚠️', label: 'Inconsistência Portal', cor: '#b45309', bg: '#fef9ed', borda: '#fcd97d' },
@@ -60,11 +66,19 @@ export default function Auditoria() {
     setErro('')
     setChatMsgs([])
     try {
-      const data = await apiClient.post<AuditoriaResultado>('/auditoria/executar')
-      setResultado(data.data)
+      for await (const event of streamPost<StreamEvent>('/auditoria/executar/stream')) {
+        if (event.tipo === 'status') {
+          // Update UI with status - keep same loading screen
+        } else if (event.tipo === 'resultado' && event.dados) {
+          setResultado(event.dados)
+        } else if (event.tipo === 'erro') {
+          setErro(event.msg || 'Erro desconhecido')
+        } else if (event.tipo === 'fim') {
+          setLoading(false)
+        }
+      }
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro ao executar auditoria')
-    } finally {
       setLoading(false)
     }
   }

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import ResponseRenderer from '../components/ResponseRenderer'
 import { streamPost } from '../lib/apiClient'
 
 interface Alerta {
@@ -46,11 +45,19 @@ export default function Alertas() {
     setErro('')
     setResultado(null)
     try {
-      const data = await apiClient.post<ResultadoAlertas>('/alertas')
-      setResultado(data.data)
+      for await (const event of streamPost<StreamEvent>('/alertas/stream')) {
+        if (event.tipo === 'status') {
+          // Update UI with status - keep same loading screen
+        } else if (event.tipo === 'resultado' && event.dados) {
+          setResultado(event.dados)
+        } else if (event.tipo === 'erro') {
+          setErro(event.msg || 'Erro desconhecido')
+        } else if (event.tipo === 'fim') {
+          setLoading(false)
+        }
+      }
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro ao conectar ao servidor')
-    } finally {
       setLoading(false)
     }
   }
