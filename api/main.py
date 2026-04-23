@@ -342,6 +342,110 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/alertas/stream")
+def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
+    """Streaming version of alertas endpoint."""
+    def generate():
+        try:
+            sb = get_supabase_client()
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': '🔍 Buscando dados históricos...'})}\n\n"
+
+            r = sb.from_('vw_itens_agro_puros').select(
+                'cultura, valor_total, qt_solicitada, dt_abertura'
+            ).not_.is_('cultura', 'null').gt('qt_solicitada', 0).gt('valor_total', 0).execute()
+
+            dados_raw = r.data or []
+            IGNORAR = {'OUTRO', 'SERVIÇO', 'LOCAÇÃO', 'LIMPEZA', 'INFORMÁTICA',
+                       'EQUIPAMENTO', 'SACOLA', 'EMBALAGEM', 'BANDEJA', 'ETIQUETA'}
+
+            agg: dict = defaultdict(lambda: defaultdict(list))
+            for row in dados_raw:
+                cultura = row.get('cultura', '')
+                if not cultura or cultura in IGNORAR:
+                    continue
+                ano = (row.get('dt_abertura') or '')[:4]
+                if not ano:
+                    continue
+                preco = row['valor_total'] / row['qt_solicitada']
+                agg[cultura][ano].append({'preco': preco, 'ultima': row['dt_abertura']})
+
+            dados = []
+            for cultura, anos_data in agg.items():
+                for ano, items in sorted(anos_data.items()):
+                    precos = [i['preco'] for i in items]
+                    dados.append({
+                        'cultura': cultura,
+                        'ano': int(ano),
+                        'preco_medio_kg': round(sum(precos) / len(precos), 2),
+                        'qtd_itens': len(items),
+                        'ultima_compra': max(i['ultima'] for i in items)
+                    })
+
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': '💡 Analisando com IA...'})}\n\n"
+
+            client = get_client()
+            from datetime import datetime, timedelta
+            limiar_desabastecimento = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+
+            prompt = f"""Você é um sistema de análise de inteligência de abastecimento para a SMSAN/FAAC de Curitiba.
+
+Analise os dados históricos de licitações de alimentos abaixo e identifique alertas em três categorias:
+
+1. ALTA_PRECO: culturas com aumento de preço/kg acima de 20% entre anos consecutivos
+2. DESABASTECIMENTO: culturas sem compras nos últimos 12 meses (ultima_compra antes de {limiar_desabastecimento})
+3. SUPERFATURAMENTO: itens com preço/kg muito acima da média histórica da mesma cultura (desvio acima de 50%)
+
+Dados (cultura, ano, preco_medio_kg, qtd_itens, ultima_compra):
+{str(dados[:300])}
+
+Responda APENAS em JSON válido, sem markdown, no formato:
+{{
+  "alertas": [
+    {{
+      "tipo": "ALTA_PRECO" | "DESABASTECIMENTO" | "SUPERFATURAMENTO",
+      "severidade": "ALTA" | "MEDIA" | "BAIXA",
+      "cultura": "nome da cultura",
+      "titulo": "título curto do alerta",
+      "descricao": "descrição detalhada com números específicos",
+      "recomendacao": "ação sugerida para gestores"
+    }}
+  ],
+  "resumo": "parágrafo resumindo os principais riscos encontrados"
+}}
+
+Gere no máximo 10 alertas, priorizando os mais críticos."""
+
+            msg = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=4000,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            texto = msg.content[0].text.strip()
+            if '```json' in texto:
+                texto = texto.split('```json', 1)[1].split('```', 1)[0].strip()
+            elif '```' in texto:
+                texto = texto.split('```', 1)[1].split('```', 1)[0].strip()
+
+            inicio = texto.find('{')
+            fim = texto.rfind('}')
+            if inicio != -1 and fim != -1:
+                texto = texto[inicio:fim+1]
+
+            resultado = json.loads(texto)
+            yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultado})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'fim'})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Alertas stream error: {str(e)}", exc_info=True)
+            yield f"data: {json.dumps({'tipo': 'erro', 'msg': 'Erro ao analisar alertas'})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+
 @app.post("/auditoria/executar")
 async def executar_auditoria(request: Request, _: str = Depends(verify_api_key)) -> AuditoriaResultado:
     """Executa auditoria de qualidade dos dados e licitações agrícolas."""
@@ -428,6 +532,98 @@ async def executar_auditoria(request: Request, _: str = Depends(verify_api_key))
     except Exception as e:
         logger.error("Auditoria error", exc_info=True)
         raise HTTPException(status_code=500, detail="Auditoria execution failed")
+
+@app.post("/auditoria/executar/stream")
+def executar_auditoria_stream(request: Request, _: str = Depends(verify_api_key)):
+    """Streaming version of auditoria executar."""
+    from datetime import datetime
+
+    def generate():
+        try:
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': '📊 Carregando dados de licitações...'})}\n\n"
+            sb = get_supabase_client()
+            alertas = []
+
+            itens_agro = sb.from_('itens_licitacao').select('id, licitacao_id').eq('relevante_agro', True).execute()
+            documentos = sb.from_('documentos_licitacao').select('licitacao_id').execute()
+            empenhos = sb.from_('empenhos').select('id, item_id, nr_empenho').execute()
+            licitacoes = sb.from_('licitacoes').select('id, processo, situacao').execute()
+
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': '🔍 Analisando inconsistências...'})}\n\n"
+
+            itens_agro_data = itens_agro.data or []
+            docs_data = documentos.data or []
+            empenhos_data = empenhos.data or []
+            lics_data = licitacoes.data or []
+
+            lics_agro_ids = set(r['licitacao_id'] for r in itens_agro_data)
+            lics_com_docs = set(d['licitacao_id'] for d in docs_data)
+            total_lics_agro = len(lics_agro_ids)
+            total_docs_agro = len(lics_com_docs & lics_agro_ids)
+            taxa_cobertura = (total_docs_agro / total_lics_agro * 100) if total_lics_agro > 0 else 0
+
+            item_to_lic = {i['id']: i['licitacao_id'] for i in itens_agro_data}
+            lics_com_empenhos = set()
+            for emp in empenhos_data:
+                item_id = emp.get('item_id')
+                if item_id and item_id in item_to_lic:
+                    lics_com_empenhos.add(item_to_lic[item_id])
+
+            lic_dict = {l['id']: l for l in lics_data}
+            empenhos_sem_docs = 0
+            for lic_id in lics_com_empenhos:
+                if lic_id not in lics_com_docs and lic_id in lic_dict:
+                    empenhos_sem_docs += 1
+                    lic = lic_dict[lic_id]
+                    alertas.append(AuditoriaAlerta(
+                        tipo='ERRO_BD',
+                        severidade='CRITICO',
+                        mensagem=f"CRÍTICO: Licitação {lic['processo']} com empenho(s) mas SEM documentação",
+                        processo=lic['processo']
+                    ))
+
+            for lic in lics_data:
+                if lic['id'] in lics_agro_ids and lic['id'] not in lics_com_docs and lic['situacao'] == 'Concluído':
+                    alertas.append(AuditoriaAlerta(
+                        tipo='ERRO_BD',
+                        severidade='GRAVE',
+                        mensagem=f"GRAVE: Licitação {lic['processo']} finalizada SEM documentação",
+                        processo=lic['processo']
+                    ))
+
+            alertas_criticos = sum(1 for a in alertas if a.severidade == 'CRITICO')
+            alertas_graves = sum(1 for a in alertas if a.severidade == 'GRAVE')
+
+            metricas = AuditoriaMetricas(
+                total_licitacoes_agro=total_lics_agro,
+                lics_com_docs=total_docs_agro,
+                taxa_cobertura_pct=round(taxa_cobertura, 1),
+                total_empenhos=len(empenhos_data),
+                lics_com_empenhos=len(lics_com_empenhos),
+                empenhos_sem_docs=empenhos_sem_docs,
+                lics_concluidas_sem_docs=alertas_graves,
+                alertas_criticos=alertas_criticos,
+                alertas_graves=alertas_graves
+            )
+
+            resultado = AuditoriaResultado(
+                metricas=metricas,
+                alertas=alertas[:50],
+                executado_em=datetime.now().isoformat()
+            )
+
+            yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultado.model_dump()})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'fim'})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Auditoria stream error: {str(e)}", exc_info=True)
+            yield f"data: {json.dumps({'tipo': 'erro', 'msg': 'Erro ao executar auditoria'})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 @app.post("/auditoria/chat")
 async def auditoria_chat(request_obj: Request, request: AuditoriaChatRequest, _: str = Depends(verify_api_key)) -> dict:

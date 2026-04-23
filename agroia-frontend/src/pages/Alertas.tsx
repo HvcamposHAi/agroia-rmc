@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { apiClient } from '../lib/apiClient'
+import ResponseRenderer from '../components/ResponseRenderer'
+import { streamPost } from '../lib/apiClient'
 
 interface Alerta {
   tipo: 'ALTA_PRECO' | 'DESABASTECIMENTO' | 'SUPERFATURAMENTO'
@@ -13,6 +14,12 @@ interface Alerta {
 interface ResultadoAlertas {
   alertas: Alerta[]
   resumo: string
+}
+
+interface StreamEvent {
+  tipo: 'status' | 'resultado' | 'erro' | 'fim'
+  msg?: string
+  dados?: ResultadoAlertas
 }
 
 const TIPO_CONFIG = {

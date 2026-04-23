@@ -57,14 +57,14 @@ export async function healthCheck(): Promise<{ status: string }> {
   return response.data
 }
 
-export async function* streamChat(request: ChatRequest): AsyncGenerator<SSEEvent> {
-  const response = await fetch(`${API_URL}/chat/stream`, {
+export async function* streamPost<T = any>(endpoint: string, body?: any): AsyncGenerator<T> {
+  const response = await fetch(`${API_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': API_KEY,
     },
-    body: JSON.stringify(request),
+    body: body ? JSON.stringify(body) : undefined,
   })
 
   if (!response.ok) {
@@ -88,11 +88,15 @@ export async function* streamChat(request: ChatRequest): AsyncGenerator<SSEEvent
         const json = line.slice(6)
         if (json === '[DONE]') return
         try {
-          yield JSON.parse(json) as SSEEvent
+          yield JSON.parse(json) as T
         } catch (e) {
           console.error('Failed to parse SSE event:', json, e)
         }
       }
     }
   }
+}
+
+export async function* streamChat(request: ChatRequest): AsyncGenerator<SSEEvent> {
+  yield* streamPost<SSEEvent>('/chat/stream', request)
 }
