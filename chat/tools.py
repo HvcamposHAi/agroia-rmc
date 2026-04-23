@@ -8,6 +8,9 @@ from chat.db import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
+# Categorias que NUNCA devem ser exibidas em respostas
+CATEGORIAS_EXCLUIR = {"PROCESSADOS_AF", "GRAOS_CEREAIS", "LATICINIOS", "NAO_CLASSIFICADO", "OUTRO"}
+
 _st_model = None
 _cache: dict[str, tuple[str, float]] = {}
 CACHE_TTL = 3600
@@ -90,6 +93,10 @@ def query_itens_agro(
         culturas_dict = {}
         for item in items_all:
             cult = item.get("cultura", "")
+            cat = item.get("categoria_v2", "")
+            # Excluir categorias não-agrícolas puras
+            if cat in CATEGORIAS_EXCLUIR:
+                continue
             if not cult:
                 continue
 
@@ -185,6 +192,9 @@ def query_itens_agro(
         categorias_dict = {}
         for item in items:
             cat = item.get("categoria_v2", "SEM_CATEGORIA")
+            # Excluir categorias não-agrícolas puras
+            if cat in CATEGORIAS_EXCLUIR:
+                continue
             if cat not in categorias_dict:
                 categorias_dict[cat] = {"licitacoes": set(), "itens": 0, "valor": 0}
             categorias_dict[cat]["licitacoes"].add(item.get("licitacao_id"))
@@ -371,8 +381,8 @@ TOOLS_SCHEMA = [
                 },
                 "categoria": {
                     "type": "string",
-                    "enum": ["HORTIFRUTI", "FRUTAS", "GRAOS_CEREAIS", "LATICINIOS", "PROTEINA_ANIMAL", "PROCESSADOS_AF"],
-                    "description": "Categoria agrícola"
+                    "enum": ["HORTIFRUTI", "FRUTAS", "PROTEINA_ANIMAL"],
+                    "description": "Apenas categorias agrícolas puras: hortaliças/frutas/proteína animal fresca"
                 },
                 "canal": {
                     "type": "string",
