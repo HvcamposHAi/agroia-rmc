@@ -1,10 +1,44 @@
 import json
 import logging
 import re
+import time
+import unicodedata
 from typing import Any
 from chat.db import get_supabase_client
 
 logger = logging.getLogger(__name__)
+
+_st_model = None
+_cache: dict[str, tuple[str, float]] = {}
+CACHE_TTL = 3600
+
+def get_st_model():
+    global _st_model
+    if _st_model is None:
+        from sentence_transformers import SentenceTransformer
+        _st_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+    return _st_model
+
+def normalize_pergunta(pergunta: str) -> str:
+    pergunta = pergunta.lower().strip()
+    pergunta = ''.join(c for c in unicodedata.normalize('NFD', pergunta) if unicodedata.category(c) != 'Mn')
+    return pergunta
+
+def get_cached(pergunta: str) -> str | None:
+    chave = normalize_pergunta(pergunta)
+    if chave in _cache:
+        resposta, timestamp = _cache[chave]
+        if time.time() - timestamp < CACHE_TTL:
+            logger.debug(f"Cache hit: {pergunta[:50]}")
+            return resposta
+        else:
+            del _cache[chave]
+    return None
+
+def set_cache(pergunta: str, resposta: str):
+    chave = normalize_pergunta(pergunta)
+    _cache[chave] = (resposta, time.time())
+    logger.debug(f"Cache set: {pergunta[:50]}")
 
 def sanitizar_string(valor: str, max_length: int = 100) -> str:
     """Sanitiza strings para prevenir SQL injection básico."""
@@ -307,8 +341,7 @@ def buscar_documentos_vetor(
     sb = get_supabase_client()
 
     try:
-        from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        model = get_st_model()
         embedding = model.encode(pergunta)
 
         result = sb.rpc(

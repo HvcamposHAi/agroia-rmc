@@ -12,6 +12,13 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
+export interface SSEEvent {
+  tipo: 'status' | 'token' | 'fim'
+  msg?: string
+  texto?: string
+  tools_usadas?: string[]
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
@@ -20,8 +27,8 @@ export interface ChatMessage {
 
 export interface ChatRequest {
   pergunta: string
-  session_id: string
-  historico: ChatMessage[]
+  session_id?: string
+  historico?: ChatMessage[]
 }
 
 export interface ChatResponse {
@@ -48,4 +55,44 @@ export async function deleteConversation(sessionId: string): Promise<{ success: 
 export async function healthCheck(): Promise<{ status: string }> {
   const response = await apiClient.get<{ status: string }>('/health')
   return response.data
+}
+
+export async function* streamChat(request: ChatRequest): AsyncGenerator<SSEEvent> {
+  const response = await fetch(`${API_URL}/chat/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY,
+    },
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Stream error: ${response.statusText}`)
+  }
+
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const json = line.slice(6)
+        if (json === '[DONE]') return
+        try {
+          yield JSON.parse(json) as SSEEvent
+        } catch (e) {
+          console.error('Failed to parse SSE event:', json, e)
+        }
+      }
+    }
+  }
 }

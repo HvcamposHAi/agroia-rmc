@@ -5,10 +5,12 @@ import logging
 from collections import defaultdict
 from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from chat.agent import chat
+from chat.agent import chat, chat_stream
+from chat.tools import get_cached, set_cache
 from chat.db import get_supabase_client
 
 load_dotenv()
@@ -171,6 +173,49 @@ def chat_endpoint(request_http: Request, request: ChatRequest, _: str = Depends(
             status_code=500,
             detail=f"Chat error: {str(e)[:100]}"
         )
+
+@app.post("/chat/stream")
+def chat_stream_endpoint(request_http: Request, request: ChatRequest, _: str = Depends(verify_api_key)):
+    """Streaming chat endpoint with SSE response."""
+    session_id = request.session_id or str(uuid.uuid4())
+
+    def generate():
+        try:
+            logger.info(f"[{session_id}] Stream chat request recebido (len={len(request.pergunta)})")
+            historico = request.historico or carregar_historico(session_id)
+
+            cached = get_cached(request.pergunta)
+            if cached:
+                logger.info(f"[{session_id}] Cache hit")
+                yield f"data: {json.dumps({'tipo': 'token', 'texto': cached})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'fim', 'tools_usadas': []})}\n\n"
+                return
+
+            resposta_completa = ""
+            tools_usadas = []
+
+            for event in chat_stream(request.pergunta, historico):
+                if event.get("tipo") == "token":
+                    resposta_completa += event.get("texto", "")
+                if event.get("tipo") == "fim":
+                    tools_usadas = event.get("tools_usadas", [])
+                yield f"data: {json.dumps(event)}\n\n"
+
+            set_cache(request.pergunta, resposta_completa)
+            salvar_turno(session_id, "user", request.pergunta)
+            salvar_turno(session_id, "assistant", resposta_completa, tools_usadas)
+            logger.info(f"[{session_id}] Stream response successful ({len(tools_usadas)} tools used)")
+
+        except Exception as e:
+            logger.error(f"[{session_id}] Stream chat error", exc_info=True)
+            yield f"data: {json.dumps({'tipo': 'token', 'texto': '⚠️ Erro ao processar sua pergunta. Tente novamente.'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'fim', 'tools_usadas': []})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 @app.get("/conversas/{session_id}")
 def obter_conversa(request: Request, session_id: str, _: str = Depends(verify_api_key)) -> list[dict]:

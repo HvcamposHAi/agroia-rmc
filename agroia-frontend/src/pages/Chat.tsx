@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-import { apiClient } from '../lib/apiClient'
+import ResponseRenderer from '../components/ResponseRenderer'
+import { streamChat } from '../lib/apiClient'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
+}
+
+function normalizeQuestion(q: string): string {
+  return q.toLowerCase().trim().replace(/[^\w\s]/g, '')
 }
 
 const SUGGESTIONS = [
@@ -20,29 +24,59 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [statusMsg, setStatusMsg] = useState('')
+  const [sessionId] = useState<string>()
+  const [responseCache] = useState(new Map<string, string>())
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, loading, statusMsg])
 
   const send = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || loading) return
 
+    const normalized = normalizeQuestion(trimmed)
+    const cached = responseCache.get(normalized)
+    if (cached) {
+      setMessages(prev => [...prev, { role: 'user', content: trimmed }, { role: 'assistant', content: cached }])
+      return
+    }
+
     const userMsg: Message = { role: 'user', content: trimmed }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
+    setStatusMsg('🔍 Analisando sua pergunta...')
 
     try {
-      const data = await apiClient.post('/chat', { pergunta: trimmed, historico: messages })
-      setMessages(prev => [...prev, { role: 'assistant', content: data.data.resposta ?? 'Sem resposta do servidor.' }])
-    } catch {
+      const assistantMsg: Message = { role: 'assistant', content: '' }
+      setMessages(prev => [...prev, assistantMsg])
+
+      let fullResponse = ''
+      for await (const event of streamChat({ pergunta: trimmed, historico: messages.slice(-6), session_id: sessionId as string | undefined })) {
+        if (event.tipo === 'status') {
+          setStatusMsg(event.msg || '⏳ Processando...')
+        } else if (event.tipo === 'token') {
+          fullResponse += event.texto || ''
+          setMessages(prev => {
+            const updated = [...prev]
+            updated[updated.length - 1].content = fullResponse
+            return updated
+          })
+        } else if (event.tipo === 'fim') {
+          responseCache.set(normalized, fullResponse)
+          setStatusMsg('')
+        }
+      }
+    } catch (err) {
+      console.error('Stream error:', err)
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Não foi possível conectar ao servidor. Verifique se o backend está rodando.' }])
     } finally {
       setLoading(false)
+      setStatusMsg('')
     }
   }
 
@@ -73,7 +107,7 @@ export default function Chat() {
             </div>
             <div className="msg-bubble">
               {msg.role === 'assistant' ? (
-                <ReactMarkdown className="markdown-content">{msg.content}</ReactMarkdown>
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
               ) : (
                 msg.content
               )}
@@ -81,12 +115,12 @@ export default function Chat() {
           </div>
         ))}
 
-        {loading && (
+        {statusMsg && (
           <div className="msg assistant">
             <div className="msg-avatar">🌾</div>
             <div className="msg-bubble" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span className="spinner" />
-              <span style={{ color: 'var(--texto-suave)', fontSize: 13 }}>Consultando os dados...</span>
+              <span style={{ color: 'var(--texto-suave)', fontSize: 13 }}>{statusMsg}</span>
             </div>
           </div>
         )}
