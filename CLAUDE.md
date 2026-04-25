@@ -109,9 +109,29 @@ Diagnostic scripts (safe to run, do not modify database):
 - `teste_download_correto.py`: Test PDF download flow
 - `verificar_status_db.py`: Check table row counts
 
+## Dados Sempre Atualizados
+
+**IMPORTANTE:** Para garantir que o Assistente sempre mostre dados corretos e atualizados (sem cache), usar:
+
+```bash
+# Resumo executivo dos dados (licitações, documentos, distribuição por ano)
+python dados_atualizados.py --resumo
+
+# Últimas 10 licitações (mais recentes)
+python dados_atualizados.py --licitacoes-recentes 10
+
+# Status da coleta de PDFs
+python dados_atualizados.py --status-coleta
+```
+
+Este script **SEMPRE consulta o banco de dados diretamente** (sem cache) e retorna JSON com timestamp UTC. Use antes de responder perguntas sobre status dos dados.
+
 ## Common Commands
 
 ```bash
+# Dados atualizados (SEMPRE usar isso para verificar status)
+python dados_atualizados.py --resumo
+
 # Test portal connection
 python diagnostico_portal.py
 

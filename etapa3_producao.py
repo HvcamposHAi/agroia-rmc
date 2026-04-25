@@ -543,6 +543,25 @@ def main():
                         salvar_checkpoint(checkpoint)
                         log(f"Checkpoint salvo: {checkpoint['processados']} processados")
 
+                # ── Limpar modal bloqueante antes de clicar em próxima página ──────
+                try:
+                    page.evaluate("""
+                        () => {
+                            const masks = document.querySelectorAll(
+                                '.rich-mpnl-mask-div-opaque,
+                                 .rich-mpnl-mask-div,
+                                 [id="form:waitDiv"]'
+                            );
+                            masks.forEach(el => {
+                                el.style.display = 'none';
+                                el.style.visibility = 'hidden';
+                                el.style.pointerEvents = 'none';
+                            });
+                        }
+                    """)
+                except Exception:
+                    pass
+
                 # Próxima página - tentar múltiplos seletores
                 proximo = None
 
@@ -560,7 +579,7 @@ def main():
 
                 if proximo and proximo.count() > 0:
                     try:
-                        proximo.click()
+                        proximo.click(timeout=15000)
                         time.sleep(2)
                         pagina += 1
                     except Exception as e:
