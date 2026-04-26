@@ -1,0 +1,150 @@
+{
+  "nome": "Contexto Agrícola - AgroIA-RMC",
+  "data_atualizacao": "2026-04-25",
+  "escopo": "AGRICULTURA EXCLUSIVAMENTE (relevante_af = true)",
+  "resumo_estatisticas": {
+    "periodo": "2019-2026",
+    "total_anos": 8,
+    "total_licitacoes_agro": 715,
+    "total_itens_agro": "7882+",
+    "categorias_principais": [
+      "LATICINIOS",
+      "GRAOS_CEREAIS",
+      "HORTIFRUTI",
+      "FRUTAS"
+    ],
+    "canais": [
+      "ARMAZEM_FAMILIA",
+      "PNAE",
+      "PAA",
+      "BANCO_ALIMENTOS",
+      "MESA_SOLIDARIA",
+      "OUTRO"
+    ]
+  },
+  "demanda_por_categoria": {
+    "LATICINIOS": {
+      "descricao": "Produtos lácteos (leite, queijo, iogurte, manteiga, nata, requeijão)",
+      "destaque": "Maior demanda em volume e valor, especialmente leite em litro",
+      "culturas_principais": [
+        "LEITE",
+        "QUEIJO",
+        "IOGURTE",
+        "MANTEIGA",
+        "REQUEIJÃO",
+        "NATA",
+        "PÃO DE QUEIJO"
+      ]
+    },
+    "GRAOS_CEREAIS": {
+      "descricao": "Grãos e cereais básicos",
+      "destaque": "Segunda maior demanda, volume consistente ao longo dos anos",
+      "culturas_principais": [
+        "ARROZ",
+        "FEIJÃO",
+        "MILHO",
+        "TRIGO",
+        "LENTILHA",
+        "ERVILHA",
+        "AVEIA",
+        "AMENDOIM",
+        "AMIDO DE MILHO"
+      ]
+    },
+    "HORTIFRUTI": {
+      "descricao": "Hortaliças, frutas processadas, extratos (tomate), temperos",
+      "destaque": "Terceira maior categoria, itens como EXTRATO DE TOMATE com altos valores",
+      "culturas_principais": [
+        "HORTALIÇA",
+        "EXTRATO DE TOMATE",
+        "TEMPERO",
+        "BATATA",
+        "PEPINO",
+        "MANDIOCA/AIPIM",
+        "ABÓBORA",
+        "FÉCULA DE BATATA"
+      ]
+    },
+    "FRUTAS": {
+      "descricao": "Frutas in natura e processadas",
+      "destaque": "Menor volume, mas presença consistente",
+      "culturas_principais": [
+        "UVA",
+        "AMEIXA",
+        "GOIABADA"
+      ]
+    }
+  },
+  "tendencias_por_ano": {
+    "2019": "Início da coleta, demanda inicial",
+    "2020": "Expansão de demanda, especialmente leite (5.5M litros+), arroz, feijão",
+    "2021": "Manutenção de demanda alta, diversificação de produtos lácteos",
+    "2022": "Pico de demanda, maior volume absoluto em quase todas categorias",
+    "2023": "Retração de demanda em relação a 2022, foco em ARMAZEM_FAMILIA",
+    "2024-2026": "Sem dados coletados (coleta interrompida em 2023)"
+  },
+  "canais_principais": {
+    "ARMAZEM_FAMILIA": {
+      "descricao": "Armazém da Família - principal canal de distribuição",
+      "volume": "Majoritário (>90% das licitações)",
+      "produtos": "Todos os tipos"
+    },
+    "OUTRO": {
+      "descricao": "Outros canais (especificado em licitações)",
+      "volume": "Minoritário (<5%)",
+      "nota": "Apareceu em 2023"
+    }
+  },
+  "dados_vw_demanda_agro_ano": {
+    "total_registros": 100,
+    "campos": [
+      "ano",
+      "canal",
+      "categoria_v2",
+      "cultura",
+      "unidade_medida",
+      "qtd_licitacoes",
+      "qtd_itens",
+      "volume_total",
+      "valor_total_r$"
+    ],
+    "nota": "Use para análises por período, categoria e produto"
+  },
+  "dados_vw_itens_agro": {
+    "total_registros": "7882+",
+    "campos": [
+      "id",
+      "licitacao_id",
+      "seq",
+      "codigo",
+      "descricao",
+      "qt_solicitada",
+      "unidade_medida",
+      "valor_unitario",
+      "valor_total",
+      "cultura",
+      "categoria_v2",
+      "relevante_agro (true para TODOS)",
+      "processo",
+      "dt_abertura",
+      "canal"
+    ],
+    "nota": "Todos os itens têm relevante_agro=true (já filtrados)"
+  },
+  "instrucoes_para_agente": {
+    "1_escopo": "Responder APENAS sobre licitações agrícolas da RMC (Curitiba SMSAN/FAAC)",
+    "2_filtro": "Todas as análises devem considerar APENAS relevante_agro=true",
+    "3_periodo": "Período conhecido: 2019-2023 (2024-2026 sem dados)",
+    "4_categorias": "Usar categorias_v2: LATICINIOS, GRAOS_CEREAIS, HORTIFRUTI, FRUTAS",
+    "5_canais": "Canais: ARMAZEM_FAMILIA (>90%), PNAE, PAA, BANCO_ALIMENTOS, MESA_SOLIDARIA, OUTRO",
+    "6_interpretacao": "Demanda em 2023 está reduzida; dados 2024-2026 não coletados = não há nova demanda",
+    "7_comparacao": "Comparar sempre com base em MESMO PERÍODO quando possível",
+    "8_unidades": "Atentar para unidades: LITRO, PACOTE, POTE, UNIDADE, KILOGRAMA, etc."
+  },
+  "insight_critico": {
+    "problema": "Coleta de dados interrompida após 2023",
+    "impacto": "Não há informação sobre demanda agrícola de 2024-2026",
+    "conclusao": "Quando perguntado sobre período recente: 'Não temos dados de demanda agrícola para 2024-2026'",
+    "recomendacao": "Retomar coleta de dados no portal Curitiba para manter base atualizada"
+  }
+}
