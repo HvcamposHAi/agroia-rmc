@@ -23,8 +23,10 @@ import os
 import re
 import math
 import time
+import json
 import signal
-from datetime import datetime
+import argparse
+from datetime import datetime, date
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 from bs4 import BeautifulSoup
@@ -40,10 +42,8 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("Missing required env vars: SUPABASE_URL, SUPABASE_KEY")
 
-PORTAL_URL = "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf"
+PORTAL_URL = "http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf"
 ORGAO      = "SMSAN/FAAC"
-DT_INICIO  = "01/01/2019"
-DT_FIM     = "31/12/2026"
 REGS_POR_PAG = 5
 DELAY        = 2.0
 DEBUG        = True
@@ -71,6 +71,68 @@ signal.signal(signal.SIGINT, handler_sigint)
 
 # ─── Conexão Supabase ─────────────────────────────────────────────────────────
 sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ─── Argumentos CLI ──────────────────────────────────────────────────────────
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Coleta de itens de licitações agrícolas"
+    )
+    parser.add_argument(
+        "--dt-inicio",
+        type=str,
+        default=None,
+        help="Data inicial (DD/MM/YYYY). Se omitida, usa MAX(dt_abertura) do banco."
+    )
+    parser.add_argument(
+        "--dt-fim",
+        type=str,
+        default=None,
+        help="Data final (DD/MM/YYYY). Se omitida, usa data de hoje."
+    )
+    parser.add_argument(
+        "--progress-file",
+        type=str,
+        default="coleta_status.json",
+        help="Arquivo para salvar progresso JSON."
+    )
+    return parser.parse_args()
+
+def get_data_mais_recente() -> str:
+    """Retorna MAX(dt_abertura) como DD/MM/YYYY, ou 01/01/2019 se vazio."""
+    try:
+        resp = sb.table("licitacoes").select("dt_abertura").order("dt_abertura", desc=True).limit(1).execute()
+        if resp.data and len(resp.data) > 0:
+            dt_str = resp.data[0]["dt_abertura"]
+            if dt_str:
+                d = datetime.strptime(dt_str, "%Y-%m-%d").date()
+                return d.strftime("%d/%m/%Y")
+        return "01/01/2019"
+    except Exception as e:
+        print(f"[!] Erro ao buscar data mais recente: {e}. Usando fallback.")
+        return "01/01/2019"
+
+def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando", status: str = "running"):
+    """Escreve progresso em JSON com timestamp."""
+    dados = {
+        "status": status,
+        "etapa": etapa,
+        "processados": stats.get("processados", 0),
+        "novos": stats.get("itens", 0),
+        "pulados": stats.get("pulados", 0),
+        "erros": stats.get("erros", 0),
+        "itens_coletados": stats.get("itens", 0),
+        "fornecedores": stats.get("fornecedores", 0),
+        "empenhos": stats.get("empenhos", 0),
+        "iniciado_em": stats.get("iniciado_em", datetime.now().isoformat()),
+        "atualizado_em": datetime.now().isoformat(),
+        "pid": os.getpid()
+    }
+    try:
+        with open(progress_file, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        if DEBUG:
+            print(f"[!] Erro ao escrever {progress_file}: {e}")
 
 # ─── Funções auxiliares ───────────────────────────────────────────────────────
 def parse_val(t):
@@ -764,7 +826,11 @@ def main():
         "pulados":        0,
         "erros":          0,
         "nao_encontrados": 0,
+        "iniciado_em":    datetime.now().isoformat(),
     }
+
+    # Escrever status inicial
+    escrever_progresso(PROGRESS_FILE, stats, etapa="iniciando", status="running")
 
     with sync_playwright() as p:
         print("\n[1] Abrindo navegador...")
@@ -901,6 +967,10 @@ def main():
                         INTERROMPIDO = True
                         break
 
+                # Salvar progresso a cada 10 processos
+                if stats["processados"] % 10 == 0 and stats["processados"] > 0:
+                    escrever_progresso(PROGRESS_FILE, stats, etapa="coletando", status="running")
+
                 time.sleep(DELAY)
 
             if INTERROMPIDO:
@@ -945,6 +1015,22 @@ def main():
         print("  (Interrompido — rode novamente para continuar)")
     print("=" * 65)
 
+    # Salvar status final
+    final_status = "cancelled" if INTERROMPIDO else "completed"
+    escrever_progresso(PROGRESS_FILE, stats, etapa="finalizado", status=final_status)
+
 
 if __name__ == "__main__":
+    args = parse_args()
+
+    # Resolve datas
+    DT_INICIO = args.dt_inicio if args.dt_inicio else get_data_mais_recente()
+    DT_FIM = args.dt_fim if args.dt_fim else datetime.now().strftime("%d/%m/%Y")
+    PROGRESS_FILE = args.progress_file
+
+    print(f"[>] Coleta iniciada")
+    print(f"    Data inicial: {DT_INICIO}")
+    print(f"    Data final:   {DT_FIM}")
+    print(f"    Arquivo de progresso: {PROGRESS_FILE}")
+
     main()

@@ -8,6 +8,7 @@ const navItems = [
   { to: '/alertas', icon: '🚨', label: 'Alertas IA' },
   { to: '/auditoria', icon: '🔎', label: 'Auditoria' },
   { to: '/documentos', icon: '📄', label: 'Documentos' },
+  { to: '/coleta', icon: '🔄', label: 'Atualização' },
 ]
 
 export default function Layout({ children }: { children?: ReactNode }) {
@@ -20,6 +21,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
     '/alertas': 'Alertas Inteligentes',
     '/auditoria': 'Auditoria de Dados',
     '/documentos': 'Documentos das Licitações',
+    '/coleta': 'Atualização de Dados',
   }
 
   return (

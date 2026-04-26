@@ -12,12 +12,12 @@ function normalizeQuestion(q: string): string {
 }
 
 const SUGGESTIONS = [
-  '🥬 Qual a demanda de alface em Curitiba?',
-  '🥕 Top culturas compradas pela prefeitura',
-  '📅 Licitações abertas em 2024',
-  '💰 Valor total de compras de hortaliças',
-  '🏫 Compras do PNAE neste ano',
-  '📦 Fornecedores de agricultura familiar',
+  '🥬 Quais hortaliças a prefeitura mais comprou nos últimos dois anos?',
+  '💰 Qual foi o preço médio pago por kg de alface no PNAE em 2023?',
+  '🍌 A prefeitura compra banana da terra? Quanto pagou no último ano?',
+  '🌾 Qual programa compra mais de agricultores familiares — PNAE ou Armazém?',
+  '📊 Quantos produtores forneceram alimentos para o PNAE em 2023?',
+  '💵 Quanto a prefeitura gastou com compras de agricultura familiar em 2024?',
 ]
 
 export default function Chat() {

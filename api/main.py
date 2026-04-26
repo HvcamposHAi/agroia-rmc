@@ -12,6 +12,11 @@ from dotenv import load_dotenv
 from chat.agent import chat, chat_stream
 from chat.tools import get_cached, set_cache
 from chat.db import get_supabase_client
+from api.coleta import (
+    iniciar_coleta, cancelar_coleta, get_status as get_coleta_status,
+    get_stats_classificacao, configurar_agendamento
+)
+import asyncio
 
 load_dotenv()
 
@@ -47,6 +52,13 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
+
+# ─── Evento de Startup ────────────────────────────────────────────────────
+@app.on_event("startup")
+async def startup_event():
+    """Configura agendamento e outras tarefas ao iniciar."""
+    configurar_agendamento(app)
+    logger.info("Agendamento configurado com sucesso")
 
 # SEC-002: API Key authentication
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -770,6 +782,62 @@ def root():
             "POST /auditoria/executar": "Executar auditoria sob demanda",
             "POST /auditoria/chat": "Discutir resultados da auditoria com IA",
             "GET /auditoria/consistencia": "Validar consistência entre Supabase e frontend",
+            "POST /coleta/iniciar": "Iniciar coleta de dados manualmente",
+            "POST /coleta/cancelar": "Cancelar coleta em andamento",
+            "GET /coleta/status": "Status da coleta",
+            "GET /coleta/stream": "Stream do progresso em tempo real (SSE)",
+            "GET /coleta/stats": "Estatísticas de classificação agrícola",
             "GET /docs": "Documentação Swagger"
         }
     }
+
+
+# ─── ENDPOINTS DE COLETA ───────────────────────────────────────────────────
+
+@app.post("/coleta/iniciar")
+async def endpoint_iniciar_coleta(api_key: str = Security(api_key_header)):
+    """Inicia uma coleta de dados manualmente."""
+    sucesso, msg = iniciar_coleta()
+    if sucesso:
+        return {"sucesso": True, "mensagem": msg, "status": get_coleta_status()}
+    else:
+        raise HTTPException(status_code=400, detail=msg)
+
+
+@app.post("/coleta/cancelar")
+async def endpoint_cancelar_coleta(api_key: str = Security(api_key_header)):
+    """Cancela a coleta em andamento."""
+    sucesso, msg = cancelar_coleta()
+    if sucesso:
+        return {"sucesso": True, "mensagem": msg}
+    else:
+        raise HTTPException(status_code=400, detail=msg)
+
+
+@app.get("/coleta/status")
+async def endpoint_get_coleta_status():
+    """Retorna status atual da coleta."""
+    return get_coleta_status()
+
+
+@app.get("/coleta/stream")
+async def endpoint_coleta_stream():
+    """Stream SSE do progresso da coleta (atualiza a cada 2 segundos)."""
+
+    async def evento_generator():
+        while True:
+            status = get_coleta_status()
+            yield f"data: {json.dumps(status)}\n\n"
+
+            if status.get("status") in ["completed", "cancelled", "error"]:
+                break
+
+            await asyncio.sleep(2)
+
+    return StreamingResponse(evento_generator(), media_type="text/event-stream")
+
+
+@app.get("/coleta/stats")
+async def endpoint_coleta_stats():
+    """Retorna estatísticas de classificação agrícola."""
+    return get_stats_classificacao()
