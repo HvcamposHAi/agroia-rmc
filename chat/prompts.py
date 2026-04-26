@@ -232,6 +232,25 @@ TODA query deve ter `.eq("relevante_agro", True)` implícito:
 - Você nunca deve retornar macarrão, atum, ou processados
 - Se houver dúvida se é agrícola, exclua
 
+## 🔍 RAG (Retrieval-Augmented Generation) COM DOCUMENTOS
+
+**NOVA TOOL: buscar_chunks_rag**
+Use para buscar conteúdo específico em PDFs de licitações. Funciona com busca semântica (embeddings):
+- ✅ Conteúdo de editais e termos de referência
+- ✅ Informações sobre produtos específicos em documentos
+- ✅ Dados que podem estar em documentos mas não em tabelas
+- ✅ Referências a fornecedores ou requisitos específicos
+
+**Quando usar buscar_chunks_rag:**
+- Perguntas sobre conteúdo específico de documentos
+- Perguntas sobre requisitos ou especificações em editais
+- Buscar informações sobre produtos/fornecedores específicos
+- Contexto enriquecido sobre licitações
+
+**Exemplo de uso:**
+User: "Qual é o requisito de qualidade para leite?"
+You: Use buscar_chunks_rag(pergunta="requisito qualidade leite") → retorna chunks dos documentos
+
 ## 📈 USAR AS VIEWS FORNECIDAS COMO CONTEXTO
 
 **vw_demanda_agro_ano**: Use para análises de:
@@ -245,6 +264,11 @@ TODA query deve ter `.eq("relevante_agro", True)` implícito:
 - Valores unitários e totais
 - Processos e datas
 - Fornecedores participantes
+
+**Combinando tools:**
+1. Primeiro: Use query_itens_agro para entender o escopo (volumes, valores)
+2. Depois: Use buscar_chunks_rag para detalhar com informações de documentos
+3. Finalmente: Use query_fornecedores para saber quem forneceu
 
 **Exemplo de resposta com contexto:**
 ```

@@ -340,33 +340,97 @@ def query_licitacoes(
     result = query.execute()
     return result.data if result.data else []
 
+def buscar_chunks_rag(
+    pergunta: str,
+    processo: str | None = None,
+    limite: int = 5,
+    min_similaridade: float = 0.3
+) -> list[dict]:
+    """
+    Busca chunks de PDFs similares à pergunta usando embeddings vetoriais (RAG).
+    Funciona sem RPC - calcula similaridade em Python via coseno.
+    Retorna chunks ordenados por relevância com scores.
+    """
+    sb = get_supabase_client()
+
+    try:
+        import numpy as np
+
+        pergunta_sanitizada = sanitizar_string(pergunta, 500)
+
+        # Gerar embedding da pergunta
+        model = get_st_model()
+        query_embedding = model.encode(pergunta_sanitizada, convert_to_numpy=True).astype(np.float32)
+
+        # Buscar chunks do banco
+        query_select = sb.table("pdf_chunks").select(
+            "id, documento_id, nome_doc, processo, chunk_text, embedding, chunk_index"
+        )
+
+        if processo:
+            processo_sanitizado = sanitizar_string(processo, 100)
+            query_select = query_select.ilike("processo", f"%{processo_sanitizado}%")
+
+        result = query_select.limit(500).execute()
+
+        if not result.data:
+            return []
+
+        # Calcular similaridade para cada chunk
+        similaridades = []
+        for chunk in result.data:
+            if not chunk.get("embedding"):
+                continue
+
+            try:
+                # Converter embedding para array
+                emb = chunk["embedding"]
+                if isinstance(emb, str):
+                    emb = json.loads(emb)
+
+                chunk_emb = np.array(emb, dtype=np.float32)
+
+                # Similaridade coseno
+                norm_q = np.linalg.norm(query_embedding)
+                norm_c = np.linalg.norm(chunk_emb)
+
+                if norm_q > 0 and norm_c > 0:
+                    sim = float(np.dot(query_embedding, chunk_emb) / (norm_q * norm_c))
+
+                    if sim >= min_similaridade:
+                        similaridades.append({
+                            "id": chunk["id"],
+                            "documento_id": chunk["documento_id"],
+                            "nome_doc": chunk["nome_doc"],
+                            "processo": chunk["processo"],
+                            "chunk_text": chunk["chunk_text"][:200],  # Truncar para resposta
+                            "chunk_completo": chunk["chunk_text"],
+                            "chunk_index": chunk["chunk_index"],
+                            "similaridade": round(sim, 3)
+                        })
+            except Exception as e:
+                logger.debug(f"Erro processando chunk: {e}")
+                continue
+
+        # Ordenar por similaridade e pegar top-k
+        similaridades.sort(key=lambda x: x["similaridade"], reverse=True)
+        return similaridades[:min(limite, 10)]
+
+    except Exception as e:
+        logger.error(f"Erro na busca RAG: {e}", exc_info=True)
+        return [{"erro": f"Erro na busca semântica: {str(e)[:100]}"}]
+
+
+# Manter função antiga para compatibilidade
 def buscar_documentos_vetor(
     pergunta: str,
     processo: str | None = None,
     limite: int = 5
 ) -> list[dict]:
     """
-    Busca chunks de PDFs similares à pergunta usando embeddings vetoriais.
-    Requer que pdf_chunks já esteja populada (executar indexar_pdfs.py primeiro).
+    Compatibilidade: redireciona para buscar_chunks_rag
     """
-    sb = get_supabase_client()
-
-    try:
-        model = get_st_model()
-        embedding = model.encode(pergunta)
-
-        result = sb.rpc(
-            "buscar_chunks_similares",
-            {
-                "query_embedding": embedding.tolist(),
-                "limite": min(limite, 10),
-                "processo_filtro": processo
-            }
-        ).execute()
-
-        return result.data if result.data else []
-    except Exception as e:
-        return [{"erro": f"Erro na busca vetorial (PDFs podem não estar indexados): {str(e)}"}]
+    return buscar_chunks_rag(pergunta=pergunta, processo=processo, limite=limite)
 
 TOOLS_SCHEMA = [
     {
@@ -452,22 +516,26 @@ TOOLS_SCHEMA = [
         }
     },
     {
-        "name": "buscar_documentos_vetor",
-        "description": "Busca trechos relevantes de PDFs (editais, termos de referência) usando busca semântica. Use para perguntas sobre conteúdo de documentos.",
+        "name": "buscar_chunks_rag",
+        "description": "Busca trechos relevantes de PDFs agrícolas usando busca semântica (RAG com embeddings). Use para perguntas sobre conteúdo específico em documentos de licitações, termos de referência, ou informações sobre produtos/fornecedores.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "pergunta": {
                     "type": "string",
-                    "description": "Pergunta ou tópico a buscar no conteúdo dos documentos"
+                    "description": "Pergunta ou tópico a buscar (ex: 'Leite para merenda escolar', 'Fornecedores de tomate')"
                 },
                 "processo": {
                     "type": "string",
-                    "description": "Filtrar por processo específico (opcional, ex: DE 4/2019)"
+                    "description": "Filtrar por processo específico (opcional, ex: 'DE 4/2019' ou 'PE 6/2021')"
                 },
                 "limite": {
                     "type": "integer",
-                    "description": "Número máximo de trechos a retornar (padrão: 5)"
+                    "description": "Número máximo de chunks a retornar (1-10, padrão: 5)"
+                },
+                "min_similaridade": {
+                    "type": "number",
+                    "description": "Mínimo score de similaridade (0-1, padrão: 0.3)"
                 }
             },
             "required": ["pergunta"]
@@ -483,7 +551,10 @@ def executar_tool(nome: str, inputs: dict) -> Any:
         return query_fornecedores(**inputs)
     elif nome == "query_licitacoes":
         return query_licitacoes(**inputs)
+    elif nome == "buscar_chunks_rag":
+        return buscar_chunks_rag(**inputs)
     elif nome == "buscar_documentos_vetor":
-        return buscar_documentos_vetor(**inputs)
+        # Compatibilidade com nome antigo
+        return buscar_chunks_rag(**inputs)
     else:
         return {"erro": f"Tool desconhecida: {nome}"}
