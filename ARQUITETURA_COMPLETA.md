@@ -249,21 +249,11 @@ JOIN licitacoes l ON i.licitacao_id = l.id
 WHERE i.relevante_agro = true;
 ```
 
-#### 1.3.2 `vw_itens_agro_puros`
-Itens agrícolas com campos normalizados.
-
-```sql
-CREATE VIEW vw_itens_agro_puros AS
-SELECT 
-  processo,
-  cultura,
-  qtd_solicitada::numeric as qt_solicitada,
-  valor_total,
-  dt_abertura
-FROM vw_itens_agro
-WHERE cultura IS NOT NULL
-  AND cultura NOT IN ('OUTRO', 'SERVIÇO', 'EQUIPAMENTO', 'EMBALAGEM');
-```
+#### 1.3.2 `vw_itens_agro_puros` (DEPRECATED)
+⚠️ **CONSOLIDADO**: Use `vw_itens_agro` diretamente. Esta view está deprecada e será removida.
+- Motivo: Simplificação — escopo é AGRICULTURA EXCLUSIVAMENTE
+- Data de depreciação: 2026-04-25
+- Remover em: 2026-05-01
 
 #### 1.3.3 `vw_demanda_agro_ano`
 Agregação anual por cultura.

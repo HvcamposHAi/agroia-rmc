@@ -226,7 +226,7 @@ async def executar_auditoria() -> AuditoriaResultado:
         sb = get_supabase_client()
 
         # Direto sem validar se view existe
-        r = sb.from_('vw_itens_agro_puros').select(
+        r = sb.from_('vw_itens_agro').select(
             'cultura, valor_total, qt_solicitada, dt_abertura'
         ).execute()  # ❌ Erro aqui se view não existe
 ```
@@ -240,7 +240,7 @@ async def executar_auditoria() -> AuditoriaResultado:
         sb = get_supabase_client()
         
         # 1. Validar views existem
-        required_views = ['vw_itens_agro_puros', 'itens_licitacao', 'documentos_licitacao']
+        required_views = ['vw_itens_agro', 'itens_licitacao', 'documentos_licitacao']
         for view_name in required_views:
             try:
                 sb.from_(view_name).select('1').limit(1).execute()
@@ -254,11 +254,11 @@ async def executar_auditoria() -> AuditoriaResultado:
         
         # 2. Resto do código com try/except detalhado
         try:
-            r = sb.from_('vw_itens_agro_puros').select(
+            r = sb.from_('vw_itens_agro').select(
                 'cultura, valor_total, qt_solicitada, dt_abertura'
             ).execute()
         except Exception as e:
-            logger.error(f"Failed to query vw_itens_agro_puros: {str(e)}")
+            logger.error(f"Failed to query vw_itens_agro: {str(e)}")
             raise HTTPException(status_code=503, detail="Database query failed")
         
         # ... resto do código com logging em cada passo ...
@@ -300,7 +300,7 @@ def test_auditoria_missing_view():
 
 ## Views Necessárias para Operação
 
-### 1. vw_itens_agro
+### 1. vw_itens_agro (PRINCIPAL)
 ```sql
 CREATE OR REPLACE VIEW vw_itens_agro AS
 SELECT 
@@ -312,20 +312,10 @@ FROM itens_licitacao i
 JOIN licitacoes l ON i.licitacao_id = l.id
 WHERE i.relevante_agro = true;
 ```
+**Descrição**: View base que filtra APENAS itens agrícolas (relevante_agro=true). Usada em: Dashboard, Consultas, Alertas, Auditoria.
 
-### 2. vw_itens_agro_puros
-```sql
-CREATE OR REPLACE VIEW vw_itens_agro_puros AS
-SELECT 
-  i.descricao, i.categoria_v2 as cultura,
-  SUM(i.valor_total) as valor_total,
-  SUM(i.qt_solicitada) as qt_solicitada,
-  l.dt_abertura
-FROM itens_licitacao i
-JOIN licitacoes l ON i.licitacao_id = l.id
-WHERE i.relevante_agro = true
-GROUP BY i.categoria_v2, l.dt_abertura, i.descricao;
-```
+### 2. vw_itens_agro_puros (DEPRECATED)
+⚠️ **DESCONTINUADO em 2026-04-25**. Use `vw_itens_agro` diretamente.
 
 ## Como Criar as Views
 

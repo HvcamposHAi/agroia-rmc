@@ -85,8 +85,8 @@ def verificar_cobertura_temporal(sb: Client) -> Verificacao:
         agro_min = min(agro_dates) if agro_dates else None
         agro_max = max(agro_dates) if agro_dates else None
 
-        # View: vw_itens_agro_puros
-        resp_puros = sb.from_('vw_itens_agro_puros').select('dt_abertura').limit(10000).execute()
+        # View: vw_itens_agro
+        resp_puros = sb.from_('vw_itens_agro').select('dt_abertura').limit(10000).execute()
         puros_dates = [row['dt_abertura'] for row in resp_puros.data if row['dt_abertura']]
         puros_min = min(puros_dates) if puros_dates else None
         puros_max = max(puros_dates) if puros_dates else None
@@ -94,14 +94,14 @@ def verificar_cobertura_temporal(sb: Client) -> Verificacao:
         detalhe = (
             f"licitacoes: {lic_min} a {lic_max} | "
             f"vw_itens_agro: {agro_min} a {agro_max} | "
-            f"vw_itens_agro_puros: {puros_min} a {puros_max}"
+            f"vw_itens_agro: {puros_min} a {puros_max}"
         )
 
         # Se alguma view não tem 2026, avisar
         status = 'OK'
         if puros_max and puros_max.startswith('202') and puros_max < '2025':
             status = 'CRITICO'
-            detalhe += " | ⚠️ vw_itens_agro_puros NÃO tem dados de 2025-2026!"
+            detalhe += " | ⚠️ vw_itens_agro NÃO tem dados de 2025-2026!"
         elif agro_max and agro_max < '2025':
             status = 'AVISO'
             detalhe += " | ⚠️ vw_itens_agro sem dados recentes"
@@ -119,7 +119,7 @@ def verificar_simulacao_dashboard(sb: Client) -> Verificacao:
     Se retorna 1000 exato, AVISO (pode ter truncamento).
     """
     try:
-        resp = sb.from_('vw_itens_agro_puros').select(
+        resp = sb.from_('vw_itens_agro').select(
             'cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2'
         ).execute()
 
@@ -135,7 +135,7 @@ def verificar_simulacao_dashboard(sb: Client) -> Verificacao:
             anos_str = "(nenhum)"
 
         # Agora consulta o total real (sem limite)
-        resp_total = sb.from_('vw_itens_agro_puros').select('id').execute()
+        resp_total = sb.from_('vw_itens_agro').select('id').execute()
         total_real = len(resp_total.data) if resp_total.data else 0
 
         detalhe = f"Dashboard retorna {rows_returned} de {total_real} rows (anos: {anos_str})"
@@ -160,7 +160,7 @@ def verificar_simulacao_consultas(sb: Client) -> Verificacao:
     Verifica se retorna dados recentes.
     """
     try:
-        resp = sb.from_('vw_itens_agro_puros').select(
+        resp = sb.from_('vw_itens_agro').select(
             '*'
         ).order('dt_abertura', {'ascending': False}).limit(1000).execute()
 
@@ -199,7 +199,7 @@ def verificar_row_counts(sb: Client) -> Verificacao:
             counts[table] = resp.count if resp.count is not None else -1
 
         # Views (sem count=exact, só contam com limit grande)
-        for view in ['vw_itens_agro', 'vw_itens_agro_puros']:
+        for view in ['vw_itens_agro', 'vw_itens_agro']:
             resp = sb.from_(view).select('id').limit(50000).execute()
             counts[view] = len(resp.data) if resp.data else 0
 
@@ -222,7 +222,7 @@ def verificar_views_funcionam(sb: Client) -> Verificacao:
     """Verifica se views retornam dados (não estão quebradas)."""
     try:
         status_views = {}
-        for view in ['vw_itens_agro', 'vw_itens_agro_puros', 'vw_demanda_agro_ano']:
+        for view in ['vw_itens_agro', 'vw_itens_agro', 'vw_demanda_agro_ano']:
             resp = sb.from_(view).select('*').limit(1).execute()
             status_views[view] = 'OK' if resp.data else 'VAZIA'
 
@@ -243,7 +243,7 @@ def verificar_threshold_alertas(sb: Client) -> Verificacao:
     """
     try:
         # Verifica o ano mais recente com dados
-        resp = sb.from_('vw_itens_agro_puros').select('dt_abertura').limit(10000).execute()
+        resp = sb.from_('vw_itens_agro').select('dt_abertura').limit(10000).execute()
         dates = [row['dt_abertura'] for row in resp.data if row['dt_abertura']]
         max_date = max(dates) if dates else None
 

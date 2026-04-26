@@ -4,10 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AgroIA-RMC** — Mestrado PPGCA/UEPG. Platform to coordinate family farming supply with public institutional demand in the Metropolitan Region of Curitiba (RMC).
+**AgroIA-RMC** — Mestrado PPGCA/UEPG. Platform to coordinate **FAMILY FARMING ONLY** with public institutional demand in the Metropolitan Region of Curitiba (RMC).
+
+**ESCOPO: AGRICULTURA EXCLUSIVAMENTE** (`relevante_af = true`)
+- 715 licitações agrícolas (57,8% do total SMSAN/FAAC)
+- Período: 30/08/2019 a 08/04/2026
+- Outras 522 licitações não-agrícolas são FORA DO ESCOPO e devem ser ignoradas
 
 Data source: JSF/RichFaces portal at `http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/` (requires Playwright for scraping)  
 Database: Supabase (`https://rsphlvcekuomvpvjqxqm.supabase.co`)
+
+**IMPORTANTE:** Ao consultar dados, SEMPRE filtrar por `relevante_af = true` para manter escopo exclusivamente agrícola.
 
 ## Data Collection Architecture
 

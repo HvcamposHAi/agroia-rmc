@@ -251,7 +251,7 @@ async def gerar_alertas(request: Request, _: str = Depends(verify_api_key)):
         sb = get_supabase_client()
 
         # Busca dados da view
-        r = sb.from_('vw_itens_agro_puros').select(
+        r = sb.from_('vw_itens_agro').select(
             'cultura, valor_total, qt_solicitada, dt_abertura'
         ).not_.is_('cultura', 'null').gt('qt_solicitada', 0).gt('valor_total', 0).execute()
 
@@ -350,7 +350,7 @@ def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
             sb = get_supabase_client()
             yield f"data: {json.dumps({'tipo': 'status', 'msg': '🔍 Buscando dados históricos...'})}\n\n"
 
-            r = sb.from_('vw_itens_agro_puros').select(
+            r = sb.from_('vw_itens_agro').select(
                 'cultura, valor_total, qt_solicitada, dt_abertura'
             ).not_.is_('cultura', 'null').gt('qt_solicitada', 0).gt('valor_total', 0).execute()
 
@@ -678,11 +678,11 @@ async def validar_consistencia(request: Request, _: str = Depends(verify_api_key
             lic_dates = [row['dt_abertura'] for row in (resp_lic.data or []) if row['dt_abertura']]
             lic_min, lic_max = (min(lic_dates), max(lic_dates)) if lic_dates else (None, None)
 
-            resp_puros = sb.from_('vw_itens_agro_puros').select('dt_abertura').limit(10000).execute()
+            resp_puros = sb.from_('vw_itens_agro').select('dt_abertura').limit(10000).execute()
             puros_dates = [row['dt_abertura'] for row in (resp_puros.data or []) if row['dt_abertura']]
             puros_min, puros_max = (min(puros_dates), max(puros_dates)) if puros_dates else (None, None)
 
-            detalhe = f"licitacoes: {lic_min} a {lic_max} | vw_itens_agro_puros: {puros_min} a {puros_max}"
+            detalhe = f"licitacoes: {lic_min} a {lic_max} | vw_itens_agro: {puros_min} a {puros_max}"
             status = 'CRITICO' if puros_max and puros_max < '2025' else 'OK'
             verificacoes.append(ConsistenciaVerificacao(nome='cobertura_temporal', status=status, detalhe=detalhe))
         except Exception as e:
@@ -690,10 +690,10 @@ async def validar_consistencia(request: Request, _: str = Depends(verify_api_key
 
         # 2. Simulação Dashboard (sem ORDER, sem LIMIT explícito)
         try:
-            resp = sb.from_('vw_itens_agro_puros').select('cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2').execute()
+            resp = sb.from_('vw_itens_agro').select('cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2').execute()
             rows_returned = len(resp.data) if resp.data else 0
 
-            resp_total = sb.from_('vw_itens_agro_puros').select('id').execute()
+            resp_total = sb.from_('vw_itens_agro').select('id').execute()
             total_real = len(resp_total.data) if resp_total.data else 0
 
             status = 'AVISO' if (rows_returned == 1000 and total_real > 1000) else 'OK'
@@ -720,7 +720,7 @@ async def validar_consistencia(request: Request, _: str = Depends(verify_api_key
         # 4. Views funcionam
         try:
             status_views = {}
-            for view in ['vw_itens_agro', 'vw_itens_agro_puros']:
+            for view in ['vw_itens_agro', 'vw_itens_agro']:
                 resp = sb.from_(view).select('*').limit(1).execute()
                 status_views[view] = 'OK' if resp.data else 'VAZIA'
 
@@ -732,7 +732,7 @@ async def validar_consistencia(request: Request, _: str = Depends(verify_api_key
 
         # 5. Threshold alertas
         try:
-            resp = sb.from_('vw_itens_agro_puros').select('dt_abertura').limit(10000).execute()
+            resp = sb.from_('vw_itens_agro').select('dt_abertura').limit(10000).execute()
             dates = [row['dt_abertura'] for row in (resp.data or []) if row['dt_abertura']]
             max_date = max(dates) if dates else None
 
