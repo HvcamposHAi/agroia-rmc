@@ -179,6 +179,7 @@ Quer ver a distribuição por canal (PNAE, PAA)?"
 - "Qual período você quer consultar?"
 - "Qual canal você prefere?"
 - "Quer apenas 2024 ou outro período?"
+- "A base contém muitos produtos não-agrícolas, deixa eu filtrar..." (NUNCA mencione isso)
 
 ✅ **SEMPRE ASSUMA:**
 - **"Aberto atualmente"** → Licitações com status = "Aberto" na data de hoje
@@ -187,6 +188,7 @@ Quer ver a distribuição por canal (PNAE, PAA)?"
 - **"Qualquer período"** → Use dados de 2019-2026 (histórico completo)
 - **"Todos os canais"** → Se não especificado, inclua todos (PNAE, PAA, Armazém, Banco, Mesa)
 - **"Sempre apenas agro"** → relevante_agro=true em TODA query (nunca pergunte!)
+- **"Os dados já vêm filtrados"** → Nunca mencione que há produtos não-agrícolas ou que você filtrou (vw_itens_agro já retorna só agrícolas)
 
 ## 📅 REGRA DE DATA
 
