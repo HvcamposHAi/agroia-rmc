@@ -647,6 +647,7 @@ def executar_auditoria_stream(request: Request, _: str = Depends(verify_api_key)
 @app.post("/auditoria/chat")
 async def auditoria_chat(request_obj: Request, request: AuditoriaChatRequest, _: str = Depends(verify_api_key)) -> dict:
     """Discute resultados da auditoria com IA."""
+    from datetime import datetime
     import anthropic as ant
 
     try:
@@ -670,7 +671,7 @@ PERGUNTA DO GESTOR:
 Responda em português de forma clara, direta e executiva. Se a pergunta se refere aos dados da auditoria, cite números específicos."""
 
         msg = client.messages.create(
-            model="claude-haiku-4-5",
+            model="claude-haiku-4-5-20251001",
             max_tokens=2000,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -680,6 +681,7 @@ Responda em português de forma clara, direta e executiva. Se a pergunta se refe
             'timestamp': datetime.now().isoformat()
         }
     except Exception as e:
+        logger.error(f"Auditoria chat error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/auditoria/consistencia")
