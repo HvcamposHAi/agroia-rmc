@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { streamPost } from '../lib/apiClient'
 import axios from 'axios'
 
@@ -70,7 +70,6 @@ export default function Coleta() {
   const [stats, setStats] = useState<StatsClass | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [nextExecutionTime, setNextExecutionTime] = useState<string | null>(null)
 
   // Carregar stats iniciais
   useEffect(() => {
@@ -214,7 +213,7 @@ export default function Coleta() {
             <div>
               <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>PRÓXIMA EXEC.</p>
               <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)' }}>
-                {nextExecutionTime || 'Próx. seg. 06:00'}
+                Próx. seg. 06:00
               </p>
             </div>
           </div>
