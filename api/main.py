@@ -395,7 +395,8 @@ def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
 
             yield f"data: {json.dumps({'tipo': 'status', 'msg': '💡 Analisando com IA...'})}\n\n"
 
-            client = get_client()
+            import anthropic as ant
+            client = ant.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
             from datetime import datetime, timedelta
             limiar_desabastecimento = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
