@@ -14,7 +14,7 @@ from chat.tools import get_cached, set_cache
 from chat.db import get_supabase_client
 from api.coleta import (
     iniciar_coleta, cancelar_coleta, get_status as get_coleta_status,
-    get_stats_classificacao, configurar_agendamento
+    get_stats_classificacao, configurar_agendamento, get_config, salvar_config
 )
 import asyncio
 
@@ -834,14 +834,31 @@ async def endpoint_coleta_stream():
     """Stream SSE do progresso da coleta (atualiza a cada 2 segundos)."""
 
     async def evento_generator():
+        idle_count = 0
         while True:
-            status = get_coleta_status()
-            yield f"data: {json.dumps(status)}\n\n"
+            try:
+                status = get_coleta_status()
+                yield f"data: {json.dumps(status)}\n\n"
 
-            if status.get("status") in ["completed", "cancelled", "error"]:
+                # Se status é "idle", espera um pouco mas continua tentando
+                # (pode ser que coleta foi iniciada mas ainda não atualizou status)
+                if status.get("status") == "idle":
+                    idle_count += 1
+                    # Se ficou idle por muito tempo, encerra
+                    if idle_count > 30:  # 60 segundos
+                        break
+                else:
+                    idle_count = 0
+
+                # Se coleta terminou, encerra o stream
+                if status.get("status") in ["completed", "cancelled", "error"]:
+                    break
+
+                await asyncio.sleep(2)
+            except Exception as e:
+                logger.error(f"Erro no stream SSE: {e}")
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
                 break
-
-            await asyncio.sleep(2)
 
     return StreamingResponse(evento_generator(), media_type="text/event-stream")
 
@@ -850,3 +867,41 @@ async def endpoint_coleta_stream():
 async def endpoint_coleta_stats():
     """Retorna estatísticas de classificação agrícola."""
     return get_stats_classificacao()
+
+
+@app.get("/coleta/config")
+async def endpoint_get_config():
+    """Retorna configuração de agendamento semanal."""
+    return get_config()
+
+
+@app.post("/coleta/config")
+async def endpoint_salvar_config(config: dict, api_key: str = Security(api_key_header)):
+    """Atualiza configuração de agendamento semanal."""
+    try:
+        # Validar valores
+        dia_semana = config.get("dia_semana", 0)
+        hora = config.get("hora", 6)
+        minuto = config.get("minuto", 0)
+
+        if not (0 <= dia_semana <= 6):
+            raise HTTPException(status_code=400, detail="dia_semana deve estar entre 0-6")
+        if not (0 <= hora <= 23):
+            raise HTTPException(status_code=400, detail="hora deve estar entre 0-23")
+        if not (0 <= minuto <= 59):
+            raise HTTPException(status_code=400, detail="minuto deve estar entre 0-59")
+
+        salvar_config({"dia_semana": dia_semana, "hora": hora, "minuto": minuto})
+
+        # Reconfigurar agendamento (se scheduler estiver rodando)
+        from api.coleta import scheduler
+        if scheduler and scheduler.running:
+            scheduler.shutdown()
+            configurar_agendamento(app)
+
+        return {"sucesso": True, "mensagem": "Configuração atualizada com sucesso"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao salvar config: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar: {str(e)}")

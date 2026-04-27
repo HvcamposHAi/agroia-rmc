@@ -14,6 +14,7 @@ from typing import Tuple, Dict, Any, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from chat.db import get_supabase_client
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ def cancelar_coleta() -> Tuple[bool, str]:
 def get_stats_classificacao() -> Dict[str, Any]:
     """
     Query Supabase: estatísticas sobre classificação agrícola.
-    Retorna contagens por relevante_af, categoria_v2, e por ano.
+    Retorna contagens por relevante_af, categoria_v2, documentação, e por ano.
     """
     try:
         sb = get_supabase_client()
@@ -181,8 +182,32 @@ def get_stats_classificacao() -> Dict[str, Any]:
                     anos_dict[year] += 1
             agro_por_ano = dict(sorted(anos_dict.items()))
 
+        # Licitações com e sem documentação (agrícolas)
+        resp_docs = sb.table("documentos_licitacao").select("licitacao_id", count="exact").execute()
+        lics_com_docs = set(row["licitacao_id"] for row in resp_docs.data) if resp_docs.data else set()
+        lics_agro_com_docs = 0
+        lics_agro_sem_docs = 0
+
+        # Contar agrícolas com e sem docs
+        resp_agro_lics = sb.table("licitacoes").select("id").eq("relevante_af", True).execute()
+        for lic in resp_agro_lics.data:
+            if lic["id"] in lics_com_docs:
+                lics_agro_com_docs += 1
+            else:
+                lics_agro_sem_docs += 1
+
+        # Média de itens por licitação
+        resp_itens_por_lic = sb.table("itens_licitacao").select("licitacao_id").execute()
+        from collections import Counter
+        if resp_itens_por_lic.data:
+            lics_count = Counter(x.get("licitacao_id") for x in resp_itens_por_lic.data)
+            media_itens_por_lic = round(len(resp_itens_por_lic.data) / len(lics_count), 1) if lics_count else 0
+        else:
+            media_itens_por_lic = 0
+
         # Cobertura agrícola
         cobertura_pct = round((total_agro / total_licitacoes * 100) if total_licitacoes > 0 else 0, 1)
+        cobertura_docs_agro = round((lics_agro_com_docs / total_agro * 100) if total_agro > 0 else 0, 1)
 
         return {
             "timestamp": datetime.now().isoformat(),
@@ -191,6 +216,10 @@ def get_stats_classificacao() -> Dict[str, Any]:
             "total_nao_agricolas": total_nao_agro,
             "cobertura_agricola_pct": cobertura_pct,
             "total_itens": total_itens,
+            "media_itens_por_licitacao": media_itens_por_lic,
+            "licitacoes_agro_com_docs": lics_agro_com_docs,
+            "licitacoes_agro_sem_docs": lics_agro_sem_docs,
+            "cobertura_documentos_agro_pct": cobertura_docs_agro,
             "itens_por_categoria": categorias_dict,
             "licitacoes_agricolas_por_ano": agro_por_ano
         }
@@ -218,6 +247,28 @@ def job_coleta_semanal():
         logger.warning(f"Coleta semanal falhou: {msg}")
 
 
+CONFIG_FILE = "coleta_config.json"
+
+def get_config() -> Dict[str, Any]:
+    """Lê configuração do agendamento."""
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Erro ao ler config: {e}")
+
+    return {"dia_semana": 0, "hora": 6, "minuto": 0}
+
+def salvar_config(config: Dict[str, Any]) -> None:
+    """Salva configuração do agendamento."""
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        logger.info(f"Configuração salva: dia_semana={config.get('dia_semana')}, hora={config.get('hora')}, minuto={config.get('minuto')}")
+    except Exception as e:
+        logger.error(f"Erro ao salvar config: {e}")
+
 def configurar_agendamento(app):
     """Configura APScheduler com job semanal."""
     global scheduler
@@ -225,8 +276,14 @@ def configurar_agendamento(app):
     try:
         scheduler = BackgroundScheduler(daemon=True)
 
-        # Segunda-feira às 06:00 (weekday 0 = Monday)
-        trigger = CronTrigger(day_of_week=0, hour=6, minute=0)
+        # Carregar configuração
+        config = get_config()
+        dia_semana = config.get("dia_semana", 0)
+        hora = config.get("hora", 6)
+        minuto = config.get("minuto", 0)
+
+        # Segunda-feira às 06:00 (weekday 0 = Monday) - ou conforme config
+        trigger = CronTrigger(day_of_week=dia_semana, hour=hora, minute=minuto)
         scheduler.add_job(
             job_coleta_semanal,
             trigger=trigger,
@@ -236,7 +293,8 @@ def configurar_agendamento(app):
         )
 
         scheduler.start()
-        logger.info("APScheduler iniciado com job semanal (seg 06:00)")
+        dias = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"]
+        logger.info(f"APScheduler iniciado com job semanal ({dias[dia_semana]} {hora:02d}:{minuto:02d})")
 
         # Cleanup ao desligar app
         def shutdown_scheduler():

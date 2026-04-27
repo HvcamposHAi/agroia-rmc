@@ -111,8 +111,9 @@ def get_data_mais_recente() -> str:
         print(f"[!] Erro ao buscar data mais recente: {e}. Usando fallback.")
         return "01/01/2019"
 
-def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando", status: str = "running"):
-    """Escreve progresso em JSON com timestamp."""
+def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando", status: str = "running",
+                      dt_inicio: str = None, dt_fim: str = None, portal_url: str = None, orgao: str = None, regs_por_pag: int = None):
+    """Escreve progresso em JSON com timestamp e parâmetros de consulta ao portal."""
     dados = {
         "status": status,
         "etapa": etapa,
@@ -127,6 +128,17 @@ def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando"
         "atualizado_em": datetime.now().isoformat(),
         "pid": os.getpid()
     }
+
+    # Adicionar informações de consulta ao portal se disponíveis
+    if dt_inicio or dt_fim or portal_url or orgao:
+        dados["consulta_portal"] = {
+            "url": portal_url or PORTAL_URL,
+            "orgao": orgao or ORGAO,
+            "dt_inicio": dt_inicio,
+            "dt_fim": dt_fim,
+            "registros_por_pagina": regs_por_pag or REGS_POR_PAG
+        }
+
     try:
         with open(progress_file, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2)
@@ -792,7 +804,7 @@ def carregar_licitacoes():
     return todas, ids_com_itens, indice, ids_sem_empenhos
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
-def main():
+def main(dt_inicio: str = None, dt_fim: str = None):
     global INTERROMPIDO
 
     print("=" * 65)
@@ -830,7 +842,9 @@ def main():
     }
 
     # Escrever status inicial
-    escrever_progresso(PROGRESS_FILE, stats, etapa="iniciando", status="running")
+    escrever_progresso(PROGRESS_FILE, stats, etapa="iniciando", status="running",
+                      dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
+                      orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
 
     with sync_playwright() as p:
         print("\n[1] Abrindo navegador...")
@@ -969,7 +983,9 @@ def main():
 
                 # Salvar progresso a cada 10 processos
                 if stats["processados"] % 10 == 0 and stats["processados"] > 0:
-                    escrever_progresso(PROGRESS_FILE, stats, etapa="coletando", status="running")
+                    escrever_progresso(PROGRESS_FILE, stats, etapa="coletando", status="running",
+                                      dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
+                                      orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
 
                 time.sleep(DELAY)
 
@@ -1017,7 +1033,9 @@ def main():
 
     # Salvar status final
     final_status = "cancelled" if INTERROMPIDO else "completed"
-    escrever_progresso(PROGRESS_FILE, stats, etapa="finalizado", status=final_status)
+    escrever_progresso(PROGRESS_FILE, stats, etapa="finalizado", status=final_status,
+                      dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
+                      orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
 
 
 if __name__ == "__main__":
@@ -1033,4 +1051,4 @@ if __name__ == "__main__":
     print(f"    Data final:   {DT_FIM}")
     print(f"    Arquivo de progresso: {PROGRESS_FILE}")
 
-    main()
+    main(dt_inicio=DT_INICIO, dt_fim=DT_FIM)

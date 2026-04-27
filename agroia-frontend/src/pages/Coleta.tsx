@@ -5,6 +5,14 @@ import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+interface ConsultaPortal {
+  url: string
+  orgao: string
+  dt_inicio: string
+  dt_fim: string
+  registros_por_pagina: number
+}
+
 interface StatusColeta {
   status: 'idle' | 'running' | 'completed' | 'cancelled' | 'error'
   etapa: string
@@ -18,6 +26,7 @@ interface StatusColeta {
   iniciado_em: string | null
   atualizado_em: string
   pid: number | null
+  consulta_portal?: ConsultaPortal
 }
 
 interface StatsClass {
@@ -29,6 +38,12 @@ interface StatsClass {
   total_itens: number
   itens_por_categoria: Record<string, number>
   licitacoes_agricolas_por_ano: Record<string, number>
+}
+
+interface ConfigAgendamento {
+  dia_semana: number  // 0 = seg, 1 = ter, ..., 6 = dom
+  hora: number        // 0-23
+  minuto: number      // 0-59
 }
 
 const ETAPA_LABELS: Record<string, string> = {
@@ -70,11 +85,15 @@ export default function Coleta() {
   const [stats, setStats] = useState<StatsClass | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState<'controle' | 'agendamento'>('controle')
+  const [config, setConfig] = useState<ConfigAgendamento>({ dia_semana: 0, hora: 6, minuto: 0 })
+  const [savingConfig, setSavingConfig] = useState(false)
 
   // Carregar stats iniciais
   useEffect(() => {
     loadStats()
     loadStatus()
+    loadConfig()
     const interval = setInterval(() => {
       if (!loading) {
         loadStatus()
@@ -121,10 +140,13 @@ export default function Coleta() {
   }
 
   const streamarProgresso = async () => {
+    // Aguardar um pouco para o subprocess ser iniciado
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
     try {
       for await (const event of streamPost<StatusColeta>('/coleta/stream')) {
         setStatus(event)
-        if (event.status !== 'running') {
+        if (event.status === 'completed' || event.status === 'cancelled' || event.status === 'error') {
           setLoading(false)
           loadStats()
           break
@@ -145,6 +167,31 @@ export default function Coleta() {
       loadStatus()
     } catch (e: any) {
       setError(e.response?.data?.detail || 'Erro ao cancelar coleta')
+    }
+  }
+
+  const loadConfig = async () => {
+    try {
+      const resp = await axios.get(`${API_BASE}/coleta/config`)
+      setConfig(resp.data)
+    } catch (e) {
+      console.error('Erro ao carregar configuração:', e)
+    }
+  }
+
+  const salvarConfig = async () => {
+    setSavingConfig(true)
+    try {
+      await axios.post(`${API_BASE}/coleta/config`, config, {
+        headers: { 'X-API-Key': import.meta.env.VITE_API_KEY || '' }
+      })
+      setError('')
+      alert('Configuração salva com sucesso! A coleta semanal foi atualizada.')
+      loadConfig()
+    } catch (e: any) {
+      setError(e.response?.data?.detail || 'Erro ao salvar configuração')
+    } finally {
+      setSavingConfig(false)
     }
   }
 
@@ -174,20 +221,63 @@ export default function Coleta() {
       .sort((a, b) => parseInt(a.ano) - parseInt(b.ano))
     : []
 
+  const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+
   return (
     <div className="page" style={{ maxWidth: 1400 }}>
-      {/* ─── SEÇÃO 1: Status & Controle ─────────────────────────────────── */}
+      {/* ─── HEADER COM ABAS ─────────────────────────────────────────── */}
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', marginBottom: 20 }}>
-          <div>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
-              📊 Atualização de Dados
-            </h2>
-            <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.6 }}>
-              Busque novos dados agrícolas do portal com um clique ou agende atualizações automáticas toda segunda-feira às 06:00.
-            </p>
-          </div>
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
+            📊 Atualização de Dados
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.6, margin: 0 }}>
+            Busque novos dados agrícolas do portal com um clique ou configure atualizações automáticas.
+          </p>
         </div>
+
+        {/* Abas */}
+        <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--borda)' }}>
+          <button
+            onClick={() => setActiveTab('controle')}
+            style={{
+              background: activeTab === 'controle' ? 'var(--verde)' : 'transparent',
+              color: activeTab === 'controle' ? '#fff' : 'var(--texto)',
+              border: 'none',
+              padding: '12px 20px',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              borderRadius: '8px 8px 0 0',
+              marginBottom: -2,
+            }}
+          >
+            🎮 Controle
+          </button>
+          <button
+            onClick={() => setActiveTab('agendamento')}
+            style={{
+              background: activeTab === 'agendamento' ? 'var(--verde)' : 'transparent',
+              color: activeTab === 'agendamento' ? '#fff' : 'var(--texto)',
+              border: 'none',
+              padding: '12px 20px',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              borderRadius: '8px 8px 0 0',
+              marginBottom: -2,
+              marginLeft: 8,
+            }}
+          >
+            ⏰ Agendamento
+          </button>
+        </div>
+      </div>
+
+      {/* ─── ABA 1: Controle ─────────────────────────────────────────── */}
+      {activeTab === 'controle' && (
+      <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
+        <div></div>
 
         {/* Status card */}
         <div style={{
@@ -265,6 +355,7 @@ export default function Coleta() {
           </div>
         )}
       </div>
+      )}
 
       {/* ─── SEÇÃO 2: Progresso em Tempo Real ─────────────────────────────── */}
       {loading && status && (
@@ -320,7 +411,158 @@ export default function Coleta() {
               <p style={{ fontSize: 18, fontWeight: 700, color: '#b91c1c' }}>{status.erros}</p>
             </div>
           </div>
+
+          {/* Informações de Consulta ao Portal */}
+          {status.consulta_portal && (
+            <div style={{ marginTop: 20, padding: 16, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 8 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 12, textTransform: 'uppercase' }}>
+                ℹ️ Consulta ao Portal
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13, lineHeight: 1.6, color: '#374151', fontFamily: 'monospace' }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 600 }}>URL:</p>
+                  <p style={{ margin: '4px 0 0 0', wordBreak: 'break-all', fontSize: 12 }}>{status.consulta_portal.url}</p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 600 }}>Órgão:</p>
+                  <p style={{ margin: '4px 0 0 0' }}>{status.consulta_portal.orgao}</p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 600 }}>Data Inicial:</p>
+                  <p style={{ margin: '4px 0 0 0' }}>{status.consulta_portal.dt_inicio}</p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 600 }}>Data Final:</p>
+                  <p style={{ margin: '4px 0 0 0' }}>{status.consulta_portal.dt_fim}</p>
+                </div>
+              </div>
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #d1d5db', fontSize: 12, color: '#6b7280' }}>
+                <p style={{ margin: 0 }}>Registros por página: <strong>{status.consulta_portal.registros_por_pagina}</strong></p>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* ─── ABA 2: Agendamento ──────────────────────────────────────── */}
+      {activeTab === 'agendamento' && (
+      <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--texto)', marginBottom: 20 }}>
+          ⏰ Configurar Agendamento Semanal
+        </h3>
+
+        <p style={{ fontSize: 14, color: 'var(--texto-suave)', marginBottom: 16 }}>
+          Configure o dia e hora para a coleta automática semanal. O sistema iniciará a coleta automaticamente neste horário.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
+          {/* Dia da Semana */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
+              Dia da Semana
+            </label>
+            <select
+              value={config.dia_semana}
+              onChange={(e) => setConfig({ ...config, dia_semana: parseInt(e.target.value) })}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid var(--borda)',
+                borderRadius: 8,
+                fontSize: 14,
+                fontFamily: 'Nunito',
+              }}
+            >
+              {diasSemana.map((dia, idx) => (
+                <option key={idx} value={idx}>{dia}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Hora */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
+              Hora (0-23)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="23"
+              value={config.hora}
+              onChange={(e) => setConfig({ ...config, hora: parseInt(e.target.value) || 0 })}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid var(--borda)',
+                borderRadius: 8,
+                fontSize: 14,
+                fontFamily: 'Nunito',
+              }}
+            />
+          </div>
+
+          {/* Minuto */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
+              Minuto (0-59)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={config.minuto}
+              onChange={(e) => setConfig({ ...config, minuto: parseInt(e.target.value) || 0 })}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid var(--borda)',
+                borderRadius: 8,
+                fontSize: 14,
+                fontFamily: 'Nunito',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div style={{
+          background: '#f0fdf4',
+          border: '1px solid #86efac',
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 24
+        }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#15803d', margin: 0 }}>
+            ✓ Coleta agendada para: <strong>{diasSemana[config.dia_semana]} às {config.hora.toString().padStart(2, '0')}:{config.minuto.toString().padStart(2, '0')}</strong>
+          </p>
+        </div>
+
+        {/* Botão Salvar */}
+        <button
+          onClick={salvarConfig}
+          disabled={savingConfig}
+          style={{
+            background: savingConfig ? 'var(--borda)' : 'var(--verde)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 12,
+            padding: '14px 28px',
+            fontFamily: 'Nunito',
+            fontSize: 15,
+            fontWeight: 800,
+            cursor: savingConfig ? 'not-allowed' : 'pointer',
+            opacity: savingConfig ? 0.6 : 1,
+          }}
+        >
+          {savingConfig ? '💾 Salvando...' : '💾 Salvar Configuração'}
+        </button>
+
+        {error && (
+          <div style={{ marginTop: 16, padding: 12, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c' }}>
+            <p style={{ fontSize: 14, margin: 0 }}>❌ {error}</p>
+          </div>
+        )}
+      </div>
       )}
 
       {/* ─── SEÇÃO 3: Estatísticas de Classificação ──────────────────────── */}
