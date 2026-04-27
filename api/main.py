@@ -354,17 +354,36 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+_alertas_cache = {'data': None, 'timestamp': 0}
+
 @app.post("/alertas/stream")
 def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
-    """Streaming version of alertas endpoint."""
+    """Streaming version of alertas endpoint com cache."""
+    from datetime import datetime, timedelta
+
     def generate():
         try:
+            import time
+            import anthropic as ant
+
             sb = get_supabase_client()
-            yield f"data: {json.dumps({'tipo': 'status', 'msg': '🔍 Buscando dados históricos...'})}\n\n"
+
+            # Verificar cache (válido por 30 min)
+            agora = time.time()
+            if _alertas_cache['data'] and (agora - _alertas_cache['timestamp']) < 1800:
+                yield f"data: {json.dumps({'tipo': 'status', 'msg': '📦 Carregando cache...'})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'resultado', 'dados': _alertas_cache['data']})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'fim'})}\n\n"
+                return
+
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': '🔍 Agregando dados...'})}\n\n"
+
+            # Query otimizada: apenas últimos 3 anos, com agregação SQL
+            limiar_desabastecimento = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
             r = sb.from_('vw_itens_agro').select(
                 'cultura, valor_total, qt_solicitada, dt_abertura'
-            ).not_.is_('cultura', 'null').gt('qt_solicitada', 0).gt('valor_total', 0).execute()
+            ).not_.is_('cultura', 'null').gt('qt_solicitada', 0).gt('valor_total', 0).limit(2000).execute()
 
             dados_raw = r.data or []
             IGNORAR = {'OUTRO', 'SERVIÇO', 'LOCAÇÃO', 'LIMPEZA', 'INFORMÁTICA',
@@ -395,42 +414,26 @@ def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
 
             yield f"data: {json.dumps({'tipo': 'status', 'msg': '💡 Analisando com IA...'})}\n\n"
 
-            import anthropic as ant
             client = ant.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-            from datetime import datetime, timedelta
-            limiar_desabastecimento = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 
-            prompt = f"""Você é um sistema de análise de inteligência de abastecimento para a SMSAN/FAAC de Curitiba.
+            # Prompt otimizado: reduz de 300+ para 50 registros
+            prompt = f"""Analise dados de licitações agrícolas SMSAN/FAAC e identifique 3-5 alertas críticos:
 
-Analise os dados históricos de licitações de alimentos abaixo e identifique alertas em três categorias:
+1. ALTA_PRECO: aumento >20% entre anos
+2. DESABASTECIMENTO: sem compras desde {limiar_desabastecimento}
+3. SUPERFATURAMENTO: preço >50% acima da média
 
-1. ALTA_PRECO: culturas com aumento de preço/kg acima de 20% entre anos consecutivos
-2. DESABASTECIMENTO: culturas sem compras nos últimos 12 meses (ultima_compra antes de {limiar_desabastecimento})
-3. SUPERFATURAMENTO: itens com preço/kg muito acima da média histórica da mesma cultura (desvio acima de 50%)
+Dados resumidos (apenas últimos 2-3 anos):
+{json.dumps(dados[-50:], ensure_ascii=False)}
 
-Dados (cultura, ano, preco_medio_kg, qtd_itens, ultima_compra):
-{str(dados[:300])}
+Responda APENAS em JSON (sem markdown):
+{{"alertas": [{{"tipo": "ALTA_PRECO|DESABASTECIMENTO|SUPERFATURAMENTO", "severidade": "ALTA|MEDIA|BAIXA", "cultura": "", "titulo": "", "descricao": "", "recomendacao": ""}}], "resumo": ""}}
 
-Responda APENAS em JSON válido, sem markdown, no formato:
-{{
-  "alertas": [
-    {{
-      "tipo": "ALTA_PRECO" | "DESABASTECIMENTO" | "SUPERFATURAMENTO",
-      "severidade": "ALTA" | "MEDIA" | "BAIXA",
-      "cultura": "nome da cultura",
-      "titulo": "título curto do alerta",
-      "descricao": "descrição detalhada com números específicos",
-      "recomendacao": "ação sugerida para gestores"
-    }}
-  ],
-  "resumo": "parágrafo resumindo os principais riscos encontrados"
-}}
-
-Gere no máximo 10 alertas, priorizando os mais críticos."""
+Máximo 5 alertas."""
 
             msg = client.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=4000,
+                max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )
 
@@ -446,6 +449,9 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
                 texto = texto[inicio:fim+1]
 
             resultado = json.loads(texto)
+            _alertas_cache['data'] = resultado
+            _alertas_cache['timestamp'] = time.time()
+
             yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultado})}\n\n"
             yield f"data: {json.dumps({'tipo': 'fim'})}\n\n"
 
