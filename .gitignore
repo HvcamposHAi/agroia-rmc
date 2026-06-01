@@ -44,3 +44,34 @@ coleta_checkpoint.json
 *.tmp
 *.bak
 .cache/
+
+# Windows file system artifacts
+desktop.ini
+Thumbs.db
+
+# Debug / diagnostic artifacts
+debug_*
+captura_visual.*
+pagina*.html
+pagina_pesquisa.html
+diagnostico_modal.html
+diagnostico_resultado.html
+
+# Runtime data files (regenerated on each run)
+agente_contexto_agro.json
+licitacoes_faltantes.json
+processo_lic_mapping.json
+retry_failed.json
+indexacao_erros.json
+teste_*_resultado.json
+
+# Generated analysis outputs
+*_por_valor.csv
+*_por_ano_*.csv
+*_principais.csv
+coleta_log.txt
+coleta_resultado.txt
+indexacao_log.txt
+indexacao_ocr_log.txt
+drive_mapeamento_procesos.txt
+agro_lic_ids.txt
