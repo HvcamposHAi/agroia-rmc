@@ -18,6 +18,9 @@ const SUGGESTIONS = [
   '🌾 Qual programa compra mais de agricultores familiares — PNAE ou Armazém?',
   '📊 Quantos produtores forneceram alimentos para o PNAE em 2023?',
   '💵 Quanto a prefeitura gastou com compras de agricultura familiar em 2024?',
+  '🍅 Como está o preço do tomate na CEASA hoje?',
+  '📈 Qual cultura está com melhor preço esta semana?',
+  '🥗 É bom momento para vender alface agora?',
 ]
 
 export default function Chat() {

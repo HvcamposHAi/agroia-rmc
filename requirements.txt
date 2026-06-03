@@ -41,3 +41,6 @@ apscheduler==3.10.4
 
 # Security & Best Practices
 requests==2.31.0
+
+# HTTP client (coleta PROHORT via streaming) — versão resolvida junto ao supabase
+httpx

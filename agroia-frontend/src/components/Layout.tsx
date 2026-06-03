@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 const navItems = [
   { to: '/', icon: '💬', label: 'Assistente' },
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
+  { to: '/mercado', icon: '💰', label: 'Mercado' },
   { to: '/consultas', icon: '🔍', label: 'Consultas' },
   { to: '/alertas', icon: '🚨', label: 'Alertas IA' },
   { to: '/auditoria', icon: '🔎', label: 'Auditoria' },
@@ -17,6 +18,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
   const titles: Record<string, string> = {
     '/': 'Assistente Agrícola',
     '/dashboard': 'Painel de Dados',
+    '/mercado': 'Preços de Mercado',
     '/consultas': 'Consultas de Licitações',
     '/alertas': 'Alertas Inteligentes',
     '/auditoria': 'Auditoria de Dados',

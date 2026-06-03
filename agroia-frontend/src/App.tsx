@@ -7,6 +7,7 @@ import Alertas from './pages/Alertas'
 import Documentos from './pages/Documentos'
 import Auditoria from './pages/Auditoria'
 import Coleta from './pages/Coleta'
+import Mercado from './pages/Mercado'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Chat />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="mercado" element={<Mercado />} />
           <Route path="consultas" element={<Consultas />} />
           <Route path="alertas" element={<Alertas />} />
           <Route path="documentos" element={<Documentos />} />

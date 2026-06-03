@@ -3,7 +3,7 @@ import os
 import json
 import logging
 from collections import defaultdict
-from fastapi import FastAPI, HTTPException, Depends, Security, Request
+from fastapi import FastAPI, HTTPException, Depends, Security, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import APIKeyHeader
@@ -811,6 +811,35 @@ async def endpoint_iniciar_coleta(api_key: str = Security(api_key_header)):
         return {"sucesso": True, "mensagem": msg, "status": get_coleta_status()}
     else:
         raise HTTPException(status_code=400, detail=msg)
+
+
+@app.post("/prohort/coletar")
+async def endpoint_prohort_coletar(
+    background_tasks: BackgroundTasks,
+    completo: bool = False,
+    sincrono: bool = False,
+    _: str = Depends(verify_api_key),
+):
+    """
+    Aciona a coleta de preços PROHORT/CONAB (tabela prohort_precos).
+
+    Query params:
+      completo=true  → backfill de todo o histórico (~4 anos das CEASAs alvo).
+      completo=false → apenas últimos 30 dias (coleta incremental diária). [padrão]
+      sincrono=true  → executa inline e retorna as contagens (use cliente paciente p/ backfill).
+      sincrono=false → executa em background e retorna 202 imediatamente. [padrão]
+    """
+    from chat.prohort_collector import coletar_prohort
+    dias = None if completo else 30
+    if sincrono:
+        resultado = await asyncio.to_thread(coletar_prohort, dias)
+        return {"sucesso": "erro" not in resultado, "resultado": resultado}
+    background_tasks.add_task(coletar_prohort, dias)
+    return {
+        "sucesso": True,
+        "modo": "background",
+        "mensagem": f"Coleta PROHORT iniciada em background (completo={completo}).",
+    }
 
 
 @app.post("/coleta/cancelar")

@@ -269,6 +269,16 @@ def salvar_config(config: Dict[str, Any]) -> None:
     except Exception as e:
         logger.error(f"Erro ao salvar config: {e}")
 
+def job_prohort_diario():
+    """Coleta incremental diária de preços PROHORT (últimos 30 dias). Import lazy."""
+    try:
+        from chat.prohort_collector import coletar_prohort
+        resultado = coletar_prohort(dias_recentes=30)
+        logger.info(f"Job PROHORT diário concluído: {resultado}")
+    except Exception as e:
+        logger.error(f"Erro no job PROHORT diário: {e}")
+
+
 def configurar_agendamento(app):
     """Configura APScheduler com job semanal."""
     global scheduler
@@ -291,6 +301,16 @@ def configurar_agendamento(app):
             name="Coleta de dados semanal",
             replace_existing=True
         )
+
+        # Job diário PROHORT (preços de atacado CEASA) — 06:30 todos os dias
+        scheduler.add_job(
+            job_prohort_diario,
+            trigger=CronTrigger(hour=6, minute=30),
+            id="prohort_diario",
+            name="Coleta diária de preços PROHORT",
+            replace_existing=True
+        )
+        logger.info("Job PROHORT diário agendado (todos os dias 06:30)")
 
         scheduler.start()
         dias = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"]

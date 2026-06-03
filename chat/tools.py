@@ -432,6 +432,104 @@ def buscar_documentos_vetor(
     """
     return buscar_chunks_rag(pergunta=pergunta, processo=processo, limite=limite)
 
+# ─── Tools PROHORT (preços de atacado CEASA — CONAB) ────────────────────────
+
+def _prohort_avaliacao(media30, media90) -> str:
+    """Compara média 30d vs 90d e retorna texto de avaliação do preço atual."""
+    if media30 and media90:
+        desvio = ((media30 - media90) / media90) * 100
+        if desvio < -10:
+            return "ABAIXO da média histórica (90 dias) — preço relativamente baixo."
+        if desvio > 10:
+            return "ACIMA da média histórica (90 dias) — preço relativamente alto."
+        return "NA MÉDIA histórica (90 dias)."
+    return "Histórico insuficiente para comparação."
+
+
+def prohort_consultar_preco(produto: str = "", ceasa: str = "CURITIBA") -> dict:
+    """Consulta preço atual/histórico de um produto na CEASA (v_prohort_analise)."""
+    produto = (produto or "").strip().lower()
+    ceasa = (ceasa or "CURITIBA").strip().upper()
+    if not produto:
+        return {"encontrado": False, "msg": "Informe o nome do produto (ex.: tomate, alface)."}
+    sb = get_supabase_client()
+    res = (sb.table("v_prohort_analise").select("*")
+           .ilike("produto_norm", f"%{produto}%").eq("ceasa", ceasa).execute())
+    if not res.data:
+        return {"encontrado": False,
+                "msg": f"Sem dados de preço para '{produto}' na CEASA {ceasa}. "
+                       "Tente o nome genérico (ex.: 'tomate' em vez de 'tomate italiano')."}
+    r = res.data[0]
+    return {
+        "encontrado": True,
+        "produto": r.get("produto_norm"),
+        "ceasa": ceasa,
+        "unidade": r.get("unidade") or "kg",
+        "ultima_cotacao": r.get("ultima_cotacao"),
+        "preco_min_30d": r.get("min_30d"),
+        "preco_medio_30d": r.get("media_30d"),
+        "preco_max_30d": r.get("max_30d"),
+        "media_90d": r.get("media_90d"),
+        "variacao_semanal_pct": r.get("variacao_semanal_pct"),
+        "avaliacao": _prohort_avaliacao(r.get("media_30d"), r.get("media_90d")),
+        "fonte": "CONAB/PROHORT (preços de atacado, referência para negociação).",
+    }
+
+
+def prohort_comparar_historico(produto: str = "", ceasa: str = "CURITIBA") -> dict:
+    """Compara média 30d vs 90d e recomenda momento de venda."""
+    produto = (produto or "").strip().lower()
+    ceasa = (ceasa or "CURITIBA").strip().upper()
+    if not produto:
+        return {"encontrado": False, "msg": "Informe o nome do produto."}
+    sb = get_supabase_client()
+    res = (sb.table("v_prohort_analise")
+           .select("produto_norm, media_30d, media_90d, variacao_semanal_pct, unidade, ultima_cotacao")
+           .ilike("produto_norm", f"%{produto}%").eq("ceasa", ceasa).execute())
+    if not res.data:
+        return {"encontrado": False, "msg": f"Sem dados históricos para '{produto}' na CEASA {ceasa}."}
+    r = res.data[0]
+    m30, m90 = r.get("media_30d"), r.get("media_90d")
+    if not m30 or not m90:
+        return {"encontrado": False, "msg": "Dados históricos insuficientes para comparação."}
+    desvio = round(((m30 - m90) / m90) * 100, 1)
+    if desvio < -10:
+        recomendacao = ("Preço atual ABAIXO da média de 90 dias. Pode não ser o melhor momento "
+                        "para vender, se houver possibilidade de aguardar.")
+    elif desvio > 10:
+        recomendacao = ("Preço atual ACIMA da média de 90 dias. Bom momento para vender, "
+                        "aproveitando o preço favorável.")
+    else:
+        recomendacao = "Preço dentro da faixa normal dos últimos 90 dias, sem alta ou baixa relevante."
+    return {
+        "encontrado": True, "produto": r.get("produto_norm"), "ceasa": ceasa,
+        "unidade": r.get("unidade") or "kg", "media_30d": m30, "media_90d": m90,
+        "desvio_pct": desvio, "recomendacao": recomendacao, "fonte": "CONAB/PROHORT",
+    }
+
+
+def prohort_ranking(limite: int = 5, ceasa: str = "CURITIBA") -> dict:
+    """Top produtos por valorização semanal na CEASA."""
+    limite = max(1, min(int(limite or 5), 20))
+    ceasa = (ceasa or "CURITIBA").strip().upper()
+    sb = get_supabase_client()
+    res = (sb.table("v_prohort_analise")
+           .select("produto_norm, media_30d, variacao_semanal_pct, unidade, ultima_cotacao")
+           .eq("ceasa", ceasa).not_.is_("variacao_semanal_pct", "null")
+           .order("variacao_semanal_pct", desc=True).limit(limite).execute())
+    if not res.data:
+        return {"encontrado": False,
+                "msg": "Ranking indisponível (histórico semanal ainda em formação)."}
+    return {
+        "encontrado": True, "ceasa": ceasa,
+        "ranking": [{
+            "produto": r.get("produto_norm"), "preco_medio_30d": r.get("media_30d"),
+            "unidade": r.get("unidade") or "kg", "variacao_semanal_pct": r.get("variacao_semanal_pct"),
+        } for r in res.data],
+        "fonte": "CONAB/PROHORT",
+    }
+
+
 TOOLS_SCHEMA = [
     {
         "name": "query_itens_agro",
@@ -540,7 +638,58 @@ TOOLS_SCHEMA = [
             },
             "required": ["pergunta"]
         }
-    }
+    },
+    {
+        "name": "consultar_preco_produto",
+        "description": (
+            "Consulta o preço atual e histórico de um produto hortigranjeiro na CEASA "
+            "(padrão Curitiba/RMC), com base nos dados oficiais do PROHORT/CONAB. Retorna preço "
+            "mínimo, médio e máximo dos últimos 30 dias, variação semanal e avaliação se o preço "
+            "está alto/médio/baixo. Use quando perguntarem sobre preço de mercado de um produto."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "produto": {"type": "string", "description": "Nome do produto (ex: tomate, alface, cenoura)"},
+                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                          "description": "CEASA de referência. Use CURITIBA para a RMC."},
+            },
+            "required": ["produto"],
+        },
+    },
+    {
+        "name": "comparar_preco_historico",
+        "description": (
+            "Compara o preço médio atual (30 dias) com a média de 90 dias na CEASA e indica se é "
+            "bom momento para vender. Use quando perguntarem 'vale a pena vender agora' ou "
+            "'como está o preço comparado com antes'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "produto": {"type": "string", "description": "Nome do produto"},
+                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                          "description": "CEASA de referência (padrão CURITIBA)."},
+            },
+            "required": ["produto"],
+        },
+    },
+    {
+        "name": "ranking_melhores_precos",
+        "description": (
+            "Retorna as culturas com maior valorização de preço na última semana na CEASA. "
+            "Use quando perguntarem 'qual produto está com bom preço' ou 'o que vale a pena "
+            "plantar pensando no preço'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limite": {"type": "integer", "description": "Quantidade de produtos (padrão 5)"},
+                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                          "description": "CEASA de referência (padrão CURITIBA)."},
+            },
+        },
+    },
 ]
 
 def executar_tool(nome: str, inputs: dict) -> Any:
@@ -556,5 +705,11 @@ def executar_tool(nome: str, inputs: dict) -> Any:
     elif nome == "buscar_documentos_vetor":
         # Compatibilidade com nome antigo
         return buscar_chunks_rag(**inputs)
+    elif nome == "consultar_preco_produto":
+        return prohort_consultar_preco(**inputs)
+    elif nome == "comparar_preco_historico":
+        return prohort_comparar_historico(**inputs)
+    elif nome == "ranking_melhores_precos":
+        return prohort_ranking(**inputs)
     else:
         return {"erro": f"Tool desconhecida: {nome}"}
