@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { CSSProperties } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -55,10 +54,13 @@ const CONV_SUGGESTIONS = [
   '🧺 Quero vender repolho, couve e beterraba. Quanto pedir?',
 ]
 
-const COR_VERDE = '#3a7d44'
-const COR_TERRA = '#8b5e3c'
-const COR_CEO   = '#4a9eda'
-const COR_BG    = '#fffdf9'
+// Cores das linhas do gráfico (recharts exige string de cor)
+const CHART_VERDE = '#3a7d44'
+const CHART_TERRA = '#8b5e3c'
+const CHART_CEO   = '#4a9eda'
+
+const fmtBRL = (v: number | null | undefined) =>
+  v == null ? 'N/D' : `R$ ${v.toFixed(2).replace('.', ',')}`
 
 function calcularSemaforo(a: Analise): { cor: SemaforoCor; texto: string } {
   const m30 = a.media_30d
@@ -70,6 +72,22 @@ function calcularSemaforo(a: Analise): { cor: SemaforoCor; texto: string } {
     return { cor: 'amarelo', texto: 'Preço dentro da média histórica' }
   }
   return { cor: 'cinza', texto: 'Histórico insuficiente' }
+}
+
+// Réplica EXATA da fórmula do backend (chat/tools.py :: _prohort_preco_sugerido)
+// para que o card "Sugerido" mostre o mesmo valor que o chat de preços.
+function precoSugerido(a: Analise): number | null {
+  const m30 = a.media_30d
+  if (m30 == null) return null
+  let base = m30
+  const v = a.variacao_semanal_pct
+  if (v != null) {
+    if (v > 5) base = m30 * 1.05
+    else if (v < -5) base = m30
+  }
+  if (a.min_30d != null) base = Math.max(base, a.min_30d)
+  if (a.max_30d != null) base = Math.min(base, a.max_30d)
+  return Math.round(base * 100) / 100
 }
 
 export default function Mercado() {
@@ -87,10 +105,32 @@ export default function Mercado() {
   const [convInput, setConvInput] = useState('')
   const [convLoading, setConvLoading] = useState(false)
   const [convStatus, setConvStatus]   = useState('')
-  const convEndRef = useRef<HTMLDivElement>(null)
 
+  // Scroll APENAS dentro da caixa de mensagens (a página nunca se move)
+  const messagesRef = useRef<HTMLDivElement>(null)
+  const atBottomRef = useRef(true)
+  const [mostrarIrFim, setMostrarIrFim] = useState(false)
+
+  const aoRolarMensagens = () => {
+    const el = messagesRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    atBottomRef.current = atBottom
+    setMostrarIrFim(!atBottom)
+  }
+
+  const irParaFim = () => {
+    const el = messagesRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+    atBottomRef.current = true
+    setMostrarIrFim(false)
+  }
+
+  // Acompanha o fim SÓ se o usuário já estava no fim — rola apenas o container interno.
   useEffect(() => {
-    convEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = messagesRef.current
+    if (el && atBottomRef.current) el.scrollTop = el.scrollHeight
   }, [convMsgs, convStatus])
 
   const enviarConversa = useCallback(async (texto: string) => {
@@ -98,6 +138,7 @@ export default function Mercado() {
     if (!msg || convLoading) return
     const labelCeasa = CEASAS.find((c) => c.value === ceasa)?.label ?? ceasa
     const historico = convMsgs.slice(-6)
+    atBottomRef.current = true   // ao enviar, acompanha a própria pergunta/resposta na caixa
     setConvMsgs((p) => [...p, { role: 'user', content: msg }, { role: 'assistant', content: '' }])
     setConvInput('')
     setConvLoading(true)
@@ -165,7 +206,6 @@ export default function Mercado() {
         return
       }
       setAnalise(aData[0] as Analise)
-      // recorta os últimos N dias da série
       const todos = (sData ?? []) as PontoSerie[]
       setSerie(todos.slice(Math.max(0, todos.length - periodo)))
     } catch (e: unknown) {
@@ -182,58 +222,83 @@ export default function Mercado() {
   }
 
   const semaforo = analise ? calcularSemaforo(analise) : null
+  const sugerido = analise ? precoSugerido(analise) : null
+  const unidade = analise?.unidade || 'kg'
 
   return (
-    <div style={{ padding: '24px', backgroundColor: COR_BG, minHeight: '100vh', fontFamily: 'Nunito, sans-serif' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.6rem', color: COR_VERDE, fontFamily: 'Fraunces, serif', margin: 0 }}>
+    <div className="page">
+      {/* Cabeçalho */}
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', margin: 0 }}>
           Preços de Mercado — CEASAs
-        </h1>
-        <p style={{ color: '#6b7280', marginTop: '4px', fontSize: '0.9rem' }}>
+        </h2>
+        <p style={{ fontSize: 14, color: 'var(--texto-suave)', marginTop: 6 }}>
           Dados oficiais PROHORT/CONAB · atacado · atualização diária
         </p>
       </div>
 
-      {/* ── Assistente conversacional de preços (IA) ───────────────────── */}
-      <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          <h3 style={{ margin: 0, fontSize: '1.05rem', color: COR_VERDE, fontFamily: 'Fraunces, serif' }}>
-            💬 Pergunte sobre preços
-          </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>CEASA:</span>
-            <select value={ceasa} onChange={(e) => setCeasa(e.target.value)} style={{ ...inputStyle, minWidth: '160px', padding: '6px 10px' }}>
+      {/* ── Assistente conversacional de preços (IA) — destaque ───────────── */}
+      <div className="chart-card" style={{ margin: '0 0 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+          <h3 style={{ margin: 0 }}>💬 Pergunte sobre preços</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600 }}>CEASA:</span>
+            <select className="filter-select" value={ceasa} onChange={(e) => setCeasa(e.target.value)}>
               {CEASAS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Mensagens */}
+        {/* Caixa de mensagens — rola POR DENTRO; a página fica parada */}
         {convMsgs.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', marginBottom: '12px', paddingRight: '4px' }}>
-            {convMsgs.map((m, i) => (
-              m.role === 'user' ? (
-                <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: COR_VERDE, color: 'white', padding: '8px 14px', borderRadius: '14px 14px 2px 14px', fontSize: '0.9rem' }}>
-                  {m.content}
+          <div style={{ position: 'relative', marginBottom: 14 }}>
+            <div
+              ref={messagesRef}
+              onScroll={aoRolarMensagens}
+              style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 440, overflowY: 'auto', padding: '4px 2px' }}
+            >
+              {convMsgs.map((m, i) => (
+                <div
+                  key={i}
+                  className={`msg ${m.role}`}
+                  style={m.role === 'assistant' ? { maxWidth: '100%' } : undefined}
+                >
+                  <div className="msg-avatar">{m.role === 'assistant' ? '🌾' : '👤'}</div>
+                  <div className="msg-bubble" style={m.role === 'assistant' ? { maxWidth: '100%', width: '100%' } : undefined}>
+                    {m.role === 'assistant'
+                      ? (m.content
+                          ? <ResponseRenderer content={m.content} />
+                          : <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span className="spinner" />
+                              <span style={{ color: 'var(--texto-suave)', fontSize: 13 }}>{convStatus || 'Processando...'}</span>
+                            </span>)
+                      : m.content}
+                  </div>
                 </div>
-              ) : (
-                <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '100%', backgroundColor: '#f7f5f0', padding: '10px 16px', borderRadius: '14px 14px 14px 2px', fontSize: '0.9rem', width: '100%' }}>
-                  {m.content
-                    ? <ResponseRenderer content={m.content} />
-                    : <span style={{ color: '#9ca3af' }}>{convStatus || '⏳ Processando...'}</span>}
-                </div>
-              )
-            ))}
-            <div ref={convEndRef} />
+              ))}
+            </div>
+
+            {mostrarIrFim && (
+              <button
+                onClick={irParaFim}
+                title="Ir para o fim"
+                style={{
+                  position: 'absolute', bottom: 8, right: 8, width: 34, height: 34, borderRadius: '50%',
+                  border: '1px solid var(--borda)', background: 'var(--branco)', color: 'var(--verde)',
+                  cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', fontSize: 16, lineHeight: 1,
+                }}
+              >
+                ↓
+              </button>
+            )}
           </div>
         )}
 
         {/* Sugestões (estado inicial) */}
         {convMsgs.length === 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             {CONV_SUGGESTIONS.map((s) => (
-              <button key={s} onClick={() => enviarConversa(s.replace(/^[^\s]+\s/, ''))}
-                style={{ padding: '6px 12px', borderRadius: '16px', cursor: 'pointer', border: '1.5px solid #d9d0c4', backgroundColor: COR_BG, color: '#374151', fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem' }}>
+              <button key={s} className="suggestion-btn" onClick={() => enviarConversa(s.replace(/^[^\s]+\s/, ''))}>
                 {s}
               </button>
             ))}
@@ -241,109 +306,85 @@ export default function Mercado() {
         )}
 
         {/* Entrada */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="chat-input-wrapper">
           <input
+            className="chat-input"
             value={convInput}
             onChange={(e) => setConvInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') enviarConversa(convInput) }}
             placeholder="Ex: tomate, alface e cenoura — quanto pedir?"
             disabled={convLoading}
-            style={{ ...inputStyle, flex: 1, minWidth: 0 }}
           />
-          <button
-            onClick={() => enviarConversa(convInput)}
-            disabled={convLoading || !convInput.trim()}
-            style={{ padding: '10px 22px', backgroundColor: convInput.trim() && !convLoading ? COR_VERDE : '#d1d5db', color: 'white', border: 'none', borderRadius: '8px', cursor: convInput.trim() && !convLoading ? 'pointer' : 'not-allowed', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}
-          >
-            {convLoading ? '...' : 'Perguntar'}
+          <button className="send-btn" onClick={() => enviarConversa(convInput)} disabled={convLoading || !convInput.trim()}>
+            <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z" /></svg>
           </button>
         </div>
-        <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '8px 0 0' }}>
+        <p style={{ fontSize: 11, color: 'var(--texto-suave)', marginTop: 8 }}>
           Traga sua lista de produtos. A IA responde com preço mínimo, médio, máximo e sugerido · Fonte: CONAB/PROHORT
         </p>
       </div>
 
-      {/* ── Consulta detalhada (gráfico) ───────────────────────────────── */}
-      <h3 style={{ fontSize: '1rem', color: '#374151', fontFamily: 'Fraunces, serif', margin: '0 0 12px' }}>
+      {/* ── Consulta detalhada por produto ───────────────────────────────── */}
+      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: 17, fontWeight: 700, color: 'var(--texto)', margin: '0 0 12px' }}>
         Consulta detalhada por produto
       </h3>
 
-      {/* Filtros */}
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '220px' }}>
-          <label style={labelStyle}>
-            Produto {produtos.length > 0 && (
-              <span style={{ color: '#9ca3af', fontWeight: 400 }}>({produtos.length} disponíveis)</span>
-            )}
-          </label>
-          <input
-            list="lista-produtos"
-            value={produto}
-            onChange={(e) => setProduto(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') consultar() }}
-            placeholder="Digite ou escolha na lista..."
-            style={inputStyle}
-          />
-          <datalist id="lista-produtos">
-            {produtos.map((p) => <option key={p} value={p} />)}
-          </datalist>
-        </div>
+      <div className="filters-bar" style={{ marginBottom: 16 }}>
+        <input
+          className="search-input"
+          list="lista-produtos"
+          value={produto}
+          onChange={(e) => setProduto(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') consultar() }}
+          placeholder="🔎 Digite ou escolha um produto..."
+        />
+        <datalist id="lista-produtos">
+          {produtos.map((p) => <option key={p} value={p} />)}
+        </datalist>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={labelStyle}>CEASA</label>
-          <select value={ceasa} onChange={(e) => setCeasa(e.target.value)} style={inputStyle}>
-            {CEASAS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-        </div>
+        <select className="filter-select" value={ceasa} onChange={(e) => setCeasa(e.target.value)}>
+          {CEASAS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={labelStyle}>Período</label>
-          <select value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))} style={inputStyle}>
-            {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-        </div>
+        <select className="filter-select" value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}>
+          {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
 
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-          <button
-            onClick={() => consultar()}
-            disabled={!produto || carregando}
-            style={{
-              padding: '10px 24px',
-              backgroundColor: produto ? COR_VERDE : '#d1d5db',
-              color: 'white', border: 'none', borderRadius: '8px',
-              cursor: produto ? 'pointer' : 'not-allowed',
-              fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.95rem',
-            }}
-          >
-            {carregando ? 'Consultando...' : 'Consultar'}
-          </button>
-        </div>
+        <button
+          onClick={() => consultar()}
+          disabled={!produto || carregando}
+          style={{
+            background: produto && !carregando ? 'var(--verde)' : 'var(--borda)',
+            color: '#fff', border: 'none', borderRadius: 10, padding: '9px 22px',
+            fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 14,
+            cursor: produto && !carregando ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {carregando ? 'Consultando...' : 'Consultar'}
+        </button>
+
+        {produtos.length > 0 && (
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--texto-suave)', fontWeight: 600 }}>
+            {produtos.length} produtos
+          </span>
+        )}
       </div>
 
       {erro && (
-        <div style={{ padding: '12px 16px', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#dc2626', marginBottom: '16px' }}>
+        <div style={{ padding: '12px 16px', background: '#fee2e2', borderRadius: 10, color: '#dc2626', marginBottom: 16, fontSize: 14 }}>
           {erro}
         </div>
       )}
 
-      {/* Lista de produtos disponíveis (chips clicáveis) */}
+      {/* Chips de produtos disponíveis (ajuda a escolher) */}
       {produtos.length > 0 && !analise && (
-        <div style={{ marginBottom: '24px' }}>
-          <p style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 600, margin: '0 0 8px' }}>
-            Produtos disponíveis na CEASA {ceasa} ({produtos.length}):
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600, margin: '0 0 10px' }}>
+            Produtos disponíveis na CEASA {ceasa}:
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {produtos.map((p) => (
-              <button
-                key={p}
-                onClick={() => consultar(p)}
-                style={{
-                  padding: '5px 12px', borderRadius: '16px', cursor: 'pointer',
-                  border: '1.5px solid #d9d0c4', backgroundColor: 'white',
-                  color: COR_VERDE, fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem',
-                  fontWeight: 600, textTransform: 'capitalize',
-                }}
-              >
+              <button key={p} className="suggestion-btn" style={{ textTransform: 'capitalize' }} onClick={() => consultar(p)}>
                 {p}
               </button>
             ))}
@@ -353,44 +394,58 @@ export default function Mercado() {
 
       {analise && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-            <CardPreco titulo="Preço Mínimo" valor={analise.min_30d} unidade={analise.unidade} cor={COR_VERDE} />
-            <CardPreco titulo="Preço Médio" valor={analise.media_30d} unidade={analise.unidade} cor={COR_CEO} destaque />
-            <CardPreco titulo="Preço Máximo" valor={analise.max_30d} unidade={analise.unidade} cor={COR_TERRA} />
-            <div style={cardStyle}>
-              <span style={cardTituloStyle}>Variação Semanal</span>
-              <span style={{
-                fontSize: '1.6rem', fontWeight: 800,
-                color: analise.variacao_semanal_pct != null
-                  ? (analise.variacao_semanal_pct > 0 ? '#dc2626' : (analise.variacao_semanal_pct < 0 ? COR_VERDE : '#374151'))
-                  : '#374151',
-              }}>
-                {analise.variacao_semanal_pct != null
-                  ? `${analise.variacao_semanal_pct > 0 ? '+' : ''}${analise.variacao_semanal_pct.toFixed(1)}%`
-                  : 'N/D'}
-              </span>
+          <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', marginBottom: 16 }}>
+            <div className="metric-card verde">
+              <span className="metric-icon">⬇️</span>
+              <div className="metric-label">Preço Mínimo</div>
+              <div className="metric-value">{fmtBRL(analise.min_30d)}</div>
+              <div className="metric-sub">/{unidade} · 30 dias</div>
+            </div>
+            <div className="metric-card ceu">
+              <span className="metric-icon">📊</span>
+              <div className="metric-label">Preço Médio</div>
+              <div className="metric-value">{fmtBRL(analise.media_30d)}</div>
+              <div className="metric-sub">/{unidade} · 30 dias</div>
+            </div>
+            <div className="metric-card terra">
+              <span className="metric-icon">⬆️</span>
+              <div className="metric-label">Preço Máximo</div>
+              <div className="metric-value">{fmtBRL(analise.max_30d)}</div>
+              <div className="metric-sub">/{unidade} · 30 dias</div>
+            </div>
+            <div className="metric-card amarelo">
+              <span className="metric-icon">🎯</span>
+              <div className="metric-label">Preço Sugerido</div>
+              <div className="metric-value">{fmtBRL(sugerido)}</div>
+              <div className="metric-sub">/{unidade} · referência de venda</div>
             </div>
           </div>
 
-          {semaforo && (
-            <div style={{ marginBottom: '24px' }}>
-              <SemaforoPreco semaforo={semaforo.cor} texto={semaforo.texto} />
-              <span style={{ marginLeft: '12px', fontSize: '0.8rem', color: '#9ca3af' }}>
-                Última cotação: {analise.ultima_cotacao ?? 'N/D'} · Fonte: CONAB/PROHORT
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
+            {semaforo && <SemaforoPreco semaforo={semaforo.cor} texto={semaforo.texto} />}
+            {analise.variacao_semanal_pct != null && (
+              <span style={{
+                fontSize: 13, fontWeight: 700,
+                color: analise.variacao_semanal_pct > 0 ? '#dc2626'
+                  : analise.variacao_semanal_pct < 0 ? 'var(--verde)' : 'var(--texto-suave)',
+              }}>
+                {analise.variacao_semanal_pct > 0 ? '▲' : analise.variacao_semanal_pct < 0 ? '▼' : '▬'}{' '}
+                {analise.variacao_semanal_pct > 0 ? '+' : ''}{analise.variacao_semanal_pct.toFixed(1)}% na semana
               </span>
-            </div>
-          )}
+            )}
+            <span style={{ fontSize: 12, color: 'var(--texto-suave)' }}>
+              Última cotação: {analise.ultima_cotacao ?? 'N/D'} · Fonte: CONAB/PROHORT
+            </span>
+          </div>
         </>
       )}
 
       {serie.length > 0 && (
-        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '24px' }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: '1rem', color: '#374151' }}>
-            Evolução do Preço — {produto.charAt(0).toUpperCase() + produto.slice(1)} / CEASA {ceasa}
-          </h3>
+        <div className="chart-card">
+          <h3>Evolução do Preço — {produto.charAt(0).toUpperCase() + produto.slice(1)} / CEASA {ceasa}</h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--cinza-claro)" />
               <XAxis dataKey="data_coleta" tickFormatter={formatarData} tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `R$${v}`} />
               <Tooltip
@@ -398,57 +453,23 @@ export default function Mercado() {
                 labelFormatter={(label) => `Data: ${formatarData(String(label))}`}
               />
               <Legend />
-              <Line type="monotone" dataKey="preco_medio" name="Preço Médio" stroke={COR_CEO} strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="preco_min" name="Mínimo" stroke={COR_VERDE} strokeWidth={1} strokeDasharray="4 2" dot={false} />
-              <Line type="monotone" dataKey="preco_max" name="Máximo" stroke={COR_TERRA} strokeWidth={1} strokeDasharray="4 2" dot={false} />
+              <Line type="monotone" dataKey="preco_medio" name="Preço Médio" stroke={CHART_CEO} strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="preco_min" name="Mínimo" stroke={CHART_VERDE} strokeWidth={1} strokeDasharray="4 2" dot={false} />
+              <Line type="monotone" dataKey="preco_max" name="Máximo" stroke={CHART_TERRA} strokeWidth={1} strokeDasharray="4 2" dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {!analise && !carregando && !erro && produtos.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
-          <p style={{ fontSize: '2.5rem', margin: 0 }}>🛒</p>
-          <p style={{ marginTop: '12px', fontFamily: 'Fraunces, serif', fontSize: '1.1rem' }}>
-            Selecione um produto e uma CEASA para consultar preços de atacado
+        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--texto-suave)' }}>
+          <p style={{ fontSize: 40, margin: 0 }}>🛒</p>
+          <p style={{ marginTop: 12, fontFamily: 'Fraunces, serif', fontSize: 17, color: 'var(--texto)' }}>
+            Selecione um produto e uma CEASA para ver os detalhes
           </p>
-          <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-            Dados do PROHORT/CONAB · atualizados diariamente
-          </p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>Dados do PROHORT/CONAB · atualizados diariamente</p>
         </div>
       )}
     </div>
   )
-}
-
-function CardPreco({ titulo, valor, unidade, cor, destaque = false }: {
-  titulo: string; valor: number | null; unidade: string | null; cor: string; destaque?: boolean
-}) {
-  return (
-    <div style={{ ...cardStyle, border: destaque ? `2px solid ${cor}` : '1px solid #e5e7eb' }}>
-      <span style={cardTituloStyle}>{titulo}</span>
-      <span style={{ fontSize: '1.6rem', fontWeight: 800, color: cor }}>
-        {valor != null ? `R$ ${valor.toFixed(2)}` : 'N/D'}
-      </span>
-      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>/{unidade || 'kg'}</span>
-    </div>
-  )
-}
-
-const labelStyle: CSSProperties = { fontSize: '0.8rem', color: '#374151', fontWeight: 600 }
-
-const cardTituloStyle: CSSProperties = {
-  fontSize: '0.75rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase',
-}
-
-const inputStyle: CSSProperties = {
-  padding: '9px 12px', border: '1.5px solid #d1d5db', borderRadius: '8px',
-  fontFamily: 'Nunito, sans-serif', fontSize: '0.9rem', color: '#111827',
-  backgroundColor: 'white', outline: 'none', minWidth: '180px',
-}
-
-const cardStyle: CSSProperties = {
-  backgroundColor: 'white', borderRadius: '12px', padding: '16px 20px',
-  display: 'flex', flexDirection: 'column', gap: '4px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb',
 }
