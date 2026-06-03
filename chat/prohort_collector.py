@@ -114,28 +114,29 @@ def coletar_prohort(dias_recentes: int | None = 30) -> dict:
                 logger.error(f"Colunas inesperadas no PROHORT: {list(chunk.columns)}")
                 return {"erro": "colunas_inesperadas", "linhas_inseridas": 0}
 
-            chunk["_ceasa_key"] = chunk["dsc_ceasa"].str.strip().str.upper().map(CEASA_ALIAS)
-            chunk = chunk[chunk["_ceasa_key"].notna()]
+            # nomes sem underscore inicial: itertuples renomearia colunas "_x" por posição
+            chunk["ceasa_key"] = chunk["dsc_ceasa"].str.strip().str.upper().map(CEASA_ALIAS)
+            chunk = chunk[chunk["ceasa_key"].notna()]
             if chunk.empty:
                 continue
 
-            chunk["_data"] = pd.to_datetime(
+            chunk["data_dt"] = pd.to_datetime(
                 chunk["data_preco"], format="%Y/%m/%d %H:%M:%S.%f", errors="coerce"
             )
-            chunk = chunk[chunk["_data"].notna()]
+            chunk = chunk[chunk["data_dt"].notna()]
             if cutoff is not None:
-                chunk = chunk[chunk["_data"] >= cutoff]
+                chunk = chunk[chunk["data_dt"] >= cutoff]
             if chunk.empty:
                 continue
 
             total_filtradas += len(chunk)
             for row in chunk.itertuples(index=False):
-                d = getattr(row, "_data")
+                d = getattr(row, "data_dt")
                 preco = _to_float(getattr(row, "preco_diario"))
                 if preco is None:
                     continue
                 produto_raw = str(getattr(row, "dsc_produto")).strip()
-                ceasa = getattr(row, "_ceasa_key")
+                ceasa = getattr(row, "ceasa_key")
                 data_iso = d.date().isoformat()
                 chave = (data_iso, ceasa, produto_raw)
                 dedup[chave] = {

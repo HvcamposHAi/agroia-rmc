@@ -89,23 +89,27 @@ export default function Mercado() {
     return () => { ativo = false }
   }, [ceasa])
 
-  const consultar = useCallback(async () => {
-    if (!produto) return
+  const consultar = useCallback(async (prodArg?: string) => {
+    const prod = (prodArg ?? produto).trim()
+    if (!prod) return
+    if (prodArg !== undefined) setProduto(prodArg)
     setCarregando(true)
     setErro(null)
     try {
+      const termo = prod.toLowerCase()
       const [{ data: aData, error: aErr }, { data: sData, error: sErr }] = await Promise.all([
         supabase.from('v_prohort_analise').select('*')
-          .ilike('produto_norm', `%${produto.toLowerCase()}%`).eq('ceasa', ceasa).limit(1),
+          .ilike('produto_norm', `%${termo}%`).eq('ceasa', ceasa)
+          .order('total_cotacoes', { ascending: false }).limit(1),
         supabase.from('v_prohort_serie_diaria')
           .select('data_coleta, preco_medio, preco_min, preco_max, unidade')
-          .ilike('produto_norm', `%${produto.toLowerCase()}%`).eq('ceasa', ceasa)
+          .ilike('produto_norm', `%${termo}%`).eq('ceasa', ceasa)
           .order('data_coleta', { ascending: true }),
       ])
       if (aErr || sErr) throw new Error((aErr ?? sErr)?.message ?? 'Erro na consulta')
       if (!aData || aData.length === 0) {
         setAnalise(null); setSerie([])
-        setErro(`Produto "${produto}" não encontrado na CEASA ${ceasa}.`)
+        setErro(`Produto "${prod}" não encontrado na CEASA ${ceasa}. Escolha um da lista abaixo.`)
         return
       }
       setAnalise(aData[0] as Analise)
@@ -141,12 +145,17 @@ export default function Mercado() {
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '220px' }}>
-          <label style={labelStyle}>Produto</label>
+          <label style={labelStyle}>
+            Produto {produtos.length > 0 && (
+              <span style={{ color: '#9ca3af', fontWeight: 400 }}>({produtos.length} disponíveis)</span>
+            )}
+          </label>
           <input
             list="lista-produtos"
             value={produto}
             onChange={(e) => setProduto(e.target.value)}
-            placeholder="Ex: tomate, alface..."
+            onKeyDown={(e) => { if (e.key === 'Enter') consultar() }}
+            placeholder="Digite ou escolha na lista..."
             style={inputStyle}
           />
           <datalist id="lista-produtos">
@@ -170,7 +179,7 @@ export default function Mercado() {
 
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <button
-            onClick={consultar}
+            onClick={() => consultar()}
             disabled={!produto || carregando}
             style={{
               padding: '10px 24px',
@@ -188,6 +197,31 @@ export default function Mercado() {
       {erro && (
         <div style={{ padding: '12px 16px', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#dc2626', marginBottom: '16px' }}>
           {erro}
+        </div>
+      )}
+
+      {/* Lista de produtos disponíveis (chips clicáveis) */}
+      {produtos.length > 0 && !analise && (
+        <div style={{ marginBottom: '24px' }}>
+          <p style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 600, margin: '0 0 8px' }}>
+            Produtos disponíveis na CEASA {ceasa} ({produtos.length}):
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {produtos.map((p) => (
+              <button
+                key={p}
+                onClick={() => consultar(p)}
+                style={{
+                  padding: '5px 12px', borderRadius: '16px', cursor: 'pointer',
+                  border: '1.5px solid #d9d0c4', backgroundColor: 'white',
+                  color: COR_VERDE, fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem',
+                  fontWeight: 600, textTransform: 'capitalize',
+                }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -246,7 +280,7 @@ export default function Mercado() {
         </div>
       )}
 
-      {!analise && !carregando && !erro && (
+      {!analise && !carregando && !erro && produtos.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
           <p style={{ fontSize: '2.5rem', margin: 0 }}>🛒</p>
           <p style={{ marginTop: '12px', fontFamily: 'Fraunces, serif', fontSize: '1.1rem' }}>
