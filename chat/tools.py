@@ -446,6 +446,47 @@ def _prohort_avaliacao(media30, media90) -> str:
     return "Histórico insuficiente para comparação."
 
 
+def _prohort_preco_sugerido(media30, min30, max30, variacao) -> float | None:
+    """
+    Preço sugerido de venda (referência de negociação) para o produtor.
+    Base = média de 30 dias; ajustada pela tendência semanal e limitada à faixa min/máx.
+    - mercado em alta (>+5%): sugere +5% sobre a média (pode pedir um pouco mais);
+    - mercado em queda (<-5%): mantém a média (não baixar além dela);
+    - estável: a própria média.
+    """
+    if media30 is None:
+        return None
+    base = float(media30)
+    if variacao is not None:
+        if variacao > 5:
+            base = base * 1.05
+        elif variacao < -5:
+            base = base  # mantém a média em mercado de queda
+    if min30 is not None:
+        base = max(base, float(min30))
+    if max30 is not None:
+        base = min(base, float(max30))
+    return round(base, 2)
+
+
+def _prohort_linha_produto(r: dict) -> dict:
+    """Monta o dict padronizado de um produto a partir de uma linha de v_prohort_analise."""
+    media30, min30, max30 = r.get("media_30d"), r.get("min_30d"), r.get("max_30d")
+    variacao = r.get("variacao_semanal_pct")
+    return {
+        "produto": r.get("produto_norm"),
+        "unidade": r.get("unidade") or "kg",
+        "preco_min_30d": min30,
+        "preco_medio_30d": media30,
+        "preco_max_30d": max30,
+        "preco_sugerido": _prohort_preco_sugerido(media30, min30, max30, variacao),
+        "variacao_semanal_pct": variacao,
+        "media_90d": r.get("media_90d"),
+        "avaliacao": _prohort_avaliacao(media30, r.get("media_90d")),
+        "ultima_cotacao": r.get("ultima_cotacao"),
+    }
+
+
 def prohort_consultar_preco(produto: str = "", ceasa: str = "CURITIBA") -> dict:
     """Consulta preço atual/histórico de um produto na CEASA (v_prohort_analise)."""
     produto = (produto or "").strip().lower()
@@ -459,19 +500,36 @@ def prohort_consultar_preco(produto: str = "", ceasa: str = "CURITIBA") -> dict:
         return {"encontrado": False,
                 "msg": f"Sem dados de preço para '{produto}' na CEASA {ceasa}. "
                        "Tente o nome genérico (ex.: 'tomate' em vez de 'tomate italiano')."}
-    r = res.data[0]
     return {
         "encontrado": True,
-        "produto": r.get("produto_norm"),
         "ceasa": ceasa,
-        "unidade": r.get("unidade") or "kg",
-        "ultima_cotacao": r.get("ultima_cotacao"),
-        "preco_min_30d": r.get("min_30d"),
-        "preco_medio_30d": r.get("media_30d"),
-        "preco_max_30d": r.get("max_30d"),
-        "media_90d": r.get("media_90d"),
-        "variacao_semanal_pct": r.get("variacao_semanal_pct"),
-        "avaliacao": _prohort_avaliacao(r.get("media_30d"), r.get("media_90d")),
+        **_prohort_linha_produto(res.data[0]),
+        "fonte": "CONAB/PROHORT (preços de atacado, referência para negociação).",
+    }
+
+
+def prohort_consultar_precos_lista(produtos: list = None, ceasa: str = "CURITIBA") -> dict:
+    """Consulta uma LISTA de produtos de uma vez; retorna itens + não encontrados."""
+    ceasa = (ceasa or "CURITIBA").strip().upper()
+    if not produtos or not isinstance(produtos, list):
+        return {"itens": [], "nao_encontrados": [], "msg": "Informe ao menos um produto."}
+    sb = get_supabase_client()
+    itens, nao_encontrados = [], []
+    for p in produtos:
+        termo = str(p or "").strip().lower()
+        if not termo:
+            continue
+        res = (sb.table("v_prohort_analise").select("*")
+               .ilike("produto_norm", f"%{termo}%").eq("ceasa", ceasa)
+               .order("total_cotacoes", desc=True).limit(1).execute())
+        if res.data:
+            itens.append(_prohort_linha_produto(res.data[0]))
+        else:
+            nao_encontrados.append(termo)
+    return {
+        "ceasa": ceasa,
+        "itens": itens,
+        "nao_encontrados": nao_encontrados,
         "fonte": "CONAB/PROHORT (preços de atacado, referência para negociação).",
     }
 
@@ -690,6 +748,28 @@ TOOLS_SCHEMA = [
             },
         },
     },
+    {
+        "name": "consultar_precos_lista",
+        "description": (
+            "Consulta o preço de VÁRIOS produtos de uma vez na CEASA (preço mínimo, médio, máximo, "
+            "sugerido de venda e tendência semanal por produto). Use SEMPRE que o produtor trouxer "
+            "uma lista de produtos (ex.: 'tomate, alface e cenoura') ou perguntar sobre mais de um "
+            "produto. Retorna também os produtos não encontrados."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "produtos": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Lista de nomes de produtos (ex: ['tomate','alface','cenoura'])",
+                },
+                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                          "description": "CEASA de referência (padrão CURITIBA)."},
+            },
+            "required": ["produtos"],
+        },
+    },
 ]
 
 def executar_tool(nome: str, inputs: dict) -> Any:
@@ -711,5 +791,7 @@ def executar_tool(nome: str, inputs: dict) -> Any:
         return prohort_comparar_historico(**inputs)
     elif nome == "ranking_melhores_precos":
         return prohort_ranking(**inputs)
+    elif nome == "consultar_precos_lista":
+        return prohort_consultar_precos_lista(**inputs)
     else:
         return {"erro": f"Tool desconhecida: {nome}"}

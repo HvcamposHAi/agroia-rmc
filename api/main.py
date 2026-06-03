@@ -10,6 +10,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from chat.agent import chat, chat_stream
+from chat.prompts import PRECOS_SYSTEM_PROMPT
 from chat.tools import get_cached, set_cache
 from chat.db import get_supabase_client
 from api.coleta import (
@@ -840,6 +841,30 @@ async def endpoint_prohort_coletar(
         "modo": "background",
         "mensagem": f"Coleta PROHORT iniciada em background (completo={completo}).",
     }
+
+
+@app.post("/prohort/chat/stream")
+def prohort_chat_stream_endpoint(request: ChatRequest, _: str = Depends(verify_api_key)):
+    """
+    Assistente conversacional de PREÇOS de mercado (PROHORT/CONAB), com streaming SSE.
+    Usa o mesmo agente, porém com prompt focado em preços (PRECOS_SYSTEM_PROMPT) e as tools
+    de preço (consultar_precos_lista etc.). Não persiste histórico (stateless por sessão).
+    """
+    def generate():
+        try:
+            historico = request.historico or []
+            for event in chat_stream(request.pergunta, historico, system_prompt=PRECOS_SYSTEM_PROMPT):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Prohort chat error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'tipo': 'token', 'texto': '⚠️ Erro ao consultar preços. Tente novamente.'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'fim', 'tools_usadas': []})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/coleta/cancelar")

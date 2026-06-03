@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
@@ -6,6 +6,9 @@ import {
 } from 'recharts'
 import { SemaforoPreco } from '../components/SemaforoPreco'
 import type { SemaforoCor } from '../components/SemaforoPreco'
+import ResponseRenderer from '../components/ResponseRenderer'
+import { streamPost } from '../lib/apiClient'
+import type { SSEEvent } from '../lib/apiClient'
 
 // Lê as views PROHORT diretamente do Supabase (mesmo padrão do Dashboard).
 const supabase = createClient(
@@ -45,6 +48,13 @@ const PERIODOS = [
   { value: 90, label: '90 dias' },
 ]
 
+const CONV_SUGGESTIONS = [
+  '🍅 Tomate, alface e cenoura — como estão os preços?',
+  '📈 Quais produtos estão com melhor preço esta semana?',
+  '🥔 Vale a pena vender batata agora?',
+  '🧺 Quero vender repolho, couve e beterraba. Quanto pedir?',
+]
+
 const COR_VERDE = '#3a7d44'
 const COR_TERRA = '#8b5e3c'
 const COR_CEO   = '#4a9eda'
@@ -71,6 +81,48 @@ export default function Mercado() {
   const [serie, setSerie]           = useState<PontoSerie[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro]             = useState<string | null>(null)
+
+  // Assistente conversacional de preços (IA)
+  const [convMsgs, setConvMsgs]   = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [convInput, setConvInput] = useState('')
+  const [convLoading, setConvLoading] = useState(false)
+  const [convStatus, setConvStatus]   = useState('')
+  const convEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    convEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [convMsgs, convStatus])
+
+  const enviarConversa = useCallback(async (texto: string) => {
+    const msg = texto.trim()
+    if (!msg || convLoading) return
+    const labelCeasa = CEASAS.find((c) => c.value === ceasa)?.label ?? ceasa
+    const historico = convMsgs.slice(-6)
+    setConvMsgs((p) => [...p, { role: 'user', content: msg }, { role: 'assistant', content: '' }])
+    setConvInput('')
+    setConvLoading(true)
+    setConvStatus('🔍 Consultando preços...')
+    try {
+      const pergunta = `[CEASA de referência: ${labelCeasa} (${ceasa})]\n${msg}`
+      let full = ''
+      for await (const ev of streamPost<SSEEvent>('/prohort/chat/stream', { pergunta, historico })) {
+        if (ev.tipo === 'status') setConvStatus(ev.msg || '⏳ Processando...')
+        else if (ev.tipo === 'token') {
+          full += ev.texto || ''
+          setConvMsgs((p) => { const u = [...p]; u[u.length - 1].content = full; return u })
+        } else if (ev.tipo === 'fim') setConvStatus('')
+      }
+    } catch {
+      setConvMsgs((p) => {
+        const u = [...p]
+        u[u.length - 1].content = '⚠️ Não foi possível consultar agora. Verifique se o servidor está ativo e tente novamente.'
+        return u
+      })
+    } finally {
+      setConvLoading(false)
+      setConvStatus('')
+    }
+  }, [convMsgs, convLoading, ceasa])
 
   // Lista de produtos disponíveis ao mudar CEASA
   useEffect(() => {
@@ -141,6 +193,80 @@ export default function Mercado() {
           Dados oficiais PROHORT/CONAB · atacado · atualização diária
         </p>
       </div>
+
+      {/* ── Assistente conversacional de preços (IA) ───────────────────── */}
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', color: COR_VERDE, fontFamily: 'Fraunces, serif' }}>
+            💬 Pergunte sobre preços
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>CEASA:</span>
+            <select value={ceasa} onChange={(e) => setCeasa(e.target.value)} style={{ ...inputStyle, minWidth: '160px', padding: '6px 10px' }}>
+              {CEASAS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Mensagens */}
+        {convMsgs.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', marginBottom: '12px', paddingRight: '4px' }}>
+            {convMsgs.map((m, i) => (
+              m.role === 'user' ? (
+                <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: COR_VERDE, color: 'white', padding: '8px 14px', borderRadius: '14px 14px 2px 14px', fontSize: '0.9rem' }}>
+                  {m.content}
+                </div>
+              ) : (
+                <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '100%', backgroundColor: '#f7f5f0', padding: '10px 16px', borderRadius: '14px 14px 14px 2px', fontSize: '0.9rem', width: '100%' }}>
+                  {m.content
+                    ? <ResponseRenderer content={m.content} />
+                    : <span style={{ color: '#9ca3af' }}>{convStatus || '⏳ Processando...'}</span>}
+                </div>
+              )
+            ))}
+            <div ref={convEndRef} />
+          </div>
+        )}
+
+        {/* Sugestões (estado inicial) */}
+        {convMsgs.length === 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            {CONV_SUGGESTIONS.map((s) => (
+              <button key={s} onClick={() => enviarConversa(s.replace(/^[^\s]+\s/, ''))}
+                style={{ padding: '6px 12px', borderRadius: '16px', cursor: 'pointer', border: '1.5px solid #d9d0c4', backgroundColor: COR_BG, color: '#374151', fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem' }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Entrada */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            value={convInput}
+            onChange={(e) => setConvInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') enviarConversa(convInput) }}
+            placeholder="Ex: tomate, alface e cenoura — quanto pedir?"
+            disabled={convLoading}
+            style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+          />
+          <button
+            onClick={() => enviarConversa(convInput)}
+            disabled={convLoading || !convInput.trim()}
+            style={{ padding: '10px 22px', backgroundColor: convInput.trim() && !convLoading ? COR_VERDE : '#d1d5db', color: 'white', border: 'none', borderRadius: '8px', cursor: convInput.trim() && !convLoading ? 'pointer' : 'not-allowed', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}
+          >
+            {convLoading ? '...' : 'Perguntar'}
+          </button>
+        </div>
+        <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '8px 0 0' }}>
+          Traga sua lista de produtos. A IA responde com preço mínimo, médio, máximo e sugerido · Fonte: CONAB/PROHORT
+        </p>
+      </div>
+
+      {/* ── Consulta detalhada (gráfico) ───────────────────────────────── */}
+      <h3 style={{ fontSize: '1rem', color: '#374151', fontFamily: 'Fraunces, serif', margin: '0 0 12px' }}>
+        Consulta detalhada por produto
+      </h3>
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
