@@ -588,7 +588,11 @@ def prohort_ranking(limite: int = 5, ceasa: str = "CURITIBA") -> dict:
     }
 
 
-CEASAS_BASE = ["CURITIBA", "MARINGA", "SAO PAULO"]
+# Entrepostos PROHORT coletados (mesmo contrato do coletor e do frontend).
+CEASAS_BASE = [
+    "SAO PAULO", "RIBEIRAO PRETO", "SAO JOSE DO RIO PRETO", "SAO JOSE DOS CAMPOS", "SOROCABA",
+    "CURITIBA", "MARINGA", "FOZ DO IGUACU", "CASCAVEL", "FLORIANOPOLIS", "PORTO ALEGRE",
+]
 
 
 def prohort_comparar_ceasas(produto: str = "", ceasas: list = None) -> dict:
@@ -776,7 +780,7 @@ TOOLS_SCHEMA = [
             "type": "object",
             "properties": {
                 "produto": {"type": "string", "description": "Nome do produto (ex: tomate, alface, cenoura)"},
-                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                "ceasa": {"type": "string",
                           "description": "CEASA de referência. Use CURITIBA para a RMC."},
             },
             "required": ["produto"],
@@ -793,7 +797,7 @@ TOOLS_SCHEMA = [
             "type": "object",
             "properties": {
                 "produto": {"type": "string", "description": "Nome do produto"},
-                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                "ceasa": {"type": "string",
                           "description": "CEASA de referência (padrão CURITIBA)."},
             },
             "required": ["produto"],
@@ -810,7 +814,7 @@ TOOLS_SCHEMA = [
             "type": "object",
             "properties": {
                 "limite": {"type": "integer", "description": "Quantidade de produtos (padrão 5)"},
-                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                "ceasa": {"type": "string",
                           "description": "CEASA de referência (padrão CURITIBA)."},
             },
         },
@@ -831,7 +835,7 @@ TOOLS_SCHEMA = [
                     "items": {"type": "string"},
                     "description": "Lista de nomes de produtos (ex: ['tomate','alface','cenoura'])",
                 },
-                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                "ceasa": {"type": "string",
                           "description": "CEASA de referência (padrão CURITIBA)."},
             },
             "required": ["produtos"],
@@ -873,7 +877,7 @@ TOOLS_SCHEMA = [
                     "type": "array", "items": {"type": "string"},
                     "description": "Lista de produtos (ex: ['tomate','batata','mandioca'])",
                 },
-                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                "ceasa": {"type": "string",
                           "description": "Opcional. CEASA de referência; vazio = todas."},
             },
             "required": ["produtos"],

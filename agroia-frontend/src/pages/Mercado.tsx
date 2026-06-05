@@ -50,11 +50,21 @@ interface PontoSerie {
   unidade: string | null
 }
 
+// Entrepostos coletados (mesmo contrato do coletor/backend). Agrupados por UF na tela.
 const CEASAS = [
-  { value: 'CURITIBA',  label: 'Curitiba/PR (RMC)' },
-  { value: 'MARINGA',   label: 'Maringá/PR' },
-  { value: 'SAO PAULO', label: 'São Paulo/SP' },
+  { value: 'CURITIBA',              label: 'Curitiba/PR (RMC)',    uf: 'PR' },
+  { value: 'MARINGA',               label: 'Maringá/PR',           uf: 'PR' },
+  { value: 'FOZ DO IGUACU',         label: 'Foz do Iguaçu/PR',     uf: 'PR' },
+  { value: 'CASCAVEL',              label: 'Cascavel/PR',          uf: 'PR' },
+  { value: 'SAO PAULO',             label: 'São Paulo/SP',         uf: 'SP' },
+  { value: 'RIBEIRAO PRETO',        label: 'Ribeirão Preto/SP',    uf: 'SP' },
+  { value: 'SAO JOSE DO RIO PRETO', label: 'S.J. Rio Preto/SP',    uf: 'SP' },
+  { value: 'SAO JOSE DOS CAMPOS',   label: 'S.J. Campos/SP',       uf: 'SP' },
+  { value: 'SOROCABA',              label: 'Sorocaba/SP',          uf: 'SP' },
+  { value: 'FLORIANOPOLIS',         label: 'Gde Florianópolis/SC', uf: 'SC' },
+  { value: 'PORTO ALEGRE',          label: 'Porto Alegre/RS',      uf: 'RS' },
 ]
+const UFS = ['PR', 'SP', 'SC', 'RS']   // ordem de exibição (PR primeiro — RMC)
 
 const PERIODOS = [
   { value: 30, label: '30 dias' },
@@ -284,28 +294,32 @@ export default function Mercado() {
 
       {/* ── Assistente conversacional de preços (IA) — destaque ───────────── */}
       <div className="chart-card" style={{ margin: '0 0 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-          <h3 style={{ margin: 0 }}>💬 Pergunte sobre preços</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600 }}>CEASAs:</span>
-            {CEASAS.map((c) => {
-              const on = ceasasSel.includes(c.value)
-              return (
-                <button
-                  key={c.value}
-                  onClick={() => toggleCeasa(c.value)}
-                  className="suggestion-btn"
-                  style={{
-                    padding: '5px 12px', fontSize: 12,
-                    borderColor: on ? 'var(--verde)' : 'var(--borda)',
-                    background: on ? 'var(--verde-fundo)' : 'var(--branco)',
-                    color: on ? 'var(--verde)' : 'var(--texto)', fontWeight: on ? 700 : 600,
-                  }}
-                >
-                  {on ? '✓ ' : ''}{c.label}
-                </button>
-              )
-            })}
+        <div style={{ marginBottom: 14 }}>
+          <h3 style={{ margin: '0 0 10px' }}>💬 Pergunte sobre preços</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {UFS.map((uf) => (
+              <div key={uf} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--texto-suave)', minWidth: 24 }}>{uf}</span>
+                {CEASAS.filter((c) => c.uf === uf).map((c) => {
+                  const on = ceasasSel.includes(c.value)
+                  return (
+                    <button
+                      key={c.value}
+                      onClick={() => toggleCeasa(c.value)}
+                      className="suggestion-btn"
+                      style={{
+                        padding: '4px 10px', fontSize: 12,
+                        borderColor: on ? 'var(--verde)' : 'var(--borda)',
+                        background: on ? 'var(--verde-fundo)' : 'var(--branco)',
+                        color: on ? 'var(--verde)' : 'var(--texto)', fontWeight: on ? 700 : 600,
+                      }}
+                    >
+                      {on ? '✓ ' : ''}{c.label}
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         </div>
 

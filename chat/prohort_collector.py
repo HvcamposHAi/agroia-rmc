@@ -36,11 +36,25 @@ PROHORT_DIARIO_URL = (
 )
 
 # dsc_ceasa (UPPER+strip) → chave curta guardada na coluna `ceasa`.
-# LONDRINA não existe no PROHORT; referências PR disponíveis: Cascavel, Foz do Iguaçu.
+# Entrepostos da relação SP/PR/SC/RS que EXISTEM no arquivo PROHORT (scan confirmado).
+# Ausentes na fonte CONAB (não coletáveis): LONDRINA, BLUMENAU, TUBARAO.
+# SC: a central de Santa Catarina (em São José/Grande Florianópolis) aparece como FLORIANOPOLIS.
 CEASA_ALIAS: dict[str, str] = {
-    "CEASA/PR - CURITIBA":  "CURITIBA",
-    "CEASA/PR - MARINGA":   "MARINGA",
-    "CEAGESP - SAO PAULO":  "SAO PAULO",
+    # São Paulo (CEAGESP)
+    "CEAGESP - SAO PAULO":          "SAO PAULO",
+    "CEAGESP - RIBEIRAO PRETO":     "RIBEIRAO PRETO",
+    "CEAGESP - SAO JOSE RIO PRETO": "SAO JOSE DO RIO PRETO",
+    "CEAGESP - S J DOS CAMPOS":     "SAO JOSE DOS CAMPOS",
+    "CEAGESP - SOROCABA":           "SOROCABA",
+    # Paraná
+    "CEASA/PR - CURITIBA":          "CURITIBA",
+    "CEASA/PR - MARINGA":           "MARINGA",
+    "CEASA/PR - FOZ DO IGUACU":     "FOZ DO IGUACU",
+    "CEASA/PR - CASCAVEL":          "CASCAVEL",
+    # Santa Catarina (central em São José)
+    "CEASA/SC - FLORIANOPOLIS":     "FLORIANOPOLIS",
+    # Rio Grande do Sul
+    "CEASA/RS - PORTO ALEGRE":      "PORTO ALEGRE",
 }
 CEASAS_ALVO = set(CEASA_ALIAS.keys())
 
