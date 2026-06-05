@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -25,7 +26,21 @@ interface Analise {
   max_30d: number | null
   variacao_semanal_pct: number | null
   unidade: string | null
+  total_cotacoes?: number | null
 }
+
+interface Cruz {
+  ceasa: string
+  preco_kg_prefeitura: number | null
+  preco_ceasa_medio: number | null
+  unidade_ceasa: string | null
+  unidades_compativeis: boolean | null
+  diferenca_pct: number | null
+  ano_min: number | null
+  ano_max: number | null
+}
+
+interface LinhaComp { ceasa: string; analise: Analise | null; cruz: Cruz | null }
 
 interface PontoSerie {
   data_coleta: string
@@ -36,9 +51,9 @@ interface PontoSerie {
 }
 
 const CEASAS = [
-  { value: 'CURITIBA',  label: 'CEASA Curitiba/PR (RMC)' },
-  { value: 'MARINGA',   label: 'CEASA Maringá/PR' },
-  { value: 'SAO PAULO', label: 'CEAGESP São Paulo/SP' },
+  { value: 'CURITIBA',  label: 'Curitiba/PR (RMC)' },
+  { value: 'MARINGA',   label: 'Maringá/PR' },
+  { value: 'SAO PAULO', label: 'São Paulo/SP' },
 ]
 
 const PERIODOS = [
@@ -49,9 +64,9 @@ const PERIODOS = [
 
 const CONV_SUGGESTIONS = [
   '🍅 Tomate, alface e cenoura — como estão os preços?',
-  '📈 Quais produtos estão com melhor preço esta semana?',
+  '🏙️ Compare o preço do tomate em todas as CEASAs',
+  '🏛️ A prefeitura paga acima ou abaixo do atacado? (tomate, batata, mandioca)',
   '🥔 Vale a pena vender batata agora?',
-  '🧺 Quero vender repolho, couve e beterraba. Quanto pedir?',
 ]
 
 // Cores das linhas do gráfico (recharts exige string de cor)
@@ -74,8 +89,7 @@ function calcularSemaforo(a: Analise): { cor: SemaforoCor; texto: string } {
   return { cor: 'cinza', texto: 'Histórico insuficiente' }
 }
 
-// Réplica EXATA da fórmula do backend (chat/tools.py :: _prohort_preco_sugerido)
-// para que o card "Sugerido" mostre o mesmo valor que o chat de preços.
+// Réplica EXATA da fórmula do backend (chat/tools.py :: _prohort_preco_sugerido).
 function precoSugerido(a: Analise): number | null {
   const m30 = a.media_30d
   if (m30 == null) return null
@@ -90,15 +104,20 @@ function precoSugerido(a: Analise): number | null {
   return Math.round(base * 100) / 100
 }
 
+const labelCeasa = (v: string) => CEASAS.find((c) => c.value === v)?.label ?? v
+
 export default function Mercado() {
   const [produtos, setProdutos]     = useState<string[]>([])
   const [produto, setProduto]       = useState('')
-  const [ceasa, setCeasa]           = useState('CURITIBA')
+  const [ceasasSel, setCeasasSel]   = useState<string[]>(['CURITIBA'])
   const [periodo, setPeriodo]       = useState(30)
-  const [analise, setAnalise]       = useState<Analise | null>(null)
+  const [analise, setAnalise]       = useState<Analise | null>(null)   // CEASA principal
+  const [comparativo, setComparativo] = useState<LinhaComp[]>([])
   const [serie, setSerie]           = useState<PontoSerie[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro]             = useState<string | null>(null)
+
+  const primaria = ceasasSel[0]
 
   // Assistente conversacional de preços (IA)
   const [convMsgs, setConvMsgs]   = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
@@ -118,7 +137,6 @@ export default function Mercado() {
     atBottomRef.current = atBottom
     setMostrarIrFim(!atBottom)
   }
-
   const irParaFim = () => {
     const el = messagesRef.current
     if (!el) return
@@ -126,25 +144,33 @@ export default function Mercado() {
     atBottomRef.current = true
     setMostrarIrFim(false)
   }
-
-  // Acompanha o fim SÓ se o usuário já estava no fim — rola apenas o container interno.
   useEffect(() => {
     const el = messagesRef.current
     if (el && atBottomRef.current) el.scrollTop = el.scrollHeight
   }, [convMsgs, convStatus])
 
+  const toggleCeasa = (v: string) => {
+    setCeasasSel((prev) => {
+      if (prev.includes(v)) {
+        const next = prev.filter((x) => x !== v)
+        return next.length ? next : prev   // garante ≥1 selecionada
+      }
+      return [...prev, v]
+    })
+  }
+
   const enviarConversa = useCallback(async (texto: string) => {
     const msg = texto.trim()
     if (!msg || convLoading) return
-    const labelCeasa = CEASAS.find((c) => c.value === ceasa)?.label ?? ceasa
+    const ctx = ceasasSel.map(labelCeasa).join(', ')
     const historico = convMsgs.slice(-6)
-    atBottomRef.current = true   // ao enviar, acompanha a própria pergunta/resposta na caixa
+    atBottomRef.current = true
     setConvMsgs((p) => [...p, { role: 'user', content: msg }, { role: 'assistant', content: '' }])
     setConvInput('')
     setConvLoading(true)
     setConvStatus('🔍 Consultando preços...')
     try {
-      const pergunta = `[CEASA de referência: ${labelCeasa} (${ceasa})]\n${msg}`
+      const pergunta = `[CEASAs de referência: ${ctx} (${ceasasSel.join(', ')})]\n${msg}`
       let full = ''
       for await (const ev of streamPost<SSEEvent>('/prohort/chat/stream', { pergunta, historico })) {
         if (ev.tipo === 'status') setConvStatus(ev.msg || '⏳ Processando...')
@@ -163,15 +189,15 @@ export default function Mercado() {
       setConvLoading(false)
       setConvStatus('')
     }
-  }, [convMsgs, convLoading, ceasa])
+  }, [convMsgs, convLoading, ceasasSel])
 
-  // Lista de produtos disponíveis ao mudar CEASA
+  // Lista de produtos disponíveis (CEASA principal)
   useEffect(() => {
     let ativo = true
     supabase
       .from('v_prohort_analise')
       .select('produto_norm')
-      .eq('ceasa', ceasa)
+      .eq('ceasa', primaria)
       .then(({ data }) => {
         if (!ativo) return
         const unicos = Array.from(
@@ -180,7 +206,7 @@ export default function Mercado() {
         setProdutos(unicos)
       })
     return () => { ativo = false }
-  }, [ceasa])
+  }, [primaria])
 
   const consultar = useCallback(async (prodArg?: string) => {
     const prod = (prodArg ?? produto).trim()
@@ -190,31 +216,49 @@ export default function Mercado() {
     setErro(null)
     try {
       const termo = prod.toLowerCase()
-      const [{ data: aData, error: aErr }, { data: sData, error: sErr }] = await Promise.all([
+      const [aRes, cRes, sRes] = await Promise.all([
         supabase.from('v_prohort_analise').select('*')
-          .ilike('produto_norm', `%${termo}%`).eq('ceasa', ceasa)
-          .order('total_cotacoes', { ascending: false }).limit(1),
+          .ilike('produto_norm', `%${termo}%`).in('ceasa', ceasasSel),
+        supabase.from('vw_cruzamento_precos_ceasa').select('*')
+          .ilike('produto_norm', `%${termo}%`).in('ceasa', ceasasSel),
         supabase.from('v_prohort_serie_diaria')
           .select('data_coleta, preco_medio, preco_min, preco_max, unidade')
-          .ilike('produto_norm', `%${termo}%`).eq('ceasa', ceasa)
+          .ilike('produto_norm', `%${termo}%`).eq('ceasa', primaria)
           .order('data_coleta', { ascending: true }),
       ])
-      if (aErr || sErr) throw new Error((aErr ?? sErr)?.message ?? 'Erro na consulta')
-      if (!aData || aData.length === 0) {
-        setAnalise(null); setSerie([])
-        setErro(`Produto "${prod}" não encontrado na CEASA ${ceasa}. Escolha um da lista abaixo.`)
+      if (aRes.error) throw new Error(aRes.error.message)
+      const aData = (aRes.data ?? []) as Analise[]
+      if (aData.length === 0) {
+        setAnalise(null); setComparativo([]); setSerie([])
+        setErro(`Produto "${prod}" não encontrado nas CEASAs selecionadas. Escolha um da lista abaixo.`)
         return
       }
-      setAnalise(aData[0] as Analise)
-      const todos = (sData ?? []) as PontoSerie[]
+      // melhor linha por CEASA (mais cotações)
+      const bestA: Record<string, Analise> = {}
+      for (const r of aData) {
+        const c = r.ceasa
+        if (!bestA[c] || (r.total_cotacoes ?? 0) > (bestA[c].total_cotacoes ?? 0)) bestA[c] = r
+      }
+      // cruzamento (ignora se a view ainda não existe)
+      const cData = (cRes.error ? [] : (cRes.data ?? [])) as Cruz[]
+      const bestC: Record<string, Cruz> = {}
+      for (const r of cData) bestC[r.ceasa] = r
+
+      const comp: LinhaComp[] = ceasasSel
+        .filter((c) => bestA[c])
+        .map((c) => ({ ceasa: c, analise: bestA[c], cruz: bestC[c] ?? null }))
+      setComparativo(comp)
+      setAnalise(bestA[primaria] ?? comp[0]?.analise ?? null)
+
+      const todos = (sRes.data ?? []) as PontoSerie[]
       setSerie(todos.slice(Math.max(0, todos.length - periodo)))
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro desconhecido')
-      setAnalise(null); setSerie([])
+      setAnalise(null); setComparativo([]); setSerie([])
     } finally {
       setCarregando(false)
     }
-  }, [produto, ceasa, periodo])
+  }, [produto, ceasasSel, primaria, periodo])
 
   const formatarData = (d: string) => {
     const dt = new Date(d + 'T00:00:00')
@@ -224,6 +268,7 @@ export default function Mercado() {
   const semaforo = analise ? calcularSemaforo(analise) : null
   const sugerido = analise ? precoSugerido(analise) : null
   const unidade = analise?.unidade || 'kg'
+  const periodoPref = comparativo.find((l) => l.cruz?.ano_min != null)?.cruz
 
   return (
     <div className="page">
@@ -233,7 +278,7 @@ export default function Mercado() {
           Preços de Mercado — CEASAs
         </h2>
         <p style={{ fontSize: 14, color: 'var(--texto-suave)', marginTop: 6 }}>
-          Dados oficiais PROHORT/CONAB · atacado · atualização diária
+          Atacado PROHORT/CONAB × o que a prefeitura paga nas licitações · atualização diária
         </p>
       </div>
 
@@ -241,11 +286,26 @@ export default function Mercado() {
       <div className="chart-card" style={{ margin: '0 0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
           <h3 style={{ margin: 0 }}>💬 Pergunte sobre preços</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600 }}>CEASA:</span>
-            <select className="filter-select" value={ceasa} onChange={(e) => setCeasa(e.target.value)}>
-              {CEASAS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600 }}>CEASAs:</span>
+            {CEASAS.map((c) => {
+              const on = ceasasSel.includes(c.value)
+              return (
+                <button
+                  key={c.value}
+                  onClick={() => toggleCeasa(c.value)}
+                  className="suggestion-btn"
+                  style={{
+                    padding: '5px 12px', fontSize: 12,
+                    borderColor: on ? 'var(--verde)' : 'var(--borda)',
+                    background: on ? 'var(--verde-fundo)' : 'var(--branco)',
+                    color: on ? 'var(--verde)' : 'var(--texto)', fontWeight: on ? 700 : 600,
+                  }}
+                >
+                  {on ? '✓ ' : ''}{c.label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -258,11 +318,7 @@ export default function Mercado() {
               style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 440, overflowY: 'auto', padding: '4px 2px' }}
             >
               {convMsgs.map((m, i) => (
-                <div
-                  key={i}
-                  className={`msg ${m.role}`}
-                  style={m.role === 'assistant' ? { maxWidth: '100%' } : undefined}
-                >
+                <div key={i} className={`msg ${m.role}`} style={m.role === 'assistant' ? { maxWidth: '100%' } : undefined}>
                   <div className="msg-avatar">{m.role === 'assistant' ? '🌾' : '👤'}</div>
                   <div className="msg-bubble" style={m.role === 'assistant' ? { maxWidth: '100%', width: '100%' } : undefined}>
                     {m.role === 'assistant'
@@ -277,7 +333,6 @@ export default function Mercado() {
                 </div>
               ))}
             </div>
-
             {mostrarIrFim && (
               <button
                 onClick={irParaFim}
@@ -294,7 +349,6 @@ export default function Mercado() {
           </div>
         )}
 
-        {/* Sugestões (estado inicial) */}
         {convMsgs.length === 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             {CONV_SUGGESTIONS.map((s) => (
@@ -305,14 +359,13 @@ export default function Mercado() {
           </div>
         )}
 
-        {/* Entrada */}
         <div className="chat-input-wrapper">
           <input
             className="chat-input"
             value={convInput}
             onChange={(e) => setConvInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') enviarConversa(convInput) }}
-            placeholder="Ex: tomate, alface e cenoura — quanto pedir?"
+            placeholder="Ex: a prefeitura paga acima do atacado em tomate e mandioca?"
             disabled={convLoading}
           />
           <button className="send-btn" onClick={() => enviarConversa(convInput)} disabled={convLoading || !convInput.trim()}>
@@ -320,7 +373,7 @@ export default function Mercado() {
           </button>
         </div>
         <p style={{ fontSize: 11, color: 'var(--texto-suave)', marginTop: 8 }}>
-          Traga sua lista de produtos. A IA responde com preço mínimo, médio, máximo e sugerido · Fonte: CONAB/PROHORT
+          Preço mín./médio/máx./sugerido, comparação entre CEASAs e cruzamento com o que a prefeitura paga · Fonte: CONAB/PROHORT + licitações
         </p>
       </div>
 
@@ -342,10 +395,6 @@ export default function Mercado() {
           {produtos.map((p) => <option key={p} value={p} />)}
         </datalist>
 
-        <select className="filter-select" value={ceasa} onChange={(e) => setCeasa(e.target.value)}>
-          {CEASAS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-        </select>
-
         <select className="filter-select" value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}>
           {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
@@ -363,11 +412,9 @@ export default function Mercado() {
           {carregando ? 'Consultando...' : 'Consultar'}
         </button>
 
-        {produtos.length > 0 && (
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--texto-suave)', fontWeight: 600 }}>
-            {produtos.length} produtos
-          </span>
-        )}
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--texto-suave)', fontWeight: 600 }}>
+          CEASAs: {ceasasSel.map(labelCeasa).join(', ')}
+        </span>
       </div>
 
       {erro && (
@@ -376,11 +423,11 @@ export default function Mercado() {
         </div>
       )}
 
-      {/* Chips de produtos disponíveis (ajuda a escolher) */}
+      {/* Chips de produtos disponíveis */}
       {produtos.length > 0 && !analise && (
         <div style={{ marginBottom: 24 }}>
           <p style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600, margin: '0 0 10px' }}>
-            Produtos disponíveis na CEASA {ceasa}:
+            Produtos disponíveis na CEASA {labelCeasa(primaria)}:
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {produtos.map((p) => (
@@ -394,34 +441,35 @@ export default function Mercado() {
 
       {analise && (
         <>
+          {/* KPI da CEASA principal */}
           <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', marginBottom: 16 }}>
             <div className="metric-card verde">
               <span className="metric-icon">⬇️</span>
-              <div className="metric-label">Preço Mínimo</div>
+              <div className="metric-label">Mínimo · {labelCeasa(primaria)}</div>
               <div className="metric-value">{fmtBRL(analise.min_30d)}</div>
               <div className="metric-sub">/{unidade} · 30 dias</div>
             </div>
             <div className="metric-card ceu">
               <span className="metric-icon">📊</span>
-              <div className="metric-label">Preço Médio</div>
+              <div className="metric-label">Médio</div>
               <div className="metric-value">{fmtBRL(analise.media_30d)}</div>
               <div className="metric-sub">/{unidade} · 30 dias</div>
             </div>
             <div className="metric-card terra">
               <span className="metric-icon">⬆️</span>
-              <div className="metric-label">Preço Máximo</div>
+              <div className="metric-label">Máximo</div>
               <div className="metric-value">{fmtBRL(analise.max_30d)}</div>
               <div className="metric-sub">/{unidade} · 30 dias</div>
             </div>
             <div className="metric-card amarelo">
               <span className="metric-icon">🎯</span>
-              <div className="metric-label">Preço Sugerido</div>
+              <div className="metric-label">Sugerido</div>
               <div className="metric-value">{fmtBRL(sugerido)}</div>
               <div className="metric-sub">/{unidade} · referência de venda</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
             {semaforo && <SemaforoPreco semaforo={semaforo.cor} texto={semaforo.texto} />}
             {analise.variacao_semanal_pct != null && (
               <span style={{
@@ -434,15 +482,68 @@ export default function Mercado() {
               </span>
             )}
             <span style={{ fontSize: 12, color: 'var(--texto-suave)' }}>
-              Última cotação: {analise.ultima_cotacao ?? 'N/D'} · Fonte: CONAB/PROHORT
+              Última cotação: {analise.ultima_cotacao ?? 'N/D'}
             </span>
+          </div>
+
+          {/* Tabela comparativa CEASA × Prefeitura */}
+          <div className="chart-card" style={{ marginBottom: 20, padding: '18px 20px' }}>
+            <h3 style={{ margin: '0 0 12px' }}>🏛️ CEASA × Prefeitura — {produto.charAt(0).toUpperCase() + produto.slice(1)}</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: 'var(--verde-fundo)', color: 'var(--verde)' }}>
+                    <th style={thStyle}>CEASA</th>
+                    <th style={thStyle}>Médio (atacado)</th>
+                    <th style={thStyle}>Sugerido</th>
+                    <th style={thStyle}>Prefeitura pagou</th>
+                    <th style={thStyle}>Diferença</th>
+                    <th style={thStyle}>Unid.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparativo.map((l) => {
+                    const a = l.analise
+                    const c = l.cruz
+                    const un = a?.unidade || 'kg'
+                    let dif: ReactNode = <span style={{ color: 'var(--texto-suave)' }}>sem registro</span>
+                    if (c && c.preco_kg_prefeitura != null) {
+                      if (!c.unidades_compativeis) {
+                        dif = <span style={{ color: 'var(--texto-suave)' }}>un. dif. ({c.unidade_ceasa})</span>
+                      } else if (c.diferenca_pct != null) {
+                        const acima = c.diferenca_pct > 0
+                        dif = <span style={{ color: acima ? '#dc2626' : 'var(--verde)', fontWeight: 700 }}>
+                          {acima ? '▲ +' : '▼ '}{c.diferenca_pct.toFixed(1)}% {acima ? 'acima' : 'abaixo'}
+                        </span>
+                      }
+                    }
+                    return (
+                      <tr key={l.ceasa} style={{ borderBottom: '1px solid var(--borda)' }}>
+                        <td style={{ ...tdStyle, fontWeight: 700 }}>{labelCeasa(l.ceasa)}</td>
+                        <td style={tdStyle}>{fmtBRL(a?.media_30d)}</td>
+                        <td style={tdStyle}>{fmtBRL(a ? precoSugerido(a) : null)}</td>
+                        <td style={tdStyle}>{c?.preco_kg_prefeitura != null ? `${fmtBRL(c.preco_kg_prefeitura)}/kg` : <span style={{ color: 'var(--texto-suave)' }}>—</span>}</td>
+                        <td style={tdStyle}>{dif}</td>
+                        <td style={tdStyle}>{un}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--texto-suave)', margin: '10px 0 0', lineHeight: 1.5 }}>
+              "Prefeitura pagou" = mediana histórica das licitações de agricultura familiar
+              {periodoPref ? ` (${periodoPref.ano_min}–${periodoPref.ano_max})` : ''}, em R$/kg.
+              A diferença só é calculada quando a unidade do CEASA é kg. O preço de atacado é dos
+              últimos 30 dias (descasamento temporal). Fonte: CONAB/PROHORT + licitações SMSAN/FAAC.
+            </p>
           </div>
         </>
       )}
 
       {serie.length > 0 && (
         <div className="chart-card">
-          <h3>Evolução do Preço — {produto.charAt(0).toUpperCase() + produto.slice(1)} / CEASA {ceasa}</h3>
+          <h3>Evolução do Preço — {produto.charAt(0).toUpperCase() + produto.slice(1)} / CEASA {labelCeasa(primaria)}</h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={serie}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--cinza-claro)" />
@@ -465,7 +566,7 @@ export default function Mercado() {
         <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--texto-suave)' }}>
           <p style={{ fontSize: 40, margin: 0 }}>🛒</p>
           <p style={{ marginTop: 12, fontFamily: 'Fraunces, serif', fontSize: 17, color: 'var(--texto)' }}>
-            Selecione um produto e uma CEASA para ver os detalhes
+            Selecione um produto e uma ou mais CEASAs para ver os detalhes
           </p>
           <p style={{ fontSize: 13, marginTop: 4 }}>Dados do PROHORT/CONAB · atualizados diariamente</p>
         </div>
@@ -473,3 +574,9 @@ export default function Mercado() {
     </div>
   )
 }
+
+const thStyle: CSSProperties = {
+  padding: '10px 12px', textAlign: 'left', fontWeight: 700, fontSize: 12,
+  borderBottom: '2px solid var(--verde-claro)',
+}
+const tdStyle: CSSProperties = { padding: '9px 12px', color: 'var(--texto)' }

@@ -588,6 +588,73 @@ def prohort_ranking(limite: int = 5, ceasa: str = "CURITIBA") -> dict:
     }
 
 
+CEASAS_BASE = ["CURITIBA", "MARINGA", "SAO PAULO"]
+
+
+def prohort_comparar_ceasas(produto: str = "", ceasas: list = None) -> dict:
+    """Compara o preço de um produto entre VÁRIAS CEASAs (todas da base, por padrão)."""
+    produto = (produto or "").strip().lower()
+    if not produto:
+        return {"encontrado": False, "msg": "Informe o produto."}
+    alvo = [str(c).strip().upper() for c in ceasas] if ceasas else CEASAS_BASE
+    sb = get_supabase_client()
+    res = (sb.table("v_prohort_analise").select("*")
+           .ilike("produto_norm", f"%{produto}%").in_("ceasa", alvo).execute())
+    if not res.data:
+        return {"encontrado": False, "msg": f"Sem dados de '{produto}' nas CEASAs consultadas."}
+    # uma linha por CEASA (a com mais cotações)
+    por_ceasa: dict = {}
+    for r in res.data:
+        c = r.get("ceasa")
+        if c not in por_ceasa or (r.get("total_cotacoes") or 0) > (por_ceasa[c].get("total_cotacoes") or 0):
+            por_ceasa[c] = r
+    itens = [{"ceasa": c, **_prohort_linha_produto(por_ceasa[c])} for c in alvo if c in por_ceasa]
+    return {"encontrado": True, "produto": produto, "ceasas": itens, "fonte": "CONAB/PROHORT"}
+
+
+def prohort_cruzar_prefeitura(produtos: list = None, ceasa: str = None) -> dict:
+    """Cruza o preço que a prefeitura pagou nas licitações com o atacado da CEASA."""
+    if not produtos or not isinstance(produtos, list):
+        return {"itens": [], "msg": "Informe ao menos um produto."}
+    sb = get_supabase_client()
+    itens, nao_encontrados = [], []
+    for p in produtos:
+        termo = str(p or "").strip().lower()
+        if not termo:
+            continue
+        q = sb.table("vw_cruzamento_precos_ceasa").select("*").ilike("produto_norm", f"%{termo}%")
+        if ceasa:
+            q = q.eq("ceasa", str(ceasa).strip().upper())
+        try:
+            res = q.execute()
+        except Exception as e:
+            return {"itens": [], "erro": f"View de cruzamento indisponível: {e}"}
+        if not res.data:
+            nao_encontrados.append(termo)
+            continue
+        for r in res.data:
+            itens.append({
+                "produto": r.get("produto_norm"),
+                "ceasa": r.get("ceasa"),
+                "prefeitura_rs_kg": r.get("preco_kg_prefeitura"),
+                "ceasa_medio": r.get("preco_ceasa_medio"),
+                "unidade_ceasa": r.get("unidade_ceasa"),
+                "unidades_compativeis": r.get("unidades_compativeis"),
+                "diferenca_pct": r.get("diferenca_pct"),
+                "periodo_prefeitura": f"{r.get('ano_min')}-{r.get('ano_max')}",
+                "n_itens_licitacao": r.get("n_itens"),
+            })
+    return {
+        "itens": itens,
+        "nao_encontrados": nao_encontrados,
+        "observacao": (
+            "diferenca_pct (prefeitura vs atacado) só é calculada quando as unidades são compatíveis "
+            "(kg). O preço da prefeitura é a mediana histórica das licitações (período informado)."
+        ),
+        "fonte": "Prefeitura (licitações) × CONAB/PROHORT",
+    }
+
+
 TOOLS_SCHEMA = [
     {
         "name": "query_itens_agro",
@@ -770,6 +837,48 @@ TOOLS_SCHEMA = [
             "required": ["produtos"],
         },
     },
+    {
+        "name": "comparar_ceasas",
+        "description": (
+            "Compara o preço de um produto entre VÁRIAS/TODAS as CEASAs da base (Curitiba, Maringá, "
+            "São Paulo). Use quando o produtor quiser ver em qual CEASA o produto está melhor, ou "
+            "pedir uma análise considerando todas as CEASAs. Retorna preço médio/mín/máx/sugerido "
+            "por CEASA."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "produto": {"type": "string", "description": "Nome do produto (ex: tomate)"},
+                "ceasas": {
+                    "type": "array", "items": {"type": "string"},
+                    "description": "Opcional. CEASAs a comparar; vazio = todas da base.",
+                },
+            },
+            "required": ["produto"],
+        },
+    },
+    {
+        "name": "cruzar_preco_prefeitura",
+        "description": (
+            "Cruza o preço de atacado da CEASA com o que a PREFEITURA pagou nas licitações de "
+            "agricultura familiar (R$/kg), por produto. Indica se a prefeitura paga acima ou abaixo "
+            "do atacado (prêmio da AF). Use quando perguntarem 'a prefeitura paga acima/abaixo do "
+            "mercado', 'comparar com o que a prefeitura paga', ou citarem licitação + preço. "
+            "Atenção às ressalvas de unidade (kg) e de tempo (preço da prefeitura é histórico)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "produtos": {
+                    "type": "array", "items": {"type": "string"},
+                    "description": "Lista de produtos (ex: ['tomate','batata','mandioca'])",
+                },
+                "ceasa": {"type": "string", "enum": ["CURITIBA", "MARINGA", "SAO PAULO"],
+                          "description": "Opcional. CEASA de referência; vazio = todas."},
+            },
+            "required": ["produtos"],
+        },
+    },
 ]
 
 def executar_tool(nome: str, inputs: dict) -> Any:
@@ -793,5 +902,9 @@ def executar_tool(nome: str, inputs: dict) -> Any:
         return prohort_ranking(**inputs)
     elif nome == "consultar_precos_lista":
         return prohort_consultar_precos_lista(**inputs)
+    elif nome == "comparar_ceasas":
+        return prohort_comparar_ceasas(**inputs)
+    elif nome == "cruzar_preco_prefeitura":
+        return prohort_cruzar_prefeitura(**inputs)
     else:
         return {"erro": f"Tool desconhecida: {nome}"}
