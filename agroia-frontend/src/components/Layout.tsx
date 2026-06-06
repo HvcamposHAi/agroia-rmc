@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import CommandPalette from './CommandPalette'
@@ -23,6 +23,9 @@ export default function Layout({ children }: { children?: ReactNode }) {
   const [menuAberto, setMenuAberto] = useState(false)
   const [maisAberto, setMaisAberto] = useState(false)
   const [cmdkAberto, setCmdkAberto] = useState(false)
+  const maisBtnRef = useRef<HTMLButtonElement>(null)
+  // Posição (viewport) do dropdown "Mais" — usado no desktop, onde ele é position: fixed.
+  const [maisPos, setMaisPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
 
   // Atalho global ⌘K / Ctrl+K abre a paleta de comandos.
   useEffect(() => {
@@ -31,10 +34,33 @@ export default function Layout({ children }: { children?: ReactNode }) {
         e.preventDefault()
         setCmdkAberto(v => !v)
       }
+      if (e.key === 'Escape') {
+        setMaisAberto(false)
+        setMenuAberto(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Fecha o dropdown ao redimensionar (a posição fixa ficaria desalinhada).
+  useEffect(() => {
+    if (!maisAberto) return
+    const onResize = () => setMaisAberto(false)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [maisAberto])
+
+  const toggleMais = () => {
+    setMaisAberto(v => {
+      const proximo = !v
+      if (proximo && maisBtnRef.current) {
+        const r = maisBtnRef.current.getBoundingClientRect()
+        setMaisPos({ top: r.bottom + 6, left: r.left })
+      }
+      return proximo
+    })
+  }
 
   const fecharTudo = () => { setMenuAberto(false); setMaisAberto(false) }
 
@@ -62,11 +88,11 @@ export default function Layout({ children }: { children?: ReactNode }) {
 
           {/* "Mais" — agrupa os serviços secundários (desktop: dropdown; mobile: inline) */}
           <div className="topnav-more">
-            <button className="topnav-item" onClick={() => setMaisAberto(v => !v)} aria-expanded={maisAberto}>
+            <button ref={maisBtnRef} className="topnav-item" onClick={toggleMais} aria-haspopup="true" aria-expanded={maisAberto}>
               <span className="label">Mais</span> <span style={{ fontSize: 10 }}>▾</span>
             </button>
             {maisAberto && (
-              <div className="topnav-dropdown">
+              <div className="topnav-dropdown" style={{ top: maisPos.top, left: maisPos.left }}>
                 {moreNav.map(item => (
                   <NavLink
                     key={item.to}

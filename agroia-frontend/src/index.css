@@ -107,6 +107,17 @@ body {
 .topnav-item.active { background: rgba(255,255,255,0.20); color: #fff; }
 .topnav-item .icon { font-size: 16px; }
 
+/* O gatilho "Mais" é um <button> reusando .topnav-item — remover o chrome
+   nativo do botão (fundo/borda/fonte do sistema), senão fica uma caixa branca. */
+button.topnav-item {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  font-family: inherit;
+  line-height: inherit;
+}
+
 .appbar-actions {
   display: flex;
   align-items: center;
@@ -919,17 +930,17 @@ body {
 /* "Mais ▾" dropdown na barra */
 .topnav-more { position: relative; display: flex; align-items: center; }
 .topnav-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 6px;
+  /* position: fixed + coords via JS (style inline) para escapar do clip do
+     .appbar-nav (overflow-x: auto força overflow-y: auto, que recortava o menu).
+     No mobile a media query abaixo volta para position: static (inline na gaveta). */
+  position: fixed;
   background: var(--branco);
   border: 1px solid var(--borda);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   padding: 6px;
   min-width: 210px;
-  z-index: 30;
+  z-index: 60;
   display: flex;
   flex-direction: column;
   gap: 2px;
