@@ -91,7 +91,22 @@ def _baixar_para_tempfile() -> str:
     return caminho
 
 
-def coletar_prohort(dias_recentes: int | None = 30) -> dict:
+def _upsert_lotes(supabase, registros: list[dict]) -> int:
+    """Faz upsert idempotente (on_conflict=data_coleta,ceasa,produto) em lotes. Retorna inseridos."""
+    inseridos = 0
+    for i in range(0, len(registros), LOTE_UPSERT):
+        lote = registros[i: i + LOTE_UPSERT]
+        try:
+            supabase.table("prohort_precos").upsert(
+                lote, on_conflict="data_coleta,ceasa,produto"
+            ).execute()
+            inseridos += len(lote)
+        except Exception as e:
+            logger.error(f"Erro no upsert PROHORT lote {i}: {e}")
+    return inseridos
+
+
+def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = False) -> dict:
     """
     Baixa o ProhortDiario.txt, filtra as CEASAs alvo, normaliza e faz upsert em prohort_precos.
 
@@ -99,9 +114,15 @@ def coletar_prohort(dias_recentes: int | None = 30) -> dict:
         None → backfill completo (todo o histórico das CEASAs alvo, ~4 anos).
         N    → apenas linhas com data_preco >= hoje - N dias (coleta diária incremental).
 
+    flush_por_chunk:
+        False (padrão) → acumula tudo em memória e faz upsert no final (coleta diária de 30 dias).
+        True           → deduplica e faz upsert por chunk, descartando o acumulador global.
+                         Memória ~O(1 chunk); usar em backfills longos (ex.: 24 meses). A dedup
+                         por chunk evita o erro do PostgREST de chave repetida no mesmo payload.
+
     Retorna dict: {linhas_inseridas, total_filtradas, ceasas, data_coleta} ou {erro,...}.
     """
-    logger.info(f"Iniciando coleta PROHORT (dias_recentes={dias_recentes})...")
+    logger.info(f"Iniciando coleta PROHORT (dias_recentes={dias_recentes}, flush_por_chunk={flush_por_chunk})...")
 
     try:
         caminho = _baixar_para_tempfile()
@@ -116,6 +137,9 @@ def coletar_prohort(dias_recentes: int | None = 30) -> dict:
     supabase = get_supabase_client()
     dedup: dict[tuple, dict] = {}
     total_filtradas = 0
+    # Modo streaming (flush_por_chunk): acumula contagens/CEASAs sem reter os registros.
+    total_inseridos_stream = 0
+    ceasas_vistas: set[str] = set()
 
     try:
         for chunk in pd.read_csv(
@@ -144,6 +168,8 @@ def coletar_prohort(dias_recentes: int | None = 30) -> dict:
                 continue
 
             total_filtradas += len(chunk)
+            # Em modo streaming, deduplica só este chunk; senão, acumula no dict global.
+            destino = {} if flush_por_chunk else dedup
             for row in chunk.itertuples(index=False):
                 d = getattr(row, "data_dt")
                 preco = _to_float(getattr(row, "preco_diario"))
@@ -153,7 +179,7 @@ def coletar_prohort(dias_recentes: int | None = 30) -> dict:
                 ceasa = getattr(row, "ceasa_key")
                 data_iso = d.date().isoformat()
                 chave = (data_iso, ceasa, produto_raw)
-                dedup[chave] = {
+                destino[chave] = {
                     "data_coleta": data_iso,
                     "ceasa": ceasa,
                     "produto": produto_raw,
@@ -164,6 +190,10 @@ def coletar_prohort(dias_recentes: int | None = 30) -> dict:
                     "preco_max": preco,
                     "origem": str(getattr(row, "dsc_ceasa")).strip() or None,
                 }
+            if flush_por_chunk and destino:
+                registros_chunk = list(destino.values())
+                total_inseridos_stream += _upsert_lotes(supabase, registros_chunk)
+                ceasas_vistas.update(r["ceasa"] for r in registros_chunk)
     except Exception as e:
         logger.error(f"Erro ao processar PROHORT: {e}", exc_info=True)
         return {"erro": f"parse:{e}", "linhas_inseridas": 0}
@@ -173,21 +203,26 @@ def coletar_prohort(dias_recentes: int | None = 30) -> dict:
         except OSError:
             pass
 
+    # Modo streaming: já fez upsert por chunk; só consolida o resultado.
+    if flush_por_chunk:
+        if total_inseridos_stream == 0:
+            logger.warning("Nenhum registro PROHORT para as CEASAs alvo no período.")
+            return {"erro": "sem_dados", "linhas_inseridas": 0, "total_filtradas": total_filtradas}
+        ceasas = sorted(ceasas_vistas)
+        logger.info(f"Coleta PROHORT (streaming) concluída: {total_inseridos_stream} registros (CEASAs: {ceasas}).")
+        return {
+            "linhas_inseridas": total_inseridos_stream,
+            "total_filtradas": total_filtradas,
+            "ceasas": ceasas,
+            "data_coleta": date.today().isoformat(),
+        }
+
     registros = list(dedup.values())
     if not registros:
         logger.warning("Nenhum registro PROHORT para as CEASAs alvo no período.")
         return {"erro": "sem_dados", "linhas_inseridas": 0, "total_filtradas": total_filtradas}
 
-    total_inseridos = 0
-    for i in range(0, len(registros), LOTE_UPSERT):
-        lote = registros[i: i + LOTE_UPSERT]
-        try:
-            supabase.table("prohort_precos").upsert(
-                lote, on_conflict="data_coleta,ceasa,produto"
-            ).execute()
-            total_inseridos += len(lote)
-        except Exception as e:
-            logger.error(f"Erro no upsert PROHORT lote {i}: {e}")
+    total_inseridos = _upsert_lotes(supabase, registros)
 
     ceasas = sorted({r["ceasa"] for r in registros})
     logger.info(f"Coleta PROHORT concluída: {total_inseridos} registros (CEASAs: {ceasas}).")

@@ -57,6 +57,21 @@ export async function healthCheck(): Promise<{ status: string }> {
   return response.data
 }
 
+export interface UploadOfertasResult {
+  total: number
+  inseridas: number
+  erros: { linha: number; motivo: string }[]
+}
+
+export async function uploadOfertasPlanilha(file: File): Promise<UploadOfertasResult> {
+  const form = new FormData()
+  form.append('arquivo', file)
+  const response = await apiClient.post<UploadOfertasResult>('/produtor/ofertas/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
 export async function* streamPost<T = any>(endpoint: string, body?: any): AsyncGenerator<T> {
   const response = await fetch(`${API_URL}${endpoint}`, {
     method: 'POST',

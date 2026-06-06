@@ -1,76 +1,111 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, Outlet } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import CommandPalette from './CommandPalette'
 
-const navItems = [
-  { to: '/', icon: '💬', label: 'Assistente' },
-  { to: '/dashboard', icon: '📊', label: 'Dashboard' },
+const primaryNav = [
+  { to: '/', icon: '🏠', label: 'Início' },
+  { to: '/demanda', icon: '📊', label: 'Demanda' },
   { to: '/mercado', icon: '💰', label: 'Mercado' },
-  { to: '/consultas', icon: '🔍', label: 'Consultas' },
+  { to: '/ofertas', icon: '🧺', label: 'Ofertas' },
+  { to: '/assistente', icon: '💬', label: 'Assistente' },
+]
+
+const moreNav = [
+  { to: '/produtor', icon: '🧑‍🌾', label: 'Sou Produtor' },
+  { to: '/documentos', icon: '📄', label: 'Documentos' },
   { to: '/alertas', icon: '🚨', label: 'Alertas IA' },
   { to: '/auditoria', icon: '🔎', label: 'Auditoria' },
-  { to: '/documentos', icon: '📄', label: 'Documentos' },
   { to: '/coleta', icon: '🔄', label: 'Atualização' },
 ]
 
 export default function Layout({ children }: { children?: ReactNode }) {
-  const location = useLocation()
+  const [menuAberto, setMenuAberto] = useState(false)
+  const [maisAberto, setMaisAberto] = useState(false)
+  const [cmdkAberto, setCmdkAberto] = useState(false)
 
-  const titles: Record<string, string> = {
-    '/': 'Assistente Agrícola',
-    '/dashboard': 'Painel de Dados',
-    '/mercado': 'Preços de Mercado',
-    '/consultas': 'Consultas de Licitações',
-    '/alertas': 'Alertas Inteligentes',
-    '/auditoria': 'Auditoria de Dados',
-    '/documentos': 'Documentos das Licitações',
-    '/coleta': 'Atualização de Dados',
-  }
+  // Atalho global ⌘K / Ctrl+K abre a paleta de comandos.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setCmdkAberto(v => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const fecharTudo = () => { setMenuAberto(false); setMaisAberto(false) }
 
   return (
     <div className="layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <h1>
-            <div className="logo-icon">🌾</div>
-            AgroIA-RMC
-          </h1>
-          <p>Agricultura Familiar</p>
-        </div>
+      <header className="appbar">
+        <NavLink to="/" className="appbar-brand" onClick={fecharTudo}>
+          <span className="logo-icon">🌾</span>
+          <span className="brand-text">AgroIA-RMC</span>
+        </NavLink>
 
-        <nav className="sidebar-nav">
-          <div className="nav-section-title">Menu</div>
-          {navItems.map(item => (
+        <nav className={`appbar-nav${menuAberto ? ' open' : ''}`}>
+          {primaryNav.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
-              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              className={({ isActive }) => `topnav-item${isActive ? ' active' : ''}`}
+              onClick={fecharTudo}
             >
               <span className="icon">{item.icon}</span>
-              {item.label}
+              <span className="label">{item.label}</span>
             </NavLink>
           ))}
+
+          {/* "Mais" — agrupa os serviços secundários (desktop: dropdown; mobile: inline) */}
+          <div className="topnav-more">
+            <button className="topnav-item" onClick={() => setMaisAberto(v => !v)} aria-expanded={maisAberto}>
+              <span className="label">Mais</span> <span style={{ fontSize: 10 }}>▾</span>
+            </button>
+            {maisAberto && (
+              <div className="topnav-dropdown">
+                {moreNav.map(item => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `topnav-drop-item${isActive ? ' active' : ''}`}
+                    onClick={fecharTudo}
+                  >
+                    <span className="icon">{item.icon}</span> {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="user-card">
-            <div className="user-avatar">AG</div>
-            <div className="user-info">
-              <p>Gestor SMSAN</p>
-              <span>Curitiba – PR</span>
-            </div>
-          </div>
+        <div className="appbar-actions">
+          <button className="cmdk-trigger" onClick={() => setCmdkAberto(true)} title="Buscar / comandos (Ctrl+K)">
+            <span>🔎 Buscar</span>
+            <kbd>⌘K</kbd>
+          </button>
+          <div className="user-avatar" title="Gestor SMSAN — Curitiba/PR">AG</div>
+          <button
+            className="hamburger"
+            onClick={() => setMenuAberto(v => !v)}
+            aria-label="Abrir menu"
+            aria-expanded={menuAberto}
+          >
+            ☰
+          </button>
         </div>
-      </aside>
+      </header>
+
+      {(menuAberto || maisAberto) && <div className="nav-backdrop" onClick={fecharTudo} />}
 
       <div className="main">
-        <header className="topbar">
-          <h2>{titles[location.pathname] ?? 'AgroIA-RMC'}</h2>
-          <span className="topbar-badge">🌱 Sistema Ativo</span>
-        </header>
-
         {children ?? <Outlet />}
       </div>
+
+      <CommandPalette open={cmdkAberto} onClose={() => setCmdkAberto(false)} />
     </div>
   )
 }

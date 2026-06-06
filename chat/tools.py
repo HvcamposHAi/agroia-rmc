@@ -434,25 +434,33 @@ def buscar_documentos_vetor(
 
 # ─── Tools PROHORT (preços de atacado CEASA — CONAB) ────────────────────────
 
-def _prohort_avaliacao(media30, media90) -> str:
-    """Compara média 30d vs 90d e retorna texto de avaliação do preço atual."""
-    if media30 and media90:
-        desvio = ((media30 - media90) / media90) * 100
+def _prohort_avaliacao(media30, media90, media24m=None) -> str:
+    """
+    Avalia o preço atual (média 30d) contra a base histórica.
+    Usa a média de 24 meses quando disponível; senão, cai para a referência de 90 dias.
+    """
+    base, rotulo = (media24m, "24 meses") if media24m else (media90, "90 dias")
+    if media30 and base:
+        desvio = ((media30 - base) / base) * 100
         if desvio < -10:
-            return "ABAIXO da média histórica (90 dias) — preço relativamente baixo."
+            return f"ABAIXO da média histórica ({rotulo}) — preço relativamente baixo."
         if desvio > 10:
-            return "ACIMA da média histórica (90 dias) — preço relativamente alto."
-        return "NA MÉDIA histórica (90 dias)."
+            return f"ACIMA da média histórica ({rotulo}) — preço relativamente alto."
+        return f"NA MÉDIA histórica ({rotulo})."
     return "Histórico insuficiente para comparação."
 
 
-def _prohort_preco_sugerido(media30, min30, max30, variacao) -> float | None:
+def _prohort_preco_sugerido(media30, min30, max30, variacao, min24=None, max24=None) -> float | None:
     """
     Preço sugerido de venda (referência de negociação) para o produtor.
     Base = média de 30 dias; ajustada pela tendência semanal e limitada à faixa min/máx.
     - mercado em alta (>+5%): sugere +5% sobre a média (pode pedir um pouco mais);
     - mercado em queda (<-5%): mantém a média (não baixar além dela);
     - estável: a própria média.
+    Por fim, limita à faixa observada em 24 meses (guardrail histórico) quando disponível.
+
+    ATENÇÃO: esta fórmula é replicada IDÊNTICA no frontend em
+    agroia-frontend/src/pages/Mercado.tsx :: precoSugerido — alterar as duas juntas.
     """
     if media30 is None:
         return None
@@ -466,23 +474,50 @@ def _prohort_preco_sugerido(media30, min30, max30, variacao) -> float | None:
         base = max(base, float(min30))
     if max30 is not None:
         base = min(base, float(max30))
+    if min24 is not None:
+        base = max(base, float(min24))
+    if max24 is not None:
+        base = min(base, float(max24))
     return round(base, 2)
+
+
+def _prohort_baseline_24m(ceasa, produto_norm) -> dict:
+    """
+    Busca a baseline de 24 meses (view companheira v_prohort_baseline_24m).
+    Degrada graciosamente: retorna {} se a view não existir ou não houver dados.
+    """
+    if not ceasa or not produto_norm:
+        return {}
+    try:
+        sb = get_supabase_client()
+        res = (sb.table("v_prohort_baseline_24m")
+               .select("media_24m, min_24m, max_24m, total_24m")
+               .eq("ceasa", ceasa).eq("produto_norm", produto_norm).limit(1).execute())
+        return res.data[0] if res.data else {}
+    except Exception:
+        return {}
 
 
 def _prohort_linha_produto(r: dict) -> dict:
     """Monta o dict padronizado de um produto a partir de uma linha de v_prohort_analise."""
     media30, min30, max30 = r.get("media_30d"), r.get("min_30d"), r.get("max_30d")
     variacao = r.get("variacao_semanal_pct")
+    b = _prohort_baseline_24m(r.get("ceasa"), r.get("produto_norm"))
+    media24m, min24, max24 = b.get("media_24m"), b.get("min_24m"), b.get("max_24m")
     return {
         "produto": r.get("produto_norm"),
         "unidade": r.get("unidade") or "kg",
         "preco_min_30d": min30,
         "preco_medio_30d": media30,
         "preco_max_30d": max30,
-        "preco_sugerido": _prohort_preco_sugerido(media30, min30, max30, variacao),
+        "preco_sugerido": _prohort_preco_sugerido(media30, min30, max30, variacao, min24, max24),
         "variacao_semanal_pct": variacao,
         "media_90d": r.get("media_90d"),
-        "avaliacao": _prohort_avaliacao(media30, r.get("media_90d")),
+        "media_24m": media24m,
+        "min_24m": min24,
+        "max_24m": max24,
+        "total_24m": b.get("total_24m"),
+        "avaliacao": _prohort_avaliacao(media30, r.get("media_90d"), media24m),
         "ultima_cotacao": r.get("ultima_cotacao"),
     }
 
@@ -657,6 +692,219 @@ def prohort_cruzar_prefeitura(produtos: list = None, ceasa: str = None) -> dict:
         ),
         "fonte": "Prefeitura (licitações) × CONAB/PROHORT",
     }
+
+
+# ─── PRODUTORES: cadastro de ofertas (escrita) e consulta ───────────────────
+
+def _validar_cpf(cpf: str) -> bool:
+    cpf = re.sub(r"\D", "", cpf or "")
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    for i in (9, 10):
+        soma = sum(int(cpf[n]) * ((i + 1) - n) for n in range(i))
+        dig = (soma * 10) % 11
+        dig = 0 if dig == 10 else dig
+        if dig != int(cpf[i]):
+            return False
+    return True
+
+
+def _validar_cnpj(cnpj: str) -> bool:
+    cnpj = re.sub(r"\D", "", cnpj or "")
+    if len(cnpj) != 14 or cnpj == cnpj[0] * 14:
+        return False
+    pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    pesos2 = [6] + pesos1
+    for pesos, pos in ((pesos1, 12), (pesos2, 13)):
+        soma = sum(int(cnpj[i]) * pesos[i] for i in range(pos))
+        resto = soma % 11
+        dig = 0 if resto < 2 else 11 - resto
+        if dig != int(cnpj[pos]):
+            return False
+    return True
+
+
+def validar_cpf_cnpj(valor: str) -> str | None:
+    """Retorna o documento só com dígitos se for CPF/CNPJ válido, senão None."""
+    doc = re.sub(r"\D", "", valor or "")
+    if len(doc) == 11 and _validar_cpf(doc):
+        return doc
+    if len(doc) == 14 and _validar_cnpj(doc):
+        return doc
+    return None
+
+
+def registrar_oferta_produtor(
+    nome: str = "",
+    cpf_cnpj: str = "",
+    descricao: str = "",
+    quantidade: float | None = None,
+    unidade: str = "kg",
+    disponibilidade: str | None = None,
+    preco_pretendido: float | None = None,
+    municipio: str | None = None,
+    contato: str | None = None,
+    tipo: str = "PRODUTOR_INDIVIDUAL",
+    observacoes: str | None = None,
+    origem: str = "CHAT",
+) -> dict:
+    """
+    Cadastra (upsert do produtor + insert da oferta) uma oferta de fornecimento da agricultura
+    familiar. Valida CPF/CNPJ e campos obrigatórios antes de gravar.
+
+    origem: canal de cadastro ("CHAT", "PLANILHA", ...). Default "CHAT" preserva o comportamento atual.
+    """
+    # Validação de obrigatórios
+    faltando = [c for c, v in (("nome", nome), ("cpf_cnpj", cpf_cnpj), ("descricao", descricao)) if not (v and str(v).strip())]
+    if quantidade is None or float(quantidade) <= 0:
+        faltando.append("quantidade")
+    if faltando:
+        return {"ok": False, "erro": f"Campos obrigatórios faltando ou inválidos: {', '.join(faltando)}"}
+
+    doc = validar_cpf_cnpj(cpf_cnpj)
+    if not doc:
+        return {"ok": False, "erro": "CPF/CNPJ inválido. Confira os números e tente novamente."}
+
+    if preco_pretendido is not None and float(preco_pretendido) < 0:
+        return {"ok": False, "erro": "Preço pretendido não pode ser negativo."}
+
+    tipo = tipo if tipo in ("PRODUTOR_INDIVIDUAL", "COOPERATIVA", "ASSOCIACAO") else "PRODUTOR_INDIVIDUAL"
+
+    sb = get_supabase_client()
+    try:
+        sb.table("produtores").upsert(
+            {
+                "cpf_cnpj": doc,
+                "nome": str(nome).strip()[:200],
+                "tipo": tipo,
+                "municipio": (str(municipio).strip()[:120] if municipio else None),
+                "contato": (str(contato).strip()[:200] if contato else None),
+                "atualizado_em": "now()",
+            },
+            on_conflict="cpf_cnpj",
+        ).execute()
+
+        prod = sb.table("produtores").select("id, nome").eq("cpf_cnpj", doc).limit(1).execute()
+        if not prod.data:
+            return {"ok": False, "erro": "Não foi possível registrar o produtor."}
+        produtor_id = prod.data[0]["id"]
+
+        oferta = sb.table("ofertas_produtores").insert(
+            {
+                "produtor_id": produtor_id,
+                "cultura": None,
+                "descricao": str(descricao).strip()[:300],
+                "quantidade": float(quantidade),
+                "unidade": (str(unidade).strip()[:20] if unidade else "kg"),
+                "disponibilidade": (str(disponibilidade).strip()[:200] if disponibilidade else None),
+                "preco_pretendido": (float(preco_pretendido) if preco_pretendido is not None else None),
+                "observacoes": (str(observacoes).strip()[:500] if observacoes else None),
+                "status": "ATIVA",
+                "origem": (str(origem).strip().upper()[:20] if origem else "CHAT"),
+            }
+        ).execute()
+
+        oferta_id = oferta.data[0]["id"] if oferta.data else None
+        resumo = f"{quantidade} {unidade} de {descricao}" + (f" ({disponibilidade})" if disponibilidade else "")
+        return {"ok": True, "oferta_id": oferta_id, "produtor_id": produtor_id, "resumo": resumo}
+    except Exception as e:
+        logger.error(f"Erro ao registrar oferta: {e}", exc_info=True)
+        return {"ok": False, "erro": "Erro ao gravar a oferta. Tente novamente."}
+
+
+def query_ofertas_produtores(
+    cultura: str | None = None,
+    municipio: str | None = None,
+    status: str = "ATIVA",
+    limite: int = 50,
+) -> list[dict]:
+    """Consulta ofertas de produtores (vw_ofertas_produtores) para a prefeitura."""
+    sb = get_supabase_client()
+    query = sb.from_("vw_ofertas_produtores").select("*")
+    if status:
+        query = query.eq("status", sanitizar_string(status, 20))
+    if cultura:
+        query = query.ilike("descricao", f"%{sanitizar_string(cultura)}%")
+    if municipio:
+        query = query.ilike("municipio", f"%{sanitizar_string(municipio)}%")
+    limite = max(1, min(int(limite or 50), 200))
+    result = query.order("criado_em", desc=True).limit(limite).execute()
+    return result.data or []
+
+
+# Colunas aceitas na planilha de carga em lote (mapeiam 1:1 para registrar_oferta_produtor)
+PLANILHA_COLUNAS = (
+    "nome", "cpf_cnpj", "descricao", "quantidade", "unidade",
+    "disponibilidade", "preco_pretendido", "municipio", "contato", "tipo",
+)
+PLANILHA_OBRIGATORIAS = ("nome", "cpf_cnpj", "descricao", "quantidade")
+PLANILHA_MAX_LINHAS = 500
+
+
+def _to_float(v) -> float | None:
+    """Converte célula de planilha (ex.: '4,50', 'R$ 4.50', '') em float ou None."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if s == "" or s.lower() in ("nan", "none", "-"):
+        return None
+    s = re.sub(r"[^\d,.-]", "", s)
+    # Vírgula decimal BR: se há vírgula, ela é o separador decimal
+    if "," in s:
+        s = s.replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _norm_cabecalho(col: str) -> str:
+    """Normaliza nome de coluna do cabeçalho (sem acento, minúsculo, sem espaços extras)."""
+    c = unicodedata.normalize("NFD", str(col or "")).encode("ascii", "ignore").decode().strip().lower()
+    return re.sub(r"\s+", "_", c)
+
+
+def processar_planilha_ofertas(linhas: list[dict], origem: str = "PLANILHA") -> dict:
+    """
+    Processa em lote linhas (já lidas de CSV/XLSX) de ofertas de produtores.
+    Cada linha é gravada de forma independente reutilizando registrar_oferta_produtor:
+    uma linha inválida vai para `erros` e NÃO interrompe as demais.
+
+    Retorna: {"total": N, "inseridas": M, "erros": [{"linha": i, "motivo": "..."}]}
+    """
+    linhas = linhas or []
+    if len(linhas) > PLANILHA_MAX_LINHAS:
+        return {"total": len(linhas), "inseridas": 0,
+                "erros": [{"linha": 0, "motivo": f"Planilha excede o limite de {PLANILHA_MAX_LINHAS} linhas."}]}
+
+    inseridas, erros = 0, []
+    for i, raw in enumerate(linhas, start=1):
+        # Normaliza chaves do dicionário (tolera cabeçalhos com acento/maiúsculas)
+        row = {_norm_cabecalho(k): v for k, v in (raw or {}).items()}
+        try:
+            res = registrar_oferta_produtor(
+                nome=str(row.get("nome", "") or "").strip(),
+                cpf_cnpj=str(row.get("cpf_cnpj", "") or "").strip(),
+                descricao=str(row.get("descricao", "") or "").strip(),
+                quantidade=_to_float(row.get("quantidade")),
+                unidade=(str(row.get("unidade", "") or "kg").strip() or "kg"),
+                disponibilidade=(str(row.get("disponibilidade", "") or "").strip() or None),
+                preco_pretendido=_to_float(row.get("preco_pretendido")),
+                municipio=(str(row.get("municipio", "") or "").strip() or None),
+                contato=(str(row.get("contato", "") or "").strip() or None),
+                tipo=(str(row.get("tipo", "") or "PRODUTOR_INDIVIDUAL").strip().upper() or "PRODUTOR_INDIVIDUAL"),
+                origem=origem,
+            )
+        except Exception as e:
+            logger.error(f"Erro inesperado na linha {i} da planilha: {e}", exc_info=True)
+            erros.append({"linha": i, "motivo": "Erro inesperado ao processar a linha."})
+            continue
+        if res.get("ok"):
+            inseridas += 1
+        else:
+            erros.append({"linha": i, "motivo": res.get("erro", "Erro desconhecido.")})
+
+    return {"total": len(linhas), "inseridas": inseridas, "erros": erros}
 
 
 TOOLS_SCHEMA = [
@@ -885,6 +1133,60 @@ TOOLS_SCHEMA = [
     },
 ]
 
+# Schemas das tools de produtor (definidos à parte para controle de exposição)
+_QUERY_OFERTAS_SCHEMA = {
+    "name": "query_ofertas_produtores",
+    "description": (
+        "Consulta as ofertas de fornecimento cadastradas pelos produtores da agricultura familiar "
+        "(o que têm disponível para vender). Use quando a prefeitura perguntar quem tem determinado "
+        "produto, ofertas por município, ou disponibilidade de fornecedores."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "cultura": {"type": "string", "description": "Produto/cultura a buscar (ex: tomate, alface)"},
+            "municipio": {"type": "string", "description": "Filtrar por município do produtor"},
+            "status": {"type": "string", "enum": ["ATIVA", "INATIVA", "ATENDIDA"],
+                       "description": "Status da oferta (padrão ATIVA)"},
+            "limite": {"type": "integer", "description": "Máximo de resultados (1-200, padrão 50)"},
+        },
+    },
+}
+
+_REGISTRAR_OFERTA_SCHEMA = {
+    "name": "registrar_oferta_produtor",
+    "description": (
+        "Cadastra uma oferta de fornecimento da agricultura familiar (produto que o produtor tem "
+        "para vender). Faz upsert do produtor (por CPF/CNPJ) e grava a oferta. Só chame após "
+        "confirmar os dados com o produtor. Valida CPF/CNPJ e campos obrigatórios."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "nome": {"type": "string", "description": "Nome do produtor/cooperativa/associação"},
+            "cpf_cnpj": {"type": "string", "description": "CPF (11 díg.) ou CNPJ (14 díg.)"},
+            "descricao": {"type": "string", "description": "Produto ofertado (ex: alface crespa)"},
+            "quantidade": {"type": "number", "description": "Quantidade disponível (> 0)"},
+            "unidade": {"type": "string", "description": "Unidade (padrão kg; ex: kg, dz, un, maço)"},
+            "disponibilidade": {"type": "string", "description": "Época/safra (ex: jan-mar/2026, o ano todo)"},
+            "preco_pretendido": {"type": "number", "description": "Preço pretendido por unidade em R$ (opcional)"},
+            "municipio": {"type": "string", "description": "Município do produtor"},
+            "contato": {"type": "string", "description": "Telefone/WhatsApp ou e-mail"},
+            "tipo": {"type": "string", "enum": ["PRODUTOR_INDIVIDUAL", "COOPERATIVA", "ASSOCIACAO"],
+                     "description": "Tipo de produtor (padrão PRODUTOR_INDIVIDUAL)"},
+            "observacoes": {"type": "string", "description": "Detalhes extras (orgânico, embalagem etc.)"},
+        },
+        "required": ["nome", "cpf_cnpj", "descricao", "quantidade"],
+    },
+}
+
+# A consulta de ofertas fica disponível para o assistente geral (prefeitura).
+TOOLS_SCHEMA.append(_QUERY_OFERTAS_SCHEMA)
+
+# A tool de ESCRITA fica restrita ao endpoint do produtor (não exposta ao assistente geral).
+PRODUTOR_TOOLS_SCHEMA = [_REGISTRAR_OFERTA_SCHEMA, _QUERY_OFERTAS_SCHEMA]
+
+
 def executar_tool(nome: str, inputs: dict) -> Any:
     """Executa uma tool pelo nome com os inputs fornecidos."""
     if nome == "query_itens_agro":
@@ -910,5 +1212,9 @@ def executar_tool(nome: str, inputs: dict) -> Any:
         return prohort_comparar_ceasas(**inputs)
     elif nome == "cruzar_preco_prefeitura":
         return prohort_cruzar_prefeitura(**inputs)
+    elif nome == "registrar_oferta_produtor":
+        return registrar_oferta_produtor(**inputs)
+    elif nome == "query_ofertas_produtores":
+        return query_ofertas_produtores(**inputs)
     else:
         return {"erro": f"Tool desconhecida: {nome}"}

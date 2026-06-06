@@ -1,10 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL ?? '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-)
+import { supabase } from '../lib/supabaseClient'
+import { useUrlState } from '../lib/useUrlState'
+import { getCache, setCache } from '../lib/sessionCache'
 
 interface DocComLic {
   id: number
@@ -42,25 +39,30 @@ const fmtBytes = (b: number) =>
   : `${b} B`
 
 const PAGE_SIZE = 15
+const CACHE_KEY = 'documentos_agro_v1'
 
 export default function Documentos() {
   const [docs, setDocs] = useState<DocComLic[]>([])
   const [loading, setLoading] = useState(true)
   const [pdfAberto, setPdfAberto] = useState<DocComLic | null>(null)
 
-  // Filtros
-  const [busca, setBusca] = useState('')
-  const [filAno, setFilAno] = useState('')
-  const [filMes, setFilMes] = useState('')
-  const [filModalidade, setFilModalidade] = useState('')
-  const [filSituacao, setFilSituacao] = useState('')
-  const [filCanal, setFilCanal] = useState('')
+  // Filtros (persistidos na URL)
+  const [busca, setBusca] = useUrlState('q')
+  const [filAno, setFilAno] = useUrlState('ano')
+  const [filMes, setFilMes] = useUrlState('mes')
+  const [filModalidade, setFilModalidade] = useUrlState('modalidade')
+  const [filSituacao, setFilSituacao] = useUrlState('situacao')
+  const [filCanal, setFilCanal] = useUrlState('canal')
   const [showFilters, setShowFilters] = useState(false)
-  const [page, setPage] = useState(1)
+  const [pageRaw, setPageRaw] = useUrlState('page', '1')
+  const page = Math.max(1, parseInt(pageRaw || '1', 10) || 1)
+  const setPage = (p: number) => setPageRaw(String(p))
 
   useEffect(() => {
     async function load() {
       try {
+        const cached = getCache<DocComLic[]>(CACHE_KEY)
+        if (cached) { setDocs(cached); setLoading(false); return }
         const { data } = await supabase
           .from('vw_licitacoes_agro_documentos')
           .select('*')
@@ -83,6 +85,7 @@ export default function Documentos() {
             canal: d.canal ?? '',
           }))
           setDocs(flat)
+          setCache(CACHE_KEY, flat)
         }
       } finally {
         setLoading(false)
@@ -316,13 +319,13 @@ export default function Documentos() {
       {totalPages > 1 && (
         <div className="pagination">
           <button className="page-btn" onClick={() => setPage(1)} disabled={page === 1}>«</button>
-          <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹</button>
+          <button className="page-btn" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>‹</button>
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             const start = Math.max(1, Math.min(page - 2, totalPages - 4))
             const p = start + i
             return <button key={p} className={`page-btn${page === p ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
           })}
-          <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>›</button>
+          <button className="page-btn" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}>›</button>
           <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</button>
         </div>
       )}

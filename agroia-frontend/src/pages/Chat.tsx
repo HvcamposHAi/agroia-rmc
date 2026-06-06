@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ResponseRenderer from '../components/ResponseRenderer'
 import { streamChat } from '../lib/apiClient'
 
@@ -30,6 +31,8 @@ export default function Chat() {
   const [statusMsg, setStatusMsg] = useState('')
   const [sessionId] = useState<string>()
   const [responseCache] = useState(new Map<string, string>())
+  const [searchParams] = useSearchParams()
+  const ultimoQ = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -82,6 +85,17 @@ export default function Chat() {
       setStatusMsg('')
     }
   }
+
+  // Pergunta vinda por deep-link (ex.: barra/chips da Home → /assistente?q=...).
+  // Envia quando o q muda (permite nova pergunta sem remontar), sem reenviar o mesmo.
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q && q !== ultimoQ.current) {
+      ultimoQ.current = q
+      send(q)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) }

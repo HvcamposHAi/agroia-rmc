@@ -1,10 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL ?? '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-)
+import { NavLink } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
+import { useUrlState } from '../lib/useUrlState'
+import { getCache, setCache } from '../lib/sessionCache'
 
 interface Item {
   id: number
@@ -21,38 +19,49 @@ const fmt = (v: number) =>
   v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) ?? '—'
 
 const PAGE_SIZE = 20
+const CACHE_KEY = 'consultas_itens_agro_v1'
 type SortKey = 'dt_abertura' | 'valor_total' | 'qt_solicitada' | 'descricao'
 type SortDir = 'asc' | 'desc'
 
-export default function Consultas() {
-  const [items, setItems] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
-  const [busca, setBusca] = useState('')
-  const [filCultura, setFilCultura] = useState('')
-  const [filCanal, setFilCanal] = useState('')
-  const [filAno, setFilAno] = useState('')
-  const [valorMin, setValorMin] = useState('')
-  const [valorMax, setValorMax] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('dt_abertura')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [page, setPage] = useState(1)
+export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
+  // Quando `dataset` é fornecido (uso embutido na Demanda), reutiliza e não busca.
+  const [fetched, setFetched] = useState<Item[]>([])
+  const items = dataset ?? fetched
+  const [loading, setLoading] = useState(!dataset)
+  const [busca, setBusca] = useUrlState('q')
+  const [filCultura, setFilCultura] = useUrlState('cultura')
+  const [filCanal, setFilCanal] = useUrlState('canal')
+  const [filAno, setFilAno] = useUrlState('ano')
+  const [valorMin, setValorMin] = useUrlState('vmin')
+  const [valorMax, setValorMax] = useUrlState('vmax')
+  const [sortKeyRaw, setSortKey] = useUrlState('sort', 'dt_abertura')
+  const [sortDirRaw, setSortDir] = useUrlState('dir', 'desc')
+  const [pageRaw, setPageRaw] = useUrlState('page', '1')
   const [showFilters, setShowFilters] = useState(false)
 
+  const sortKey = sortKeyRaw as SortKey
+  const sortDir = sortDirRaw as SortDir
+  const page = Math.max(1, parseInt(pageRaw || '1', 10) || 1)
+  const setPage = (p: number) => setPageRaw(String(p))
+
   useEffect(() => {
+    if (dataset) return   // dataset veio por prop; não busca
     async function load() {
       try {
+        const cached = getCache<Item[]>(CACHE_KEY)
+        if (cached) { setFetched(cached); setLoading(false); return }
         const { data } = await supabase
           .from('vw_itens_agro')
           .select('*')
           .order('dt_abertura', { ascending: false })
           .limit(1000)
-        if (data) setItems(data as Item[])
+        if (data) { setFetched(data as Item[]); setCache(CACHE_KEY, data) }
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [])
+  }, [dataset])
 
   const culturas = useMemo(() =>
     [...new Set(items.map(i => i.cultura).filter(Boolean))].sort(), [items])
@@ -64,11 +73,11 @@ export default function Consultas() {
   const filtered = useMemo(() => {
     let f = items
     if (busca) {
-      const q = busca.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      const q = busca.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       f = f.filter(i => {
-        const desc = (i.descricao ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        const desc = (i.descricao ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
         const proc = (i.processo ?? '').toLowerCase()
-        const cult = (i.cultura ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        const cult = (i.cultura ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
         return desc.includes(q) || proc.includes(q) || cult.includes(q)
       })
     }
@@ -95,7 +104,7 @@ export default function Consultas() {
   }
 
   const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    if (sortKey === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir('desc') }
     setPage(1)
   }
@@ -213,6 +222,13 @@ export default function Consultas() {
                 <span style={{ color: 'var(--verde)', fontWeight: 700 }}>≈ R$ {(item.valor_total / item.qt_solicitada).toFixed(2)}/kg</span>
               )}
             </div>
+            {item.cultura && (
+              <div className="item-links">
+                <NavLink to={`/mercado?produto=${encodeURIComponent(item.cultura)}`}>💰 Preço de mercado</NavLink>
+                {item.processo && <NavLink to={`/documentos?q=${encodeURIComponent(item.processo)}`}>📄 Documentos</NavLink>}
+                <NavLink to={`/ofertas?q=${encodeURIComponent(item.cultura)}`}>🧺 Quem vende</NavLink>
+              </div>
+            )}
           </div>
           {item.valor_total > 0 && <div className="item-valor">{fmt(item.valor_total)}</div>}
         </div>
@@ -221,13 +237,13 @@ export default function Consultas() {
       {totalPages > 1 && (
         <div className="pagination">
           <button className="page-btn" onClick={() => setPage(1)} disabled={page === 1}>«</button>
-          <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹</button>
+          <button className="page-btn" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>‹</button>
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             const start = Math.max(1, Math.min(page - 2, totalPages - 4))
             const p = start + i
             return <button key={p} className={`page-btn${page === p ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
           })}
-          <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>›</button>
+          <button className="page-btn" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}>›</button>
           <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</button>
         </div>
       )}

@@ -1,14 +1,13 @@
 import { useEffect, useState, useMemo } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabaseClient'
+import { useUrlState } from '../lib/useUrlState'
+import { getCache, setCache } from '../lib/sessionCache'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Area, AreaChart, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL ?? '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-)
+const CACHE_KEY = 'dashboard_itens_agro_v1'
 
 const fmt = (v: number) =>
   v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(1)}M`
@@ -35,28 +34,34 @@ interface RawItem {
   categoria_v2: string
 }
 
-export default function Dashboard() {
-  const [raw, setRaw] = useState<RawItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filAno, setFilAno] = useState('todos')
-  const [filCanal, setFilCanal] = useState('todos')
-  const [filCategoria, setFilCategoria] = useState('todas')
-  const [filCultura, setFilCultura] = useState('todas')
-  const [topN, setTopN] = useState(10)
+export default function Dashboard({ items }: { items?: RawItem[] } = {}) {
+  // Quando `items` é fornecido (uso embutido na Demanda), reutiliza o dataset e não busca.
+  const [fetched, setFetched] = useState<RawItem[]>([])
+  const raw = items ?? fetched
+  const [loading, setLoading] = useState(!items)
+  const [filAno, setFilAno] = useUrlState('ano', 'todos')
+  const [filCanal, setFilCanal] = useUrlState('canal', 'todos')
+  const [filCategoria, setFilCategoria] = useUrlState('categoria', 'todas')
+  const [filCultura, setFilCultura] = useUrlState('cultura', 'todas')
+  const [topNRaw, setTopN] = useUrlState('top', '10')
+  const topN = Number(topNRaw) || 10
 
   useEffect(() => {
+    if (items) return   // dataset veio por prop; não busca
     async function load() {
       try {
+        const cached = getCache<RawItem[]>(CACHE_KEY)
+        if (cached) { setFetched(cached); setLoading(false); return }
         const { data } = await supabase.from('vw_itens_agro')
           .select('cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2')
           .order('dt_abertura', { ascending: false })
-        if (data) setRaw(data as RawItem[])
+        if (data) { setFetched(data as RawItem[]); setCache(CACHE_KEY, data) }
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [])
+  }, [items])
 
   const anos = useMemo(() =>
     [...new Set(raw.map(r => r.dt_abertura?.slice(0, 4)).filter(Boolean))].sort(), [raw])
@@ -201,7 +206,7 @@ export default function Dashboard() {
         <div className="chart-card" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h3 style={{ margin: 0 }}>🏆 Top Culturas por Valor</h3>
-            <select className="filter-select" style={{ fontSize: 12, padding: '5px 10px' }} value={topN} onChange={e => setTopN(Number(e.target.value))}>
+            <select className="filter-select" style={{ fontSize: 12, padding: '5px 10px' }} value={topN} onChange={e => setTopN(e.target.value)}>
               <option value={5}>Top 5</option>
               <option value={10}>Top 10</option>
               <option value={20}>Top 20</option>

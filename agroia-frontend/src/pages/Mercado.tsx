@@ -1,20 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
+import { NavLink } from 'react-router-dom'
 import { SemaforoPreco } from '../components/SemaforoPreco'
 import type { SemaforoCor } from '../components/SemaforoPreco'
 import ResponseRenderer from '../components/ResponseRenderer'
 import { streamPost } from '../lib/apiClient'
 import type { SSEEvent } from '../lib/apiClient'
-
-// Lê as views PROHORT diretamente do Supabase (mesmo padrão do Dashboard).
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL ?? '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-)
+import { supabase } from '../lib/supabaseClient'
+import { useUrlState } from '../lib/useUrlState'
 
 interface Analise {
   produto_norm: string
@@ -27,6 +23,20 @@ interface Analise {
   variacao_semanal_pct: number | null
   unidade: string | null
   total_cotacoes?: number | null
+  // Baseline histórica de 24 meses (view companheira v_prohort_baseline_24m)
+  media_24m?: number | null
+  min_24m?: number | null
+  max_24m?: number | null
+  total_24m?: number | null
+}
+
+interface Baseline24m {
+  ceasa: string
+  produto_norm: string
+  media_24m: number | null
+  min_24m: number | null
+  max_24m: number | null
+  total_24m: number | null
 }
 
 interface Cruz {
@@ -70,6 +80,9 @@ const PERIODOS = [
   { value: 30, label: '30 dias' },
   { value: 60, label: '60 dias' },
   { value: 90, label: '90 dias' },
+  { value: 180, label: '6 meses' },
+  { value: 365, label: '12 meses' },
+  { value: 730, label: '24 meses' },
 ]
 
 const CONV_SUGGESTIONS = [
@@ -89,17 +102,20 @@ const fmtBRL = (v: number | null | undefined) =>
 
 function calcularSemaforo(a: Analise): { cor: SemaforoCor; texto: string } {
   const m30 = a.media_30d
-  const m90 = a.media_90d
-  if (m30 != null && m90 != null && m90 > 0) {
-    const desvio = ((m30 - m90) / m90) * 100
-    if (desvio < -10) return { cor: 'verde', texto: 'Preço abaixo da média histórica' }
-    if (desvio > 10)  return { cor: 'vermelho', texto: 'Preço acima da média histórica' }
-    return { cor: 'amarelo', texto: 'Preço dentro da média histórica' }
+  // Baseline de 24 meses quando há histórico; senão, referência de 90 dias.
+  const base = a.media_24m != null ? a.media_24m : a.media_90d
+  const rotulo = a.media_24m != null ? 'média de 24 meses' : 'média histórica'
+  if (m30 != null && base != null && base > 0) {
+    const desvio = ((m30 - base) / base) * 100
+    if (desvio < -10) return { cor: 'verde', texto: `Preço abaixo da ${rotulo}` }
+    if (desvio > 10)  return { cor: 'vermelho', texto: `Preço acima da ${rotulo}` }
+    return { cor: 'amarelo', texto: `Preço dentro da ${rotulo}` }
   }
   return { cor: 'cinza', texto: 'Histórico insuficiente' }
 }
 
 // Réplica EXATA da fórmula do backend (chat/tools.py :: _prohort_preco_sugerido).
+// Alterar as duas juntas: base 30d + tendência, limitada à faixa 30d e à faixa de 24 meses.
 function precoSugerido(a: Analise): number | null {
   const m30 = a.media_30d
   if (m30 == null) return null
@@ -111,6 +127,8 @@ function precoSugerido(a: Analise): number | null {
   }
   if (a.min_30d != null) base = Math.max(base, a.min_30d)
   if (a.max_30d != null) base = Math.min(base, a.max_30d)
+  if (a.min_24m != null) base = Math.max(base, a.min_24m)
+  if (a.max_24m != null) base = Math.min(base, a.max_24m)
   return Math.round(base * 100) / 100
 }
 
@@ -118,9 +136,12 @@ const labelCeasa = (v: string) => CEASAS.find((c) => c.value === v)?.label ?? v
 
 export default function Mercado() {
   const [produtos, setProdutos]     = useState<string[]>([])
-  const [produto, setProduto]       = useState('')
-  const [ceasasSel, setCeasasSel]   = useState<string[]>(['CURITIBA'])
-  const [periodo, setPeriodo]       = useState(30)
+  const [produto, setProduto]       = useUrlState('produto')
+  const [ceasasRaw, setCeasasRaw]   = useUrlState('ceasas', 'CURITIBA')
+  const ceasasSelRaw = ceasasRaw.split(',').filter(Boolean)
+  const ceasasSel = ceasasSelRaw.length ? ceasasSelRaw : ['CURITIBA']
+  const [periodoRaw, setPeriodo]    = useUrlState('periodo', '30')
+  const periodo = Number(periodoRaw) || 30
   const [analise, setAnalise]       = useState<Analise | null>(null)   // CEASA principal
   const [comparativo, setComparativo] = useState<LinhaComp[]>([])
   const [serie, setSerie]           = useState<PontoSerie[]>([])
@@ -160,13 +181,10 @@ export default function Mercado() {
   }, [convMsgs, convStatus])
 
   const toggleCeasa = (v: string) => {
-    setCeasasSel((prev) => {
-      if (prev.includes(v)) {
-        const next = prev.filter((x) => x !== v)
-        return next.length ? next : prev   // garante ≥1 selecionada
-      }
-      return [...prev, v]
-    })
+    const has = ceasasSel.includes(v)
+    let next = has ? ceasasSel.filter((x) => x !== v) : [...ceasasSel, v]
+    if (next.length === 0) next = ceasasSel   // garante ≥1 selecionada
+    setCeasasRaw(next.join(','))
   }
 
   const enviarConversa = useCallback(async (texto: string) => {
@@ -226,15 +244,14 @@ export default function Mercado() {
     setErro(null)
     try {
       const termo = prod.toLowerCase()
-      const [aRes, cRes, sRes] = await Promise.all([
+      const [aRes, cRes, bRes] = await Promise.all([
         supabase.from('v_prohort_analise').select('*')
           .ilike('produto_norm', `%${termo}%`).in('ceasa', ceasasSel),
         supabase.from('vw_cruzamento_precos_ceasa').select('*')
           .ilike('produto_norm', `%${termo}%`).in('ceasa', ceasasSel),
-        supabase.from('v_prohort_serie_diaria')
-          .select('data_coleta, preco_medio, preco_min, preco_max, unidade')
-          .ilike('produto_norm', `%${termo}%`).eq('ceasa', primaria)
-          .order('data_coleta', { ascending: true }),
+        // baseline histórica de 24 meses (view companheira; ignora se ainda não existe)
+        supabase.from('v_prohort_baseline_24m').select('*')
+          .ilike('produto_norm', `%${termo}%`).in('ceasa', ceasasSel),
       ])
       if (aRes.error) throw new Error(aRes.error.message)
       const aData = (aRes.data ?? []) as Analise[]
@@ -249,6 +266,14 @@ export default function Mercado() {
         const c = r.ceasa
         if (!bestA[c] || (r.total_cotacoes ?? 0) > (bestA[c].total_cotacoes ?? 0)) bestA[c] = r
       }
+      // mescla a baseline de 24 meses por (ceasa, produto_norm) na melhor linha
+      const bData = (bRes.error ? [] : (bRes.data ?? [])) as Baseline24m[]
+      for (const c of Object.keys(bestA)) {
+        const b = bData.find((x) => x.ceasa === c && x.produto_norm === bestA[c].produto_norm)
+        if (b) {
+          bestA[c] = { ...bestA[c], media_24m: b.media_24m, min_24m: b.min_24m, max_24m: b.max_24m, total_24m: b.total_24m }
+        }
+      }
       // cruzamento (ignora se a view ainda não existe)
       const cData = (cRes.error ? [] : (cRes.data ?? [])) as Cruz[]
       const bestC: Record<string, Cruz> = {}
@@ -260,7 +285,17 @@ export default function Mercado() {
       setComparativo(comp)
       setAnalise(bestA[primaria] ?? comp[0]?.analise ?? null)
 
-      const todos = (sRes.data ?? []) as PontoSerie[]
+      // Série do gráfico: produto_norm EXATO (evita truncamento de 1000 linhas do PostgREST
+      // quando o ilike casa vários produtos em janelas longas de 24 meses).
+      const prodExato = (bestA[primaria] ?? comp[0]?.analise)?.produto_norm
+      let todos: PontoSerie[] = []
+      if (prodExato) {
+        const sRes = await supabase.from('v_prohort_serie_diaria')
+          .select('data_coleta, preco_medio, preco_min, preco_max, unidade')
+          .eq('produto_norm', prodExato).eq('ceasa', primaria)
+          .order('data_coleta', { ascending: true })
+        todos = (sRes.data ?? []) as PontoSerie[]
+      }
       setSerie(todos.slice(Math.max(0, todos.length - periodo)))
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro desconhecido')
@@ -269,6 +304,15 @@ export default function Mercado() {
       setCarregando(false)
     }
   }, [produto, ceasasSel, primaria, periodo])
+
+  // Restaura a consulta ao voltar para a página (produto vindo da URL)
+  const restaurado = useRef(false)
+  useEffect(() => {
+    if (!restaurado.current && produto.trim()) {
+      restaurado.current = true
+      consultar()
+    }
+  }, [produto, consultar])
 
   const formatarData = (d: string) => {
     const dt = new Date(d + 'T00:00:00')
@@ -409,7 +453,7 @@ export default function Mercado() {
           {produtos.map((p) => <option key={p} value={p} />)}
         </datalist>
 
-        <select className="filter-select" value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}>
+        <select className="filter-select" value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
           {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
 
@@ -455,6 +499,10 @@ export default function Mercado() {
 
       {analise && (
         <>
+          <div className="item-links" style={{ marginBottom: 14 }}>
+            <NavLink to={`/demanda?view=lista&q=${encodeURIComponent(produto)}`}>📊 Ver demanda da prefeitura</NavLink>
+            <NavLink to={`/ofertas?q=${encodeURIComponent(produto)}`}>🧺 Quem vende {produto}</NavLink>
+          </div>
           {/* KPI da CEASA principal */}
           <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', marginBottom: 16 }}>
             <div className="metric-card verde">
@@ -480,6 +528,14 @@ export default function Mercado() {
               <div className="metric-label">Sugerido</div>
               <div className="metric-value">{fmtBRL(sugerido)}</div>
               <div className="metric-sub">/{unidade} · referência de venda</div>
+            </div>
+            <div className="metric-card ceu">
+              <span className="metric-icon">📅</span>
+              <div className="metric-label">Média 24m</div>
+              <div className="metric-value">{fmtBRL(analise.media_24m)}</div>
+              <div className="metric-sub">
+                /{unidade} · base histórica{analise.total_24m != null ? ` · ${analise.total_24m} cotações` : ''}
+              </div>
             </div>
           </div>
 

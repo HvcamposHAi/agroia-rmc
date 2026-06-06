@@ -3,15 +3,18 @@ import os
 import json
 import logging
 from collections import defaultdict
-from fastapi import FastAPI, HTTPException, Depends, Security, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Depends, Security, Request, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from chat.agent import chat, chat_stream
-from chat.prompts import PRECOS_SYSTEM_PROMPT
-from chat.tools import get_cached, set_cache
+from chat.prompts import PRECOS_SYSTEM_PROMPT, PRODUTOR_SYSTEM_PROMPT
+from chat.tools import (
+    get_cached, set_cache, PRODUTOR_TOOLS_SCHEMA,
+    processar_planilha_ofertas, PLANILHA_COLUNAS, PLANILHA_OBRIGATORIAS, PLANILHA_MAX_LINHAS,
+)
 from chat.db import get_supabase_client
 from api.coleta import (
     iniciar_coleta, cancelar_coleta, get_status as get_coleta_status,
@@ -766,6 +769,48 @@ async def validar_consistencia(request: Request, _: str = Depends(verify_api_key
         except Exception as e:
             verificacoes.append(ConsistenciaVerificacao(nome='threshold_alertas', status='AVISO', detalhe=f"Erro: {str(e)[:50]}"))
 
+        # 6. Integridade das ofertas de produtores (módulo novo)
+        try:
+            ofertas = sb.from_('ofertas_produtores').select('produtor_id, status, quantidade, preco_pretendido, origem').execute().data or []
+            produtores = sb.from_('produtores').select('id').execute().data or []
+            ids_prod = set(p['id'] for p in produtores)
+            origens_validas = ('CHAT', 'PLANILHA', 'FORM', 'API')
+            orfas = sum(1 for o in ofertas if o.get('produtor_id') not in ids_prod)
+            dominios = sum(1 for o in ofertas if o.get('status') not in ('ATIVA', 'INATIVA', 'ATENDIDA')
+                           or (o.get('origem') is not None and o['origem'] not in origens_validas)
+                           or (o.get('quantidade') is not None and o['quantidade'] < 0)
+                           or (o.get('preco_pretendido') is not None and o['preco_pretendido'] < 0))
+            status = 'CRITICO' if (orfas > 0 or dominios > 0) else 'OK'
+            detalhe = f"ofertas={len(ofertas)} | orfas={orfas} | dominio_invalido={dominios}"
+            verificacoes.append(ConsistenciaVerificacao(nome='ofertas_integridade', status=status, detalhe=detalhe))
+        except Exception as e:
+            # Tabela pode ainda não existir (SQL não aplicado) — apenas avisa, não derruba a auditoria
+            verificacoes.append(ConsistenciaVerificacao(nome='ofertas_integridade', status='AVISO', detalhe=f"Indisponível: {str(e)[:50]}"))
+
+        # 7. Cobertura histórica PROHORT (base de 24 meses das CEASAs)
+        try:
+            from datetime import date as _date, timedelta as _td
+            resp_min = (sb.from_('prohort_precos').select('data_coleta')
+                        .eq('ceasa', 'CURITIBA').order('data_coleta').limit(1).execute())
+            min_data = resp_min.data[0]['data_coleta'] if resp_min.data else None
+            base24 = (sb.from_('v_prohort_baseline_24m').select('produto_norm')
+                      .eq('ceasa', 'CURITIBA').limit(1).execute())
+            tem_baseline = bool(base24.data)
+            limite_24m = (_date.today() - _td(days=700)).isoformat()
+            if not tem_baseline:
+                status = 'CRITICO'
+            elif min_data and min_data <= limite_24m:
+                status = 'OK'
+            else:
+                status = 'AVISO'
+            detalhe = f"min(data_coleta CURITIBA)={min_data} | baseline_24m={'OK' if tem_baseline else 'VAZIA'}"
+            if status == 'AVISO':
+                detalhe += " | ⚠️ cobertura < 24 meses (rodar backfill)"
+            verificacoes.append(ConsistenciaVerificacao(nome='prohort_cobertura_24m', status=status, detalhe=detalhe))
+        except Exception as e:
+            # View 24m pode ainda não existir (SQL não aplicado) — avisa, não derruba a auditoria
+            verificacoes.append(ConsistenciaVerificacao(nome='prohort_cobertura_24m', status='AVISO', detalhe=f"Indisponível: {str(e)[:50]}"))
+
     except Exception as e:
         logger.error("Validação consistência error", exc_info=True)
         raise HTTPException(status_code=500, detail="Consistência validation failed")
@@ -788,6 +833,8 @@ def root():
         "endpoints": {
             "GET /health": "Status do banco de dados",
             "POST /chat": "Enviar pergunta e receber resposta",
+            "POST /produtor/chat/stream": "Assistente de cadastro de ofertas do produtor (SSE)",
+            "POST /produtor/ofertas/upload": "Carga em lote de ofertas do produtor via planilha (CSV/XLSX)",
             "POST /alertas": "Gerar alertas inteligentes com IA",
             "POST /auditoria/executar": "Executar auditoria sob demanda",
             "POST /auditoria/chat": "Discutir resultados da auditoria com IA",
@@ -865,6 +912,137 @@ def prohort_chat_stream_endpoint(request: ChatRequest, _: str = Depends(verify_a
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+_produtor_rate: dict[str, list[float]] = defaultdict(list)
+
+
+@app.post("/produtor/chat/stream")
+def produtor_chat_stream_endpoint(request_http: Request, request: ChatRequest, _: str = Depends(verify_api_key)):
+    """
+    Assistente conversacional de CADASTRO DE OFERTAS do produtor (agricultura familiar), com SSE.
+    Usa PRODUTOR_SYSTEM_PROMPT e um subconjunto de tools (cadastro/consulta de ofertas) — a tool de
+    escrita não fica exposta ao assistente geral. Stateless por sessão (não persiste histórico).
+    """
+    import time
+
+    # Rate limit simples por IP (anti-spam): 20 msgs / 5 min
+    ip = request_http.client.host if request_http.client else "unknown"
+    agora = time.time()
+    _produtor_rate[ip] = [t for t in _produtor_rate[ip] if agora - t < 300]
+    if len(_produtor_rate[ip]) >= 20:
+        raise HTTPException(status_code=429, detail="Muitas mensagens. Aguarde alguns minutos.")
+    _produtor_rate[ip].append(agora)
+
+    def generate():
+        try:
+            historico = request.historico or []
+            for event in chat_stream(
+                request.pergunta, historico,
+                system_prompt=PRODUTOR_SYSTEM_PROMPT,
+                tools=PRODUTOR_TOOLS_SCHEMA,
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Produtor chat error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'tipo': 'token', 'texto': '⚠️ Erro ao registrar sua oferta. Tente novamente.'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'fim', 'tools_usadas': []})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# Limite de upload da planilha de ofertas (anti-abuso): 2 MB
+UPLOAD_MAX_BYTES = 2 * 1024 * 1024
+
+
+@app.post("/produtor/ofertas/upload")
+async def produtor_ofertas_upload(
+    request_http: Request,
+    arquivo: UploadFile = File(...),
+    _: str = Depends(verify_api_key),
+):
+    """
+    Carga em lote de ofertas do produtor via planilha (CSV ou XLSX).
+    Reutiliza a mesma validação/gravação do chat (registrar_oferta_produtor) linha a linha:
+    linhas inválidas vão para `erros` e não interrompem as demais.
+
+    Retorna: {"total": N, "inseridas": M, "erros": [{"linha": i, "motivo": "..."}]}
+    """
+    import io
+    import time
+
+    # Rate limit por IP (reusa o mesmo balde do chat do produtor): 20 req / 5 min
+    ip = request_http.client.host if request_http.client else "unknown"
+    agora = time.time()
+    _produtor_rate[ip] = [t for t in _produtor_rate[ip] if agora - t < 300]
+    if len(_produtor_rate[ip]) >= 20:
+        raise HTTPException(status_code=429, detail="Muitos envios. Aguarde alguns minutos.")
+    _produtor_rate[ip].append(agora)
+
+    nome = (arquivo.filename or "").lower()
+    if not (nome.endswith(".csv") or nome.endswith(".xlsx")):
+        raise HTTPException(status_code=400, detail="Formato inválido. Envie um arquivo .csv ou .xlsx.")
+
+    conteudo = await arquivo.read()
+    if not conteudo:
+        raise HTTPException(status_code=400, detail="Arquivo vazio.")
+    if len(conteudo) > UPLOAD_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Arquivo muito grande (máx. 2 MB).")
+
+    try:
+        import pandas as pd
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Leitura de planilha indisponível no servidor (pandas).")
+
+    # Leitura tolerante a encoding/separador do Excel BR
+    try:
+        if nome.endswith(".xlsx"):
+            try:
+                df = pd.read_excel(io.BytesIO(conteudo))
+            except ImportError:
+                raise HTTPException(status_code=400, detail="Suporte a .xlsx indisponível. Envie um .csv.")
+        else:
+            df = None
+            for sep in (";", ","):
+                for enc in ("utf-8-sig", "latin-1"):
+                    try:
+                        cand = pd.read_csv(io.BytesIO(conteudo), sep=sep, encoding=enc, dtype=str)
+                        if cand.shape[1] > 1 or sep == ",":
+                            df = cand
+                            break
+                    except Exception:
+                        continue
+                if df is not None:
+                    break
+            if df is None:
+                raise HTTPException(status_code=400, detail="Não foi possível ler o CSV. Use o modelo fornecido.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao ler planilha: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Não foi possível ler a planilha. Use o modelo fornecido.")
+
+    # Valida cabeçalho: precisa conter as colunas obrigatórias (normalizadas)
+    from chat.tools import _norm_cabecalho
+    cols_norm = {_norm_cabecalho(c) for c in df.columns}
+    faltando = [c for c in PLANILHA_OBRIGATORIAS if c not in cols_norm]
+    if faltando:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Planilha sem as colunas obrigatórias: {', '.join(faltando)}. "
+                   f"Colunas esperadas: {', '.join(PLANILHA_COLUNAS)}.",
+        )
+
+    if len(df) > PLANILHA_MAX_LINHAS:
+        raise HTTPException(status_code=413, detail=f"Planilha excede o limite de {PLANILHA_MAX_LINHAS} linhas.")
+
+    linhas = df.where(pd.notnull(df), None).to_dict(orient="records")
+    resultado = processar_planilha_ofertas(linhas, origem="PLANILHA")
+    return resultado
 
 
 @app.post("/coleta/cancelar")

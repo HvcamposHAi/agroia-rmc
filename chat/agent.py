@@ -18,15 +18,19 @@ def get_client() -> anthropic.Anthropic:
 		_anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 	return _anthropic_client
 
-def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT) -> dict:
+def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT,
+         tools: list = None) -> dict:
     """
     Executa o agente de chat com loop tool_use.
     Retorna {"resposta": str, "tools_usadas": list[str]}
     Garante sempre retornar um dict com "resposta" válida.
     system_prompt permite usar um prompt focado (ex.: PRECOS_SYSTEM_PROMPT) sem duplicar o loop.
+    tools permite restringir o conjunto de tools (default: TOOLS_SCHEMA = comportamento atual).
     """
     if historico is None:
         historico = []
+    if tools is None:
+        tools = TOOLS_SCHEMA
 
     try:
         if not pergunta or not pergunta.strip():
@@ -47,7 +51,7 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
                     model="claude-haiku-4-5-20251001",
                     max_tokens=2048,
                     system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
-                    tools=TOOLS_SCHEMA,
+                    tools=tools,
                     messages=messages,
                     timeout=30  # Aumentado para 30s (API pode ser lenta)
                 )
@@ -107,15 +111,19 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
             "tools_usadas": []
         }
 
-def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT) -> Generator[dict, None, None]:
+def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT,
+                tools: list = None) -> Generator[dict, None, None]:
     """
     Streaming version of chat. Yields SSE events:
     - {"tipo": "status", "msg": str} — Progress updates
     - {"tipo": "token", "texto": str} — LLM response tokens
     - {"tipo": "fim", "tools_usadas": list[str]} — Final event
+    tools permite restringir o conjunto de tools (default: TOOLS_SCHEMA = comportamento atual).
     """
     if historico is None:
         historico = []
+    if tools is None:
+        tools = TOOLS_SCHEMA
 
     try:
         if not pergunta or not pergunta.strip():
@@ -140,7 +148,7 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
                     model="claude-haiku-4-5-20251001",
                     max_tokens=2048,
                     system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
-                    tools=TOOLS_SCHEMA,
+                    tools=tools,
                     messages=messages,
                     timeout=30
                 ) as stream:
