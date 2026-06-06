@@ -5,7 +5,12 @@
       "Bash(python -c \"import ast; src=open\\(''etapa2_itens_v8.py'',encoding=''utf-8''\\).read\\(\\); ast.parse\\(src\\); print\\(''OK''\\)\")",
       "Bash(ls C:UsershvcamMeu DrivePessoalMestradoDissertaçãoagroia-rmc/*.py)",
       "Bash(xargs -I{} basename {})",
-      "Bash(ls -la \"c:\\\\Users\\\\hvcam\\\\Meu Drive\\\\Pessoal\\\\Mestrado\\\\Dissertação\\\\agroia-rmc\"/*.log)"
+      "Bash(ls -la \"c:\\\\Users\\\\hvcam\\\\Meu Drive\\\\Pessoal\\\\Mestrado\\\\Dissertação\\\\agroia-rmc\"/*.log)",
+      "Bash(xargs grep *)",
+      "Bash(python -c \"from api.coleta import get_status, escrever_progresso; print\\('✓ Imports OK'\\)\")",
+      "Bash(python -c \"from api.coleta import get_status; print\\('✓ api.coleta imports OK'\\)\")",
+      "Bash(python -c \"from api.coleta import get_status; print\\('OK'\\)\")",
+      "Bash(python -c \"import etapa2_itens_v9; print\\('OK'\\)\")"
     ]
   }
 }
