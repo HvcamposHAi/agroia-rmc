@@ -19,7 +19,7 @@ interface Oferta {
   origem?: string | null
 }
 
-const CACHE_KEY = 'ofertas_produtores_v1'
+const CACHE_KEY = 'ofertas_produtores_v2'
 
 const norm = (s: string) =>
   (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -85,7 +85,7 @@ export default function Ofertas() {
       <div style={{ marginBottom: 12 }}>
         <h2 style={{ margin: '0 0 2px', fontFamily: 'Inter, sans-serif', color: 'var(--texto)' }}>Ofertas da agricultura familiar</h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--texto-suave)' }}>
-          Consulta da prefeitura: produtos cadastrados pelos produtores. Filtre por produto, disponibilidade, município ou situação.
+          Consulta da prefeitura: produtos cadastrados pelos produtores. Enquanto não há ofertas cadastradas, são exibidas referências de preço das CEASAs do Paraná. Filtre por produto, disponibilidade, município ou situação.
         </p>
       </div>
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '16px 20px', marginBottom: 12 }}>
@@ -138,7 +138,11 @@ export default function Ofertas() {
               )}
               {o.origem && (
                 <span style={{ fontSize: 10, color: 'var(--texto-suave)', background: 'var(--cinza-claro)', border: '1px solid var(--borda)', padding: '2px 7px', borderRadius: 6, fontWeight: 700, marginLeft: 'auto' }}>
-                  {o.origem === 'PLANILHA' ? '📄 planilha' : '💬 chat'}
+                  {o.origem === 'CEASA'
+                    ? '🏷️ referência CEASA'
+                    : o.origem === 'PLANILHA'
+                      ? '📄 planilha'
+                      : '💬 chat'}
                 </span>
               )}
               <span style={{ fontSize: 11, color: 'var(--texto-suave)', marginLeft: o.origem ? 0 : 'auto' }}>
