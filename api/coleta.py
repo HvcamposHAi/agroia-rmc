@@ -170,7 +170,7 @@ def _disparar_github_actions(dt_inicio: str, dt_fim: str) -> Tuple[bool, str]:
         "iniciado_em": datetime.now().isoformat(),
         "atualizado_em": datetime.now().isoformat(),
         "consulta_portal": {
-            "url": os.getenv("PORTAL_URL", "http://consultalictacao.curitiba.pr.gov.br:9090/"),
+            "url": os.getenv("PORTAL_URL", "http://consultalicitacao.curitiba.pr.gov.br:9090/"),
             "orgao": "SMSAN/FAAC",
             "dt_inicio": dt_inicio,
             "dt_fim": dt_fim,

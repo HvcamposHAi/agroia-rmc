@@ -42,7 +42,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("Missing required env vars: SUPABASE_URL, SUPABASE_KEY")
 
-PORTAL_URL = "http://consultalictacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf"
+PORTAL_URL = "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/pages/consulta/consultaProcessoDetalhada.jsf"
 ORGAO      = "SMSAN/FAAC"
 REGS_POR_PAG = 5
 DELAY        = 2.0
