@@ -25,6 +25,13 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient import discovery
 
+from ingestion.pdf_metadata import (
+    identificar_culturas_no_chunk,
+    inferir_ano,
+    inferir_canal,
+    inferir_tipo_documento,
+)
+
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -232,9 +239,18 @@ def indexar_pdfs():
 
         print(f"\n   [{idx}/{len(documentos_novos)}] {nome_doc} (ID: {doc_id})")
 
+        canal_lic = None
+        dt_abertura_lic = None
         try:
-            lic_result = sb.table("licitacoes").select("processo").eq("id", licitacao_id).single().execute()
-            processo = lic_result.data.get("processo", "?") if lic_result.data else "?"
+            lic_result = sb.table("licitacoes").select(
+                "processo, canal, dt_abertura"
+            ).eq("id", licitacao_id).single().execute()
+            if lic_result.data:
+                processo = lic_result.data.get("processo", "?")
+                canal_lic = lic_result.data.get("canal")
+                dt_abertura_lic = lic_result.data.get("dt_abertura")
+            else:
+                processo = "?"
         except Exception:
             processo = "?"
 
@@ -266,6 +282,12 @@ def indexar_pdfs():
 
         print(f"      -> {len(chunks)} chunks, {len(texto)} caracteres")
 
+        # Metadados de documento (uma vez por PDF). canal autoritativo vem do
+        # banco (licitacoes); inferir_canal() é só fallback quando o banco é nulo.
+        canal_doc = canal_lic or inferir_canal(texto)
+        ano_doc = inferir_ano(texto)
+        tipo_doc = inferir_tipo_documento(nome_doc, texto)
+
         print(f"      Gerando embeddings...", end="", flush=True)
         try:
             embeddings = modelo.encode(chunks, batch_size=32, show_progress_bar=False)
@@ -286,6 +308,12 @@ def indexar_pdfs():
                 "chunk_text": chunk,
                 "embedding": embedding.tolist(),
                 "tokens_aprox": len(chunk) // 4,
+                # Metadados estruturados (enriquecimento — colunas adicionadas em pdf_chunks)
+                "canal": canal_doc,
+                "dt_abertura": dt_abertura_lic,
+                "ano_referencia": ano_doc,
+                "tipo_documento": tipo_doc,
+                "culturas_mencionadas": identificar_culturas_no_chunk(chunk),
             })
 
         print(f"      Salvando no Supabase...", end="", flush=True)
