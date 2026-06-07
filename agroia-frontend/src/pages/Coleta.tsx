@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { streamPost } from '../lib/apiClient'
+import { streamPost, iniciarColeta as apiIniciarColeta, cancelarColeta as apiCancelarColeta, salvarConfigColeta } from '../lib/apiClient'
 import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Em produção (nuvem/Render) a coleta por navegador não roda — execute localmente.
+// Setar VITE_COLETA_ENABLED=false no build do Cloudflare Pages.
+const COLETA_ENABLED = (import.meta.env.VITE_COLETA_ENABLED ?? 'true').toString().toLowerCase() !== 'false'
 
 interface ConsultaPortal {
   url: string
@@ -44,6 +47,42 @@ interface ConfigAgendamento {
   dia_semana: number  // 0 = seg, 1 = ter, ..., 6 = dom
   hora: number        // 0-23
   minuto: number      // 0-59
+}
+
+interface ErroDetalhe {
+  processo: string
+  mensagem: string
+}
+
+interface UltimaExecucao {
+  id: number
+  iniciado_em: string | null
+  finalizado_em: string
+  duracao_seg: number | null
+  status: 'completed' | 'error' | 'cancelled' | string
+  etapa: string | null
+  origem: string | null
+  dt_inicio: string | null
+  dt_fim: string | null
+  processados: number
+  novos: number
+  pulados: number
+  erros: number
+  itens_coletados: number
+  fornecedores: number
+  empenhos: number
+  erro_resumo: string | null
+  erro_detalhes: ErroDetalhe[] | null
+}
+
+function formatarDataHora(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '—'
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(d)
 }
 
 const ETAPA_LABELS: Record<string, string> = {
@@ -88,20 +127,44 @@ export default function Coleta() {
   const [activeTab, setActiveTab] = useState<'controle' | 'agendamento'>('controle')
   const [config, setConfig] = useState<ConfigAgendamento>({ dia_semana: 0, hora: 6, minuto: 0 })
   const [savingConfig, setSavingConfig] = useState(false)
+  const [ultimaExec, setUltimaExec] = useState<UltimaExecucao | null>(null)
+  const [proximaExec, setProximaExec] = useState<string | null>(null)
 
   // Carregar stats iniciais
   useEffect(() => {
     loadStats()
     loadStatus()
     loadConfig()
+    loadUltimaExecucao()
+    loadProximaExec()
     const interval = setInterval(() => {
       if (!loading) {
         loadStatus()
         loadStats()
+        loadUltimaExecucao()
+        loadProximaExec()
       }
     }, 5000)
     return () => clearInterval(interval)
   }, [loading])
+
+  const loadUltimaExecucao = async () => {
+    try {
+      const resp = await axios.get(`${API_BASE}/coleta/ultima-execucao`)
+      setUltimaExec(resp.data && resp.data.id ? resp.data : null)
+    } catch (e) {
+      console.error('Erro ao carregar última execução:', e)
+    }
+  }
+
+  const loadProximaExec = async () => {
+    try {
+      const resp = await axios.get(`${API_BASE}/coleta/proxima-execucao`)
+      setProximaExec(resp.data?.proxima ?? null)
+    } catch (e) {
+      console.error('Erro ao carregar próxima execução:', e)
+    }
+  }
 
   const loadStatus = async () => {
     try {
@@ -128,10 +191,8 @@ export default function Coleta() {
     setLoading(true)
     setError('')
     try {
-      const resp = await axios.post(`${API_BASE}/coleta/iniciar`, {}, {
-        headers: { 'X-API-Key': import.meta.env.VITE_API_KEY || '' }
-      })
-      setStatus(resp.data.status)
+      const data = await apiIniciarColeta()
+      setStatus(data.status)
       streamarProgresso()
     } catch (e: any) {
       setError(e.response?.data?.detail || 'Erro ao iniciar coleta')
@@ -144,9 +205,12 @@ export default function Coleta() {
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     try {
-      for await (const event of streamPost<StatusColeta>('/coleta/stream')) {
+      for await (const event of streamPost<StatusColeta & { msg?: string }>('/coleta/stream')) {
         setStatus(event)
         if (event.status === 'completed' || event.status === 'cancelled' || event.status === 'error') {
+          if (event.status === 'error' && event.msg) {
+            setError(event.msg)
+          }
           setLoading(false)
           loadStats()
           break
@@ -160,9 +224,7 @@ export default function Coleta() {
 
   const cancelarColeta = async () => {
     try {
-      await axios.post(`${API_BASE}/coleta/cancelar`, {}, {
-        headers: { 'X-API-Key': import.meta.env.VITE_API_KEY || '' }
-      })
+      await apiCancelarColeta()
       setLoading(false)
       loadStatus()
     } catch (e: any) {
@@ -182,9 +244,7 @@ export default function Coleta() {
   const salvarConfig = async () => {
     setSavingConfig(true)
     try {
-      await axios.post(`${API_BASE}/coleta/config`, config, {
-        headers: { 'X-API-Key': import.meta.env.VITE_API_KEY || '' }
-      })
+      await salvarConfigColeta(config)
       setError('')
       alert('Configuração salva com sucesso! A coleta semanal foi atualizada.')
       loadConfig()
@@ -222,6 +282,13 @@ export default function Coleta() {
     : []
 
   const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+  const diasAbrev = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom']
+
+  // Rótulo da próxima execução: prioriza o ISO do backend (mesma base do
+  // APScheduler); cai para um rótulo derivado do config salvo se indisponível.
+  const proximaExecLabel = proximaExec
+    ? formatarDataHora(proximaExec)
+    : `Próx. ${diasAbrev[config.dia_semana]} ${config.hora.toString().padStart(2, '0')}:${config.minuto.toString().padStart(2, '0')}`
 
   return (
     <div className="page" style={{ maxWidth: 1400 }}>
@@ -303,19 +370,119 @@ export default function Coleta() {
             <div>
               <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>PRÓXIMA EXEC.</p>
               <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)' }}>
-                Próx. seg. 06:00
+                {proximaExecLabel}
               </p>
             </div>
           </div>
+        </div>
+
+        {/* ── Última Atualização (histórico persistido) ── */}
+        <div style={{
+          background: '#f9fafb',
+          border: `1px solid ${ultimaExec ? STATUS_COLORS[ultimaExec.status] || 'var(--borda)' : 'var(--borda)'}`,
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 16,
+        }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--texto)', marginBottom: 12 }}>
+            🕒 Última Atualização
+          </p>
+
+          {!ultimaExec ? (
+            <p style={{ fontSize: 14, color: 'var(--texto-suave)', margin: 0 }}>
+              Sem execuções registradas ainda. Os dados aparecerão aqui após a primeira coleta.
+            </p>
+          ) : (
+            <>
+              {/* Cabeçalho: data, status, intervalo, duração */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 16 }}>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>DATA</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>{formatarDataHora(ultimaExec.finalizado_em)}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>RESULTADO</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: STATUS_COLORS[ultimaExec.status] || 'var(--texto)' }}>
+                    {STATUS_LABELS[ultimaExec.status] || ultimaExec.status}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>INTERVALO CONSULTADO</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>
+                    {ultimaExec.dt_inicio || '—'} → {ultimaExec.dt_fim || '—'}
+                  </p>
+                </div>
+                {ultimaExec.duracao_seg != null && (
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>DURAÇÃO</p>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>
+                      {Math.floor(ultimaExec.duracao_seg / 60)}min {ultimaExec.duracao_seg % 60}s
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* O que foi atualizado */}
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8, textTransform: 'uppercase' }}>
+                O que foi atualizado
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 16 }}>
+                {[
+                  { label: 'PROCESSADOS', value: ultimaExec.processados },
+                  { label: 'ITENS', value: ultimaExec.itens_coletados },
+                  { label: 'FORNECEDORES', value: ultimaExec.fornecedores },
+                  { label: 'EMPENHOS', value: ultimaExec.empenhos },
+                  { label: 'PULADOS', value: ultimaExec.pulados },
+                ].map((kpi) => (
+                  <div key={kpi.label} style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 10 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>{kpi.label}</p>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{kpi.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Falhas */}
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8, textTransform: 'uppercase' }}>
+                Falhas na atualização
+              </p>
+              {ultimaExec.erros === 0 && !ultimaExec.erro_resumo ? (
+                <p style={{ fontSize: 14, color: '#15803d', margin: 0 }}>✅ Nenhuma falha registrada nesta execução.</p>
+              ) : (
+                <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: 12 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#b91c1c', margin: 0 }}>
+                    ❌ {ultimaExec.erros} {ultimaExec.erros === 1 ? 'falha registrada' : 'falhas registradas'}
+                  </p>
+                  {ultimaExec.erro_resumo && (
+                    <pre style={{ fontSize: 12, color: '#7f1d1d', margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', maxHeight: 160, overflow: 'auto' }}>
+                      {ultimaExec.erro_resumo}
+                    </pre>
+                  )}
+                  {ultimaExec.erro_detalhes && ultimaExec.erro_detalhes.length > 0 && (
+                    <details style={{ marginTop: 8 }}>
+                      <summary style={{ fontSize: 13, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>
+                        Ver detalhe ({ultimaExec.erro_detalhes.length})
+                      </summary>
+                      <ul style={{ margin: '8px 0 0 0', paddingLeft: 18, fontSize: 13, color: '#7f1d1d', lineHeight: 1.6 }}>
+                        {ultimaExec.erro_detalhes.map((d, idx) => (
+                          <li key={idx}><strong>{d.processo}</strong>: {d.mensagem}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Botões de controle */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <button
             onClick={iniciarColeta}
-            disabled={loading}
+            disabled={loading || !COLETA_ENABLED}
+            title={!COLETA_ENABLED ? 'Execute a coleta na máquina local' : undefined}
             style={{
-              background: loading ? 'var(--borda)' : '#0f766e',
+              background: (loading || !COLETA_ENABLED) ? 'var(--borda)' : '#0f766e',
               color: '#fff',
               border: 'none',
               borderRadius: 12,
@@ -323,8 +490,8 @@ export default function Coleta() {
               fontFamily: 'Inter',
               fontSize: 15,
               fontWeight: 800,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
+              cursor: (loading || !COLETA_ENABLED) ? 'not-allowed' : 'pointer',
+              opacity: (loading || !COLETA_ENABLED) ? 0.6 : 1
             }}
           >
             {loading ? '🔄 Buscando...' : '🔍 Buscar Dados'}
@@ -348,6 +515,14 @@ export default function Coleta() {
             </button>
           )}
         </div>
+
+        {!COLETA_ENABLED && (
+          <div style={{ marginTop: 16, padding: 12, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, color: '#1e40af' }}>
+            <p style={{ fontSize: 14, margin: 0 }}>
+              ℹ️ A coleta do portal usa um navegador e roda apenas na máquina local. Esta página exibe o status e as estatísticas mais recentes da base.
+            </p>
+          </div>
+        )}
 
         {error && (
           <div style={{ marginTop: 16, padding: 12, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c' }}>
@@ -583,7 +758,7 @@ export default function Coleta() {
           <h3 style={{ fontSize: 28, fontWeight: 700, color: 'var(--texto)', margin: 0, marginBottom: 4 }}>
             {stats?.total_itens || '—'}
           </h3>
-          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>Produtos e serviços</p>
+          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>Itens agrícolas</p>
         </div>
 
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>

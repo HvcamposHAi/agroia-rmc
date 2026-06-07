@@ -21,6 +21,13 @@ logger = logging.getLogger(__name__)
 STATUS_FILE = "coleta_status.json"
 PROCESS_PID = None
 
+# A coleta usa Playwright + Chromium, que não roda de forma confiável no Render
+# (sem display, navegador ausente, RAM limitada, FS efêmero). Por padrão a coleta
+# é habilitada (execução LOCAL no Windows). Em produção/Render, setar
+# COLETA_ENABLED=false: a página passa a exibir apenas status/estatísticas.
+def coleta_habilitada() -> bool:
+    return os.getenv("COLETA_ENABLED", "true").lower() in ("1", "true", "yes")
+
 # ─── Funções auxiliares ──────────────────────────────────────────────────────
 
 def get_data_mais_recente() -> str:
@@ -70,6 +77,11 @@ def iniciar_coleta(dt_inicio: Optional[str] = None, dt_fim: Optional[str] = None
     Retorna (sucesso: bool, mensagem: str).
     """
     global PROCESS_PID
+
+    # No ambiente de nuvem (Render) a coleta via navegador não roda — execute localmente.
+    if not coleta_habilitada():
+        return False, ("Coleta deve ser executada na máquina local. "
+                       "Esta página exibe apenas status e estatísticas.")
 
     # Verificar se já há coleta em andamento
     status = get_status()
@@ -156,19 +168,40 @@ def get_stats_classificacao() -> Dict[str, Any]:
         # Licitações não-agrícolas
         total_nao_agro = total_licitacoes - total_agro
 
-        # Total de itens
-        resp_itens_total = sb.table("itens_licitacao").select("id", count="exact").execute()
-        total_itens = resp_itens_total.count if resp_itens_total.count else 0
+        # Total de itens AGRÍCOLAS — mesma fonte da Home/Demanda (vw_itens_agro,
+        # nível item, relevante_agro=true). Mantém coerência de escopo com o resto
+        # do app (CLAUDE.md: agricultura exclusivamente). NOTA: `relevante_af` é
+        # nível LICITAÇÃO; `relevante_agro` é nível ITEM (filtro da view) —
+        # granularidades intencionalmente diferentes.
+        resp_itens_agro = sb.from_("vw_itens_agro").select("id", count="exact").eq("relevante_agro", True).execute()
+        total_itens = resp_itens_agro.count if resp_itens_agro.count else 0
 
-        # Itens por categoria
-        resp_categorias = sb.table("itens_licitacao").select("categoria_v2", count="exact").execute()
-        categorias_dict = {}
-        if resp_categorias.data:
-            # Agrupar manualmente por categoria
-            resp_by_cat = sb.table("itens_licitacao").select("categoria_v2").execute()
-            from collections import Counter
-            cat_counts = Counter(x.get("categoria_v2", "NAO_CLASSIFICADO") for x in resp_by_cat.data)
-            categorias_dict = dict(cat_counts)
+        # Contagem bruta (todos os itens, agrícolas ou não) — referência apenas.
+        resp_itens_bruto = sb.table("itens_licitacao").select("id", count="exact").execute()
+        total_itens_bruto = resp_itens_bruto.count if resp_itens_bruto.count else 0
+
+        # Itens agrícolas por categoria — paginado para evitar a truncagem do
+        # PostgREST em 1000 linhas (a contagem por categoria precisa de TODAS as linhas).
+        from collections import Counter
+        cat_counts = Counter()
+        offset = 0
+        PAGINA = 1000
+        while True:
+            resp_cat = (
+                sb.from_("vw_itens_agro")
+                .select("categoria_v2")
+                .eq("relevante_agro", True)
+                .range(offset, offset + PAGINA - 1)
+                .execute()
+            )
+            linhas = resp_cat.data or []
+            if not linhas:
+                break
+            cat_counts.update((x.get("categoria_v2") or "NAO_CLASSIFICADO") for x in linhas)
+            if len(linhas) < PAGINA:
+                break
+            offset += PAGINA
+        categorias_dict = dict(cat_counts)
 
         # Licitações agrícolas por ano
         resp_agro_anos = sb.table("licitacoes").select("dt_abertura").eq("relevante_af", True).execute()
@@ -216,6 +249,7 @@ def get_stats_classificacao() -> Dict[str, Any]:
             "total_nao_agricolas": total_nao_agro,
             "cobertura_agricola_pct": cobertura_pct,
             "total_itens": total_itens,
+            "total_itens_bruto": total_itens_bruto,
             "media_itens_por_licitacao": media_itens_por_lic,
             "licitacoes_agro_com_docs": lics_agro_com_docs,
             "licitacoes_agro_sem_docs": lics_agro_sem_docs,
@@ -232,9 +266,66 @@ def get_stats_classificacao() -> Dict[str, Any]:
         }
 
 
+def get_ultima_execucao() -> Optional[dict]:
+    """Retorna a última execução de coleta registrada em coleta_execucoes,
+    ou None se não houver registro / em caso de erro."""
+    try:
+        sb = get_supabase_client()
+        resp = (
+            sb.table("coleta_execucoes")
+            .select("*")
+            .order("finalizado_em", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if resp.data and len(resp.data) > 0:
+            return resp.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Erro ao buscar última execução: {e}")
+        return None
+
+
+def get_historico_execucoes(limite: int = 10) -> list:
+    """Retorna as últimas `limite` execuções (mais recentes primeiro)."""
+    try:
+        sb = get_supabase_client()
+        resp = (
+            sb.table("coleta_execucoes")
+            .select("*")
+            .order("finalizado_em", desc=True)
+            .limit(limite)
+            .execute()
+        )
+        return resp.data or []
+    except Exception as e:
+        logger.error(f"Erro ao buscar histórico de execuções: {e}")
+        return []
+
+
 # ─── Agendamento ─────────────────────────────────────────────────────────────
 
 scheduler = None
+
+
+def proxima_execucao_iso() -> Optional[str]:
+    """Calcula o próximo disparo da coleta semanal a partir do agendamento salvo
+    (coleta_config.json), usando o mesmo CronTrigger do APScheduler. Retorna ISO
+    ou None se a coleta não estiver habilitada / em caso de erro."""
+    try:
+        if not coleta_habilitada():
+            return None
+        config = get_config()
+        trigger = CronTrigger(
+            day_of_week=config.get("dia_semana", 0),
+            hour=config.get("hora", 6),
+            minute=config.get("minuto", 0),
+        )
+        proxima = trigger.get_next_fire_time(None, datetime.now())
+        return proxima.isoformat() if proxima else None
+    except Exception as e:
+        logger.error(f"Erro ao calcular próxima execução: {e}")
+        return None
 
 
 def job_coleta_semanal():
@@ -292,15 +383,20 @@ def configurar_agendamento(app):
         hora = config.get("hora", 6)
         minuto = config.get("minuto", 0)
 
-        # Segunda-feira às 06:00 (weekday 0 = Monday) - ou conforme config
-        trigger = CronTrigger(day_of_week=dia_semana, hour=hora, minute=minuto)
-        scheduler.add_job(
-            job_coleta_semanal,
-            trigger=trigger,
-            id="coleta_semanal",
-            name="Coleta de dados semanal",
-            replace_existing=True
-        )
+        # Segunda-feira às 06:00 (weekday 0 = Monday) - ou conforme config.
+        # Só agenda a coleta por navegador onde ela pode rodar (local). No Render
+        # (COLETA_ENABLED=false) não agenda — evita falhas silenciosas semanais.
+        if coleta_habilitada():
+            trigger = CronTrigger(day_of_week=dia_semana, hour=hora, minute=minuto)
+            scheduler.add_job(
+                job_coleta_semanal,
+                trigger=trigger,
+                id="coleta_semanal",
+                name="Coleta de dados semanal",
+                replace_existing=True
+            )
+        else:
+            logger.info("COLETA_ENABLED=false → job semanal de coleta NÃO agendado (execução local).")
 
         # Job diário PROHORT (preços de atacado CEASA) — 06:30 todos os dias
         scheduler.add_job(

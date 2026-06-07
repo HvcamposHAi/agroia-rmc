@@ -48,6 +48,12 @@ REGS_POR_PAG = 5
 DELAY        = 2.0
 DEBUG        = True
 
+# Headless configurável: padrão visível (local Windows). Em servidor sem display
+# (ex.: container Linux), setar PLAYWRIGHT_HEADLESS=true.
+HEADLESS = os.getenv("PLAYWRIGHT_HEADLESS", "false").lower() in ("1", "true", "yes")
+SLOW_MO  = int(os.getenv("PLAYWRIGHT_SLOW_MO", "0" if HEADLESS else "80"))
+LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"] if HEADLESS else []
+
 # Se True: apaga itens existentes antes de reprocessar (corrige dados corrompidos)
 FORCAR_REPROCESSAR = False
 
@@ -145,6 +151,54 @@ def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando"
     except Exception as e:
         if DEBUG:
             print(f"[!] Erro ao escrever {progress_file}: {e}")
+
+
+def registrar_erro(stats: dict, processo: str, mensagem: str, limite: int = 50):
+    """Incrementa o contador de erros e acumula o detalhe (processo + mensagem),
+    limitado a `limite` itens para não inflar o payload gravado/transmitido."""
+    stats["erros"] = stats.get("erros", 0) + 1
+    detalhe = stats.setdefault("erros_detalhe", [])
+    if len(detalhe) < limite:
+        detalhe.append({"processo": processo or "?", "mensagem": (mensagem or "")[:300]})
+
+
+def registrar_execucao(stats: dict, final_status: str, dt_inicio: str = None,
+                       dt_fim: str = None, erro_resumo: str = None, origem: str = "manual"):
+    """Grava um resumo da execução em coleta_execucoes (Supabase) para o histórico
+    exibido na página de Coleta. Blindado: qualquer falha apenas loga — NUNCA
+    interrompe a coleta nem propaga exceção."""
+    try:
+        iniciado = stats.get("iniciado_em")
+        finalizado = datetime.now()
+        duracao = None
+        if iniciado:
+            try:
+                duracao = int((finalizado - datetime.fromisoformat(iniciado)).total_seconds())
+            except Exception:
+                duracao = None
+        registro = {
+            "iniciado_em":     iniciado,
+            "finalizado_em":   finalizado.isoformat(),
+            "duracao_seg":     duracao,
+            "status":          final_status,
+            "etapa":           "finalizado",
+            "origem":          origem,
+            "dt_inicio":       dt_inicio,
+            "dt_fim":          dt_fim,
+            "processados":     stats.get("processados", 0),
+            "novos":           stats.get("itens", 0),
+            "pulados":         stats.get("pulados", 0),
+            "erros":           stats.get("erros", 0),
+            "itens_coletados": stats.get("itens", 0),
+            "fornecedores":    stats.get("fornecedores", 0),
+            "empenhos":        stats.get("empenhos", 0),
+            "erro_resumo":     ((erro_resumo or "")[:2000] or None),
+            "erro_detalhes":   stats.get("erros_detalhe", []),
+        }
+        sb.table("coleta_execucoes").insert(registro).execute()
+        print(f"[OK] Execução registrada em coleta_execucoes (status={final_status})")
+    except Exception as e:
+        print(f"[!] Falha ao registrar execução em coleta_execucoes (ignorada): {e}")
 
 # ─── Funções auxiliares ───────────────────────────────────────────────────────
 def parse_val(t):
@@ -848,7 +902,7 @@ def main(dt_inicio: str = None, dt_fim: str = None):
 
     with sync_playwright() as p:
         print("\n[1] Abrindo navegador...")
-        browser = p.chromium.launch(headless=False, slow_mo=80)
+        browser = p.chromium.launch(headless=HEADLESS, slow_mo=SLOW_MO, args=LAUNCH_ARGS)
         context = browser.new_context()
         page    = context.new_page()
 
@@ -943,7 +997,7 @@ def main(dt_inicio: str = None, dt_fim: str = None):
                 # Abre detalhe
                 if not abrir_detalhe(page, proc):
                     print(f"        [!] Falha ao abrir detalhe")
-                    stats["erros"] += 1
+                    registrar_erro(stats, texto, "Falha ao abrir detalhe da licitação")
                     refazer_pesquisa_e_navegar(page, pag_atual)
                     continue
 
@@ -960,7 +1014,7 @@ def main(dt_inicio: str = None, dt_fim: str = None):
                         print(f"        ✓ {n_e} empenhos gravados")
                     else:
                         print(f"        [~] Nenhum empenho encontrado no portal")
-                        stats["erros"] += 1
+                        registrar_erro(stats, texto, "Nenhum empenho encontrado no portal")
                 elif itens:
                     n_i, n_f, n_e = gravar(lic_id, itens, forns, emps)
                     stats["itens"]        += n_i
@@ -971,7 +1025,7 @@ def main(dt_inicio: str = None, dt_fim: str = None):
                     print(f"        ✓ {n_i} itens, {n_f} fornecedores, {n_e} empenhos")
                 else:
                     print(f"        [!] Nenhum item encontrado no detalhe")
-                    stats["erros"] += 1
+                    registrar_erro(stats, texto, "Nenhum item encontrado no detalhe")
 
                 # Volta para lista
                 if not voltar_para_lista(page):
@@ -1037,6 +1091,9 @@ def main(dt_inicio: str = None, dt_fim: str = None):
                       dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
                       orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
 
+    # Persistir resumo da execução no histórico (Supabase) — blindado.
+    registrar_execucao(stats, final_status, dt_inicio=dt_inicio, dt_fim=dt_fim)
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -1051,4 +1108,17 @@ if __name__ == "__main__":
     print(f"    Data final:   {DT_FIM}")
     print(f"    Arquivo de progresso: {PROGRESS_FILE}")
 
-    main(dt_inicio=DT_INICIO, dt_fim=DT_FIM)
+    try:
+        main(dt_inicio=DT_INICIO, dt_fim=DT_FIM)
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[!] Coleta falhou com erro fatal:\n{tb}")
+        # Marca status de erro no arquivo de progresso e no histórico.
+        stats_erro = {"iniciado_em": datetime.now().isoformat()}
+        escrever_progresso(PROGRESS_FILE, stats_erro, etapa="falha", status="error",
+                          dt_inicio=DT_INICIO, dt_fim=DT_FIM, portal_url=PORTAL_URL,
+                          orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
+        registrar_execucao(stats_erro, "error", dt_inicio=DT_INICIO, dt_fim=DT_FIM,
+                          erro_resumo=tb)
+        raise

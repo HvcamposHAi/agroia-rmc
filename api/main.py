@@ -18,7 +18,8 @@ from chat.tools import (
 from chat.db import get_supabase_client
 from api.coleta import (
     iniciar_coleta, cancelar_coleta, get_status as get_coleta_status,
-    get_stats_classificacao, configurar_agendamento, get_config, salvar_config
+    get_stats_classificacao, configurar_agendamento, get_config, salvar_config,
+    get_ultima_execucao, proxima_execucao_iso
 )
 import asyncio
 
@@ -842,7 +843,9 @@ def root():
             "POST /coleta/iniciar": "Iniciar coleta de dados manualmente",
             "POST /coleta/cancelar": "Cancelar coleta em andamento",
             "GET /coleta/status": "Status da coleta",
-            "GET /coleta/stream": "Stream do progresso em tempo real (SSE)",
+            "GET /coleta/ultima-execucao": "Resumo da última execução de coleta (histórico)",
+            "GET /coleta/proxima-execucao": "Próximo disparo agendado da coleta",
+            "POST /coleta/stream": "Stream do progresso em tempo real (SSE)",
             "GET /coleta/stats": "Estatísticas de classificação agrícola",
             "GET /docs": "Documentação Swagger"
         }
@@ -852,7 +855,7 @@ def root():
 # ─── ENDPOINTS DE COLETA ───────────────────────────────────────────────────
 
 @app.post("/coleta/iniciar")
-async def endpoint_iniciar_coleta(api_key: str = Security(api_key_header)):
+async def endpoint_iniciar_coleta(_: str = Depends(verify_api_key)):
     """Inicia uma coleta de dados manualmente."""
     sucesso, msg = iniciar_coleta()
     if sucesso:
@@ -1046,7 +1049,7 @@ async def produtor_ofertas_upload(
 
 
 @app.post("/coleta/cancelar")
-async def endpoint_cancelar_coleta(api_key: str = Security(api_key_header)):
+async def endpoint_cancelar_coleta(_: str = Depends(verify_api_key)):
     """Cancela a coleta em andamento."""
     sucesso, msg = cancelar_coleta()
     if sucesso:
@@ -1061,38 +1064,90 @@ async def endpoint_get_coleta_status():
     return get_coleta_status()
 
 
-@app.get("/coleta/stream")
-async def endpoint_coleta_stream():
+@app.get("/coleta/ultima-execucao")
+async def endpoint_ultima_execucao():
+    """Retorna a última execução de coleta registrada (histórico persistido)."""
+    return get_ultima_execucao()
+
+
+@app.get("/coleta/proxima-execucao")
+async def endpoint_proxima_execucao():
+    """Retorna o próximo disparo agendado da coleta semanal (ISO) ou None."""
+    return {"proxima": proxima_execucao_iso()}
+
+
+def _pid_vivo(pid) -> bool:
+    """Checa se um PID ainda existe (cross-platform)."""
+    if not pid:
+        return False
+    # No Windows os.kill(pid, 0) MATA o processo (TerminateProcess); evitar.
+    # Localmente a coleta abre um Chromium visível, então a detecção de
+    # processo morto não é necessária — confiamos em estado terminal/estagnação.
+    if os.name == "nt":
+        return True
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return True
+
+
+@app.post("/coleta/stream")
+async def endpoint_coleta_stream(request: Request, _: str = Depends(verify_api_key)):
     """Stream SSE do progresso da coleta (atualiza a cada 2 segundos)."""
 
     async def evento_generator():
-        idle_count = 0
+        ticks = 0
+        stale_ticks = 0
+        ultimo_atualizado = None
         while True:
+            # Encerra se o cliente fechou a conexão
+            if await request.is_disconnected():
+                break
             try:
                 status = get_coleta_status()
-                yield f"data: {json.dumps(status)}\n\n"
 
-                # Se status é "idle", espera um pouco mas continua tentando
-                # (pode ser que coleta foi iniciada mas ainda não atualizou status)
-                if status.get("status") == "idle":
-                    idle_count += 1
-                    # Se ficou idle por muito tempo, encerra
-                    if idle_count > 30:  # 60 segundos
+                # Detecta subprocess morto: status "running" mas o PID sumiu e
+                # o arquivo de progresso parou de avançar → erro real (não silêncio).
+                if status.get("status") == "running":
+                    if status.get("atualizado_em") == ultimo_atualizado:
+                        stale_ticks += 1
+                    else:
+                        stale_ticks = 0
+                        ultimo_atualizado = status.get("atualizado_em")
+                    if not _pid_vivo(status.get("pid")) and stale_ticks >= 3:
+                        yield f"data: {json.dumps({'status': 'error', 'etapa': 'falha', 'msg': 'Processo de coleta encerrou inesperadamente. Verifique os logs do servidor.'})}\n\n"
                         break
                 else:
-                    idle_count = 0
+                    stale_ticks = 0
 
-                # Se coleta terminou, encerra o stream
+                yield f"data: {json.dumps(status)}\n\n"
+
+                # Encerra em estados terminais
                 if status.get("status") in ["completed", "cancelled", "error"]:
                     break
+
+                # Heartbeat (~14s) para manter a conexão viva através de
+                # proxies (Cloudflare/Render) durante períodos sem novidades.
+                ticks += 1
+                if ticks % 7 == 0:
+                    yield ": ping\n\n"
 
                 await asyncio.sleep(2)
             except Exception as e:
                 logger.error(f"Erro no stream SSE: {e}")
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                yield f"data: {json.dumps({'status': 'error', 'msg': str(e)})}\n\n"
                 break
 
-    return StreamingResponse(evento_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        evento_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/coleta/stats")
@@ -1108,7 +1163,7 @@ async def endpoint_get_config():
 
 
 @app.post("/coleta/config")
-async def endpoint_salvar_config(config: dict, api_key: str = Security(api_key_header)):
+async def endpoint_salvar_config(config: dict, _: str = Depends(verify_api_key)):
     """Atualiza configuração de agendamento semanal."""
     try:
         # Validar valores

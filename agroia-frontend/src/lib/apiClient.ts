@@ -72,6 +72,31 @@ export async function uploadOfertasPlanilha(file: File): Promise<UploadOfertasRe
   return response.data
 }
 
+// ─── Coleta (Atualização de Dados) ──────────────────────────────────────────
+// Usam o apiClient compartilhado (injeta X-API-Key e baseURL corretos),
+// evitando o drift de nome de env var (VITE_API_KEY vs VITE_API_SECRET_KEY).
+
+export interface ConfigAgendamento {
+  dia_semana: number
+  hora: number
+  minuto: number
+}
+
+export async function iniciarColeta(): Promise<any> {
+  const response = await apiClient.post('/coleta/iniciar', {})
+  return response.data
+}
+
+export async function cancelarColeta(): Promise<any> {
+  const response = await apiClient.post('/coleta/cancelar', {})
+  return response.data
+}
+
+export async function salvarConfigColeta(config: ConfigAgendamento): Promise<any> {
+  const response = await apiClient.post('/coleta/config', config)
+  return response.data
+}
+
 export async function* streamPost<T = any>(endpoint: string, body?: any): AsyncGenerator<T> {
   const response = await fetch(`${API_URL}${endpoint}`, {
     method: 'POST',
@@ -83,7 +108,9 @@ export async function* streamPost<T = any>(endpoint: string, body?: any): AsyncG
   })
 
   if (!response.ok) {
-    throw new Error(`Stream error: ${response.statusText}`)
+    // Em HTTP/2 statusText é sempre vazio — incluir o código garante mensagem útil.
+    const detalhe = response.statusText ? `: ${response.statusText}` : ''
+    throw new Error(`Stream error ${response.status}${detalhe}`)
   }
 
   const reader = response.body!.getReader()

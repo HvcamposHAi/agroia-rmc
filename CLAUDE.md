@@ -164,6 +164,35 @@ SUPABASE_KEY=<key>
 GOOGLE_DRIVE_FOLDER_ID=<folder_id>
 ```
 
+### Coleta (Atualização de Dados) — variáveis de ambiente
+
+A coleta usa Playwright + Chromium e **só roda de forma confiável localmente** (Windows).
+No backend de nuvem (Render) ela deve ficar desabilitada — a página `/coleta` então
+exibe apenas status e estatísticas da base.
+
+Backend (API):
+- `COLETA_ENABLED` — `true` (padrão, local) habilita o botão/agendamento de coleta;
+  `false` (Render) bloqueia o disparo e o job semanal.
+- `PLAYWRIGHT_HEADLESS` — `false` (padrão, navegador visível local); `true` em servidor
+  sem display (adiciona `--no-sandbox --disable-dev-shm-usage`).
+- `PLAYWRIGHT_SLOW_MO` — ms entre ações (padrão 80 quando visível, 0 quando headless).
+- `ALLOWED_ORIGINS` — CSV de origens permitidas no CORS; **incluir a URL do Cloudflare Pages** em produção.
+- `API_SECRET_KEY` — chave validada por `verify_api_key` nos endpoints de escrita
+  (`/coleta/iniciar|cancelar|config|stream`).
+
+Frontend (Cloudflare Pages / Vite):
+- `VITE_API_URL` — URL do backend (Render) em produção.
+- `VITE_API_SECRET_KEY` — deve ser igual ao `API_SECRET_KEY` do backend (header `X-API-Key`).
+- `VITE_COLETA_ENABLED` — `false` no build de nuvem para desabilitar o botão "Buscar Dados".
+
+### Fonte única de verdade das métricas (escopo agrícola)
+
+- **Métricas de ITEM** (total de itens, categorias): usar a view `vw_itens_agro`
+  (`relevante_agro=true`, nível item) — mesma fonte de Home/Demanda/Assistente.
+- **Métricas de LICITAÇÃO** (715 agrícolas, cobertura %): usar `licitacoes.relevante_af=true`.
+- `relevante_af` (licitação) e `relevante_agro` (item) são granularidades **intencionalmente
+  diferentes** — não misturar numa mesma comparação.
+
 ## RAG (Retrieval-Augmented Generation) Schema
 
 For semantic search and AI-powered analysis of bidding documents:
