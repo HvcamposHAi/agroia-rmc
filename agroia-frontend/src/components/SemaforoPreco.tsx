@@ -7,8 +7,8 @@ interface Props {
 
 export function SemaforoPreco({ semaforo, texto }: Props) {
   const cores: Record<SemaforoCor, { bg: string; border: string; dot: string }> = {
-    verde:    { bg: '#d1fae5', border: '#3a7d44', dot: '#3a7d44' },
-    amarelo:  { bg: '#fef9c3', border: '#f5a623', dot: '#f5a623' },
+    verde:    { bg: '#d6ebe8', border: '#0f766e', dot: '#0f766e' },
+    amarelo:  { bg: '#fdf1e3', border: '#b45309', dot: '#b45309' },
     vermelho: { bg: '#fee2e2', border: '#dc2626', dot: '#dc2626' },
     cinza:    { bg: '#f3f4f6', border: '#9ca3af', dot: '#9ca3af' },
   }
@@ -25,7 +25,7 @@ export function SemaforoPreco({ semaforo, texto }: Props) {
         border: `1.5px solid ${c.border}`,
         backgroundColor: c.bg,
         fontSize: '0.85rem',
-        fontFamily: 'Nunito, sans-serif',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
       <span

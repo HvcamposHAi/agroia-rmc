@@ -54,7 +54,7 @@ const ETAPA_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   'idle': '⏸️ Parado',
-  'running': '🟢 Em andamento',
+  'running': '🔵 Em andamento',
   'completed': '✅ Concluído',
   'cancelled': '⛔ Cancelado',
   'error': '❌ Erro',
@@ -62,14 +62,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   'idle': '#9ca3af',
-  'running': '#22c55e',
-  'completed': '#10b981',
+  'running': '#0f766e',
+  'completed': '#155e63',
   'cancelled': '#ef4444',
   'error': '#dc2626',
 }
 
 const CATEGORIA_COLORS: Record<string, string> = {
-  'HORTIFRUTI': '#059669',
+  'HORTIFRUTI': '#0f766e',
   'FRUTAS': '#fb7185',
   'GRAOS_CEREAIS': '#ca8a04',
   'LATICINIOS': '#f59e0b',
@@ -197,7 +197,7 @@ export default function Coleta() {
 
   // ── Preparar dados para charts ──
   const piechartData = stats ? [
-    { name: 'Agrícolas', value: stats.total_agricolas, color: '#059669' },
+    { name: 'Agrícolas', value: stats.total_agricolas, color: '#0f766e' },
     { name: 'Não-Agrícolas', value: stats.total_nao_agricolas, color: '#9ca3af' }
   ] : []
 
@@ -228,7 +228,7 @@ export default function Coleta() {
       {/* ─── HEADER COM ABAS ─────────────────────────────────────────── */}
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
+          <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
             📊 Atualização de Dados
           </h2>
           <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.6, margin: 0 }}>
@@ -315,12 +315,12 @@ export default function Coleta() {
             onClick={iniciarColeta}
             disabled={loading}
             style={{
-              background: loading ? 'var(--borda)' : '#059669',
+              background: loading ? 'var(--borda)' : '#0f766e',
               color: '#fff',
               border: 'none',
               borderRadius: 12,
               padding: '14px 24px',
-              fontFamily: 'Nunito',
+              fontFamily: 'Inter',
               fontSize: 15,
               fontWeight: 800,
               cursor: loading ? 'not-allowed' : 'pointer',
@@ -338,7 +338,7 @@ export default function Coleta() {
                 border: 'none',
                 borderRadius: 12,
                 padding: '14px 24px',
-                fontFamily: 'Nunito',
+                fontFamily: 'Inter',
                 fontSize: 15,
                 fontWeight: 800,
                 cursor: 'pointer'
@@ -377,7 +377,7 @@ export default function Coleta() {
               position: 'relative'
             }}>
               <div style={{
-                background: '#059669',
+                background: '#0f766e',
                 width: `${Math.min((status.processados / 100) * 100, 100)}%`,
                 height: '100%',
                 transition: 'width 0.3s',
@@ -394,13 +394,13 @@ export default function Coleta() {
 
           {/* KPIs em tempo real */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#15803d', marginBottom: 4 }}>PROCESSADOS</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#15803d' }}>{status.processados}</p>
+            <div style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 12 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>PROCESSADOS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{status.processados}</p>
             </div>
-            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#15803d', marginBottom: 4 }}>NOVOS</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#15803d' }}>{status.novos}</p>
+            <div style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 12 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>NOVOS</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{status.novos}</p>
             </div>
             <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: 12 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>PULADOS</p>
@@ -470,7 +470,7 @@ export default function Coleta() {
                 border: '1px solid var(--borda)',
                 borderRadius: 8,
                 fontSize: 14,
-                fontFamily: 'Nunito',
+                fontFamily: 'Inter',
               }}
             >
               {diasSemana.map((dia, idx) => (
@@ -496,7 +496,7 @@ export default function Coleta() {
                 border: '1px solid var(--borda)',
                 borderRadius: 8,
                 fontSize: 14,
-                fontFamily: 'Nunito',
+                fontFamily: 'Inter',
               }}
             />
           </div>
@@ -518,7 +518,7 @@ export default function Coleta() {
                 border: '1px solid var(--borda)',
                 borderRadius: 8,
                 fontSize: 14,
-                fontFamily: 'Nunito',
+                fontFamily: 'Inter',
               }}
             />
           </div>
@@ -526,13 +526,13 @@ export default function Coleta() {
 
         {/* Preview */}
         <div style={{
-          background: '#f0fdf4',
-          border: '1px solid #86efac',
+          background: '#e6f2f1',
+          border: '1px solid #9fcdc8',
           borderRadius: 12,
           padding: 16,
           marginBottom: 24
         }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#15803d', margin: 0 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#0f766e', margin: 0 }}>
             ✓ Coleta agendada para: <strong>{diasSemana[config.dia_semana]} às {config.hora.toString().padStart(2, '0')}:{config.minuto.toString().padStart(2, '0')}</strong>
           </p>
         </div>
@@ -547,7 +547,7 @@ export default function Coleta() {
             border: 'none',
             borderRadius: 12,
             padding: '14px 28px',
-            fontFamily: 'Nunito',
+            fontFamily: 'Inter',
             fontSize: 15,
             fontWeight: 800,
             cursor: savingConfig ? 'not-allowed' : 'pointer',
@@ -650,7 +650,7 @@ export default function Coleta() {
               <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="licitacoes" fill="#059669" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="licitacoes" fill="#0f766e" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

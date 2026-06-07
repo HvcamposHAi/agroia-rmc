@@ -30,7 +30,7 @@ const TIPO_CONFIG = {
 const SEV_CONFIG = {
   ALTA: { label: 'Alta', bg: '#fef2f2', cor: '#b91c1c', borda: '#fca5a5' },
   MEDIA: { label: 'Média', bg: '#fff7ed', cor: '#c2410c', borda: '#fdba74' },
-  BAIXA: { label: 'Baixa', bg: '#f0fdf4', cor: '#15803d', borda: '#86efac' },
+  BAIXA: { label: 'Baixa', bg: '#e6f2f1', cor: '#0f766e', borda: '#9fcdc8' },
 }
 
 export default function Alertas() {
@@ -78,7 +78,7 @@ export default function Alertas() {
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
+            <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
               🤖 Alertas Inteligentes
             </h2>
             <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.6, maxWidth: 560 }}>
@@ -95,7 +95,7 @@ export default function Alertas() {
               border: 'none',
               borderRadius: 12,
               padding: '14px 28px',
-              fontFamily: 'Nunito',
+              fontFamily: 'Inter',
               fontSize: 15,
               fontWeight: 800,
               cursor: loading ? 'not-allowed' : 'pointer',
@@ -145,7 +145,7 @@ export default function Alertas() {
       {loading && (
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', marginBottom: 20 }}>
           <span className="spinner" style={{ width: 48, height: 48, borderWidth: 3 }} />
-          <p style={{ marginTop: 20, fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 700, color: 'var(--texto)' }}>Analisando dados históricos...</p>
+          <p style={{ marginTop: 20, fontFamily: 'Inter, sans-serif', fontSize: 18, fontWeight: 700, color: 'var(--texto)' }}>Analisando dados históricos...</p>
           <p style={{ marginTop: 8, fontSize: 14, color: 'var(--texto-suave)' }}>A IA está processando o histórico de licitações da SMSAN/FAAC</p>
         </div>
       )}
@@ -154,7 +154,7 @@ export default function Alertas() {
       {resultado && !loading && (
         <>
           {/* Resumo */}
-          <div style={{ background: 'var(--verde-fundo)', border: '1px solid #b8dfc0', borderRadius: 14, padding: '18px 22px', marginBottom: 20 }}>
+          <div style={{ background: 'var(--verde-fundo)', border: '1px solid var(--borda)', borderRadius: 14, padding: '18px 22px', marginBottom: 20 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>📋 Resumo da Análise</div>
             <p style={{ fontSize: 14, color: 'var(--texto)', lineHeight: 1.7 }}>{resultado.resumo}</p>
           </div>
@@ -170,13 +170,13 @@ export default function Alertas() {
                 onClick={() => setFiltroTipo(filtroTipo === tipo ? 'todos' : tipo)}
                 style={{ background: filtroTipo === tipo ? bg : 'var(--branco)', border: `1.5px solid ${filtroTipo === tipo ? borda : 'var(--borda)'}`, borderRadius: 14, padding: '16px 18px', cursor: 'pointer', transition: 'all 0.15s' }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
-                <div style={{ fontSize: 28, fontFamily: 'Fraunces, serif', fontWeight: 700, color: cor }}>{contPorTipo(tipo)}</div>
+                <div style={{ fontSize: 28, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: cor }}>{contPorTipo(tipo)}</div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)', marginTop: 4 }}>{label}</div>
               </div>
             ))}
             <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 14, padding: '16px 18px' }}>
               <div style={{ fontSize: 24, marginBottom: 8 }}>🔔</div>
-              <div style={{ fontSize: 28, fontFamily: 'Fraunces, serif', fontWeight: 700, color: 'var(--texto)' }}>{resultado.alertas.length}</div>
+              <div style={{ fontSize: 28, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: 'var(--texto)' }}>{resultado.alertas.length}</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)', marginTop: 4 }}>Total de Alertas</div>
             </div>
           </div>
@@ -185,12 +185,12 @@ export default function Alertas() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)' }}>Filtrar:</span>
             <button onClick={() => setFiltroTipo('todos')}
-              style={{ background: filtroTipo === 'todos' ? 'var(--verde)' : 'var(--branco)', color: filtroTipo === 'todos' ? '#fff' : 'var(--texto-suave)', border: '1px solid var(--borda)', borderRadius: 8, padding: '5px 12px', fontFamily: 'Nunito', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ background: filtroTipo === 'todos' ? 'var(--verde)' : 'var(--branco)', color: filtroTipo === 'todos' ? '#fff' : 'var(--texto-suave)', border: '1px solid var(--borda)', borderRadius: 8, padding: '5px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Todos
             </button>
             {(['ALTA', 'MEDIA', 'BAIXA'] as const).map(sev => (
               <button key={sev} onClick={() => setFiltroSev(filtroSev === sev ? 'todas' : sev)}
-                style={{ background: filtroSev === sev ? SEV_CONFIG[sev].bg : 'var(--branco)', color: filtroSev === sev ? SEV_CONFIG[sev].cor : 'var(--texto-suave)', border: `1px solid ${filtroSev === sev ? SEV_CONFIG[sev].borda : 'var(--borda)'}`, borderRadius: 8, padding: '5px 12px', fontFamily: 'Nunito', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ background: filtroSev === sev ? SEV_CONFIG[sev].bg : 'var(--branco)', color: filtroSev === sev ? SEV_CONFIG[sev].cor : 'var(--texto-suave)', border: `1px solid ${filtroSev === sev ? SEV_CONFIG[sev].borda : 'var(--borda)'}`, borderRadius: 8, padding: '5px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                 Severidade {SEV_CONFIG[sev].label}
               </button>
             ))}

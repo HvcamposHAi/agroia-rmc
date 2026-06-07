@@ -198,7 +198,7 @@ export default function Produtor() {
         <div className="chat-messages" style={{ display: 'block' }}>
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px' }}>
-              <h3 style={{ margin: '0 0 8px', fontFamily: 'Fraunces, serif', color: 'var(--texto)' }}>
+              <h3 style={{ margin: '0 0 8px', fontFamily: 'Inter, sans-serif', color: 'var(--texto)' }}>
                 📄 Enviar planilha de ofertas
               </h3>
               <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.5, marginTop: 0 }}>
@@ -209,7 +209,7 @@ export default function Produtor() {
 
               <button
                 onClick={baixarModelo}
-                style={{ background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '10px 16px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: 'var(--texto)', cursor: 'pointer', marginBottom: 16 }}
+                style={{ background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '10px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--texto)', cursor: 'pointer', marginBottom: 16 }}
               >⬇️ Baixar modelo (CSV)</button>
 
               <div style={{ border: '2px dashed var(--borda)', borderRadius: 12, padding: '20px', textAlign: 'center', background: 'var(--cinza-claro)' }}>
@@ -222,7 +222,7 @@ export default function Produtor() {
                 />
                 <button
                   onClick={() => fileRef.current?.click()}
-                  style={{ background: 'var(--branco)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '9px 16px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: 'var(--texto)', cursor: 'pointer' }}
+                  style={{ background: 'var(--branco)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '9px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--texto)', cursor: 'pointer' }}
                 >📎 Escolher arquivo</button>
                 <p style={{ fontSize: 13, color: 'var(--texto-suave)', marginTop: 10, marginBottom: 0 }}>
                   {arquivo ? `Selecionado: ${arquivo.name}` : 'Nenhum arquivo selecionado'}
@@ -232,7 +232,7 @@ export default function Produtor() {
               <button
                 onClick={enviarPlanilha}
                 disabled={!arquivo || enviando}
-                style={{ width: '100%', marginTop: 16, background: arquivo && !enviando ? 'var(--verde)' : 'var(--cinza)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontFamily: 'Nunito', fontSize: 14, fontWeight: 800, cursor: arquivo && !enviando ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ width: '100%', marginTop: 16, background: arquivo && !enviando ? 'var(--verde)' : 'var(--cinza)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontFamily: 'Inter', fontSize: 14, fontWeight: 800, cursor: arquivo && !enviando ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
                 {enviando ? <><span className="spinner" /> Enviando...</> : '🚀 Enviar ofertas'}
               </button>
@@ -284,7 +284,7 @@ function tabStyle(active: boolean): React.CSSProperties {
     border: active ? 'none' : '1.5px solid var(--borda)',
     borderRadius: 10,
     padding: '10px 14px',
-    fontFamily: 'Nunito',
+    fontFamily: 'Inter',
     fontSize: 13,
     fontWeight: 800,
     cursor: 'pointer',

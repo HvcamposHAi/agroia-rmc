@@ -18,12 +18,12 @@ const fmtFull = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 
 const CANAL_COLORS: Record<string, string> = {
-  ARMAZEM_FAMILIA: '#3a7d44',
-  PNAE: '#f5a623',
-  PAA: '#4a9eda',
-  BANCO_ALIMENTOS: '#8b5e3c',
+  ARMAZEM_FAMILIA: '#334155',
+  PNAE: '#b45309',
+  PAA: '#1e3a5f',
+  BANCO_ALIMENTOS: '#78716c',
 }
-const DEFAULT_COLOR = '#6b7280'
+const DEFAULT_COLOR = '#64748b'
 
 interface RawItem {
   cultura: string
@@ -154,7 +154,7 @@ export default function Dashboard({ items }: { items?: RawItem[] } = {}) {
         </select>
         {(filAno !== 'todos' || filCanal !== 'todos' || filCategoria !== 'todas' || filCultura !== 'todas') && (
           <button onClick={() => { setFilAno('todos'); setFilCanal('todos'); setFilCategoria('todas'); setFilCultura('todas') }}
-            style={{ background: 'var(--terra-claro)', border: '1px solid #e0c9bc', borderRadius: 8, padding: '8px 14px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
+            style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
             ✕ Limpar
           </button>
         )}
@@ -215,10 +215,10 @@ export default function Dashboard({ items }: { items?: RawItem[] } = {}) {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={topCulturas} margin={{ top: 4, right: 8, left: 8, bottom: 70 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-              <XAxis dataKey="cultura" tick={{ fontSize: 10, fill: '#6b6458', fontFamily: 'Nunito' }} angle={-40} textAnchor="end" interval={0} />
-              <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 10, fill: '#6b6458', fontFamily: 'Nunito' }} />
-              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), 'Valor']} contentStyle={{ fontFamily: 'Nunito', fontSize: 12, borderRadius: 10, border: '1px solid #d9d0c4' }} />
-              <Bar dataKey="total" fill="#3a7d44" radius={[5, 5, 0, 0]} />
+              <XAxis dataKey="cultura" tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'Inter' }} angle={-40} textAnchor="end" interval={0} />
+              <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'Inter' }} />
+              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), 'Valor']} contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10, border: '1px solid #e2e8f0' }} />
+              <Bar dataKey="total" fill="#334155" radius={[5, 5, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -233,8 +233,8 @@ export default function Dashboard({ items }: { items?: RawItem[] } = {}) {
                   <Cell key={entry.canal} fill={CANAL_COLORS[entry.canal] ?? DEFAULT_COLOR} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), 'Valor']} contentStyle={{ fontFamily: 'Nunito', fontSize: 12, borderRadius: 10 }} />
-              <Legend formatter={(v) => <span style={{ fontSize: 11, fontFamily: 'Nunito' }}>{v}</span>} />
+              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), 'Valor']} contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }} />
+              <Legend formatter={(v) => <span style={{ fontSize: 11, fontFamily: 'Inter' }}>{v}</span>} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -246,15 +246,15 @@ export default function Dashboard({ items }: { items?: RawItem[] } = {}) {
           <AreaChart data={(filAno !== 'todos' ? evolucaoMensal : evolucao) as any[]} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
             <defs>
               <linearGradient id="gradVerde" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3a7d44" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#3a7d44" stopOpacity={0} />
+                <stop offset="5%" stopColor="#334155" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#334155" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-            <XAxis dataKey={filAno !== 'todos' ? 'mes' : 'ano'} tick={{ fontSize: 11, fill: '#6b6458', fontFamily: 'Nunito' }} />
-            <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 10, fill: '#6b6458', fontFamily: 'Nunito' }} />
-            <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), 'Valor']} contentStyle={{ fontFamily: 'Nunito', fontSize: 12, borderRadius: 10, border: '1px solid #d9d0c4' }} />
-            <Area type="monotone" dataKey="total" stroke="#3a7d44" strokeWidth={2.5} fill="url(#gradVerde)" dot={{ fill: '#3a7d44', r: 3 }} />
+            <XAxis dataKey={filAno !== 'todos' ? 'mes' : 'ano'} tick={{ fontSize: 11, fill: '#64748b', fontFamily: 'Inter' }} />
+            <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'Inter' }} />
+            <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), 'Valor']} contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10, border: '1px solid #e2e8f0' }} />
+            <Area type="monotone" dataKey="total" stroke="#334155" strokeWidth={2.5} fill="url(#gradVerde)" dot={{ fill: '#334155', r: 3 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>

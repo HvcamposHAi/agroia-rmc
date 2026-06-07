@@ -49,7 +49,7 @@ const SEV_CONFIG = {
   CRITICO: { label: 'Crítico', bg: '#fef2f2', cor: '#b91c1c', borda: '#fca5a5' },
   GRAVE: { label: 'Grave', bg: '#fff7ed', cor: '#c2410c', borda: '#fdba74' },
   MEDIA: { label: 'Média', bg: '#fff7ed', cor: '#c2410c', borda: '#fdba74' },
-  BAIXA: { label: 'Baixa', bg: '#f0fdf4', cor: '#15803d', borda: '#86efac' },
+  BAIXA: { label: 'Baixa', bg: '#e6f2f1', cor: '#0f766e', borda: '#9fcdc8' },
 }
 
 export default function Auditoria() {
@@ -116,7 +116,7 @@ export default function Auditoria() {
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
+            <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
               🔎 Auditoria de Qualidade
             </h2>
             <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.6, maxWidth: 560 }}>
@@ -133,7 +133,7 @@ export default function Auditoria() {
               border: 'none',
               borderRadius: 12,
               padding: '14px 28px',
-              fontFamily: 'Nunito',
+              fontFamily: 'Inter',
               fontSize: 15,
               fontWeight: 800,
               cursor: loading ? 'not-allowed' : 'pointer',
@@ -165,7 +165,7 @@ export default function Auditoria() {
       {loading && (
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', marginBottom: 20 }}>
           <span className="spinner" style={{ width: 48, height: 48, borderWidth: 3 }} />
-          <p style={{ marginTop: 20, fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 700, color: 'var(--texto)' }}>Executando auditoria...</p>
+          <p style={{ marginTop: 20, fontFamily: 'Inter, sans-serif', fontSize: 18, fontWeight: 700, color: 'var(--texto)' }}>Executando auditoria...</p>
           <p style={{ marginTop: 8, fontSize: 14, color: 'var(--texto-suave)' }}>Analisando licitações e documentos no banco de dados</p>
         </div>
       )}
@@ -177,31 +177,31 @@ export default function Auditoria() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
             <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)', textTransform: 'uppercase', marginBottom: 8 }}>📊 Total Licitações</div>
-              <div style={{ fontSize: 32, fontFamily: 'Fraunces, serif', fontWeight: 700, color: 'var(--verde)' }}>{resultado.metricas.total_licitacoes_agro}</div>
+              <div style={{ fontSize: 32, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: 'var(--verde)' }}>{resultado.metricas.total_licitacoes_agro}</div>
               <div style={{ fontSize: 11, color: 'var(--texto-suave)', marginTop: 4 }}>Agrícolas no sistema</div>
             </div>
 
             <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)', textTransform: 'uppercase', marginBottom: 8 }}>📄 Cobertura</div>
-              <div style={{ fontSize: 32, fontFamily: 'Fraunces, serif', fontWeight: 700, color: 'var(--verde)' }}>{resultado.metricas.taxa_cobertura_pct}%</div>
+              <div style={{ fontSize: 32, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: 'var(--verde)' }}>{resultado.metricas.taxa_cobertura_pct}%</div>
               <div style={{ fontSize: 11, color: 'var(--texto-suave)', marginTop: 4 }}>{resultado.metricas.lics_com_docs} com documentação</div>
             </div>
 
             <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)', textTransform: 'uppercase', marginBottom: 8 }}>🚨 Críticos</div>
-              <div style={{ fontSize: 32, fontFamily: 'Fraunces, serif', fontWeight: 700, color: '#b91c1c' }}>{resultado.metricas.alertas_criticos}</div>
+              <div style={{ fontSize: 32, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: '#b91c1c' }}>{resultado.metricas.alertas_criticos}</div>
               <div style={{ fontSize: 11, color: 'var(--texto-suave)', marginTop: 4 }}>Empenhos sem docs</div>
             </div>
 
             <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Empenhos</div>
-              <div style={{ fontSize: 32, fontFamily: 'Fraunces, serif', fontWeight: 700, color: '#c2410c' }}>{resultado.metricas.empenhos_sem_docs}</div>
+              <div style={{ fontSize: 32, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: '#c2410c' }}>{resultado.metricas.empenhos_sem_docs}</div>
               <div style={{ fontSize: 11, color: 'var(--texto-suave)', marginTop: 4 }}>Sem documentação</div>
             </div>
           </div>
 
           {/* Resumo */}
-          <div style={{ background: 'var(--verde-fundo)', border: '1px solid #b8dfc0', borderRadius: 14, padding: '18px 22px', marginBottom: 20 }}>
+          <div style={{ background: 'var(--verde-fundo)', border: '1px solid var(--borda)', borderRadius: 14, padding: '18px 22px', marginBottom: 20 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>📋 Resumo</div>
             <p style={{ fontSize: 14, color: 'var(--texto)', lineHeight: 1.6 }}>
               {resultado.metricas.alertas_criticos > 0
@@ -217,12 +217,12 @@ export default function Auditoria() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--texto-suave)' }}>Filtrar:</span>
             <button onClick={() => setFiltroTipo('todos')}
-              style={{ background: filtroTipo === 'todos' ? 'var(--verde)' : 'var(--branco)', color: filtroTipo === 'todos' ? '#fff' : 'var(--texto-suave)', border: '1px solid var(--borda)', borderRadius: 8, padding: '5px 12px', fontFamily: 'Nunito', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ background: filtroTipo === 'todos' ? 'var(--verde)' : 'var(--branco)', color: filtroTipo === 'todos' ? '#fff' : 'var(--texto-suave)', border: '1px solid var(--borda)', borderRadius: 8, padding: '5px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               Todos
             </button>
             {Object.entries(TIPO_CONFIG).map(([tipo, cfg]) => (
               <button key={tipo} onClick={() => setFiltroTipo(filtroTipo === tipo ? 'todos' : tipo)}
-                style={{ background: filtroTipo === tipo ? cfg.bg : 'var(--branco)', color: filtroTipo === tipo ? cfg.cor : 'var(--texto-suave)', border: `1px solid ${filtroTipo === tipo ? cfg.borda : 'var(--borda)'}`, borderRadius: 8, padding: '5px 12px', fontFamily: 'Nunito', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ background: filtroTipo === tipo ? cfg.bg : 'var(--branco)', color: filtroTipo === tipo ? cfg.cor : 'var(--texto-suave)', border: `1px solid ${filtroTipo === tipo ? cfg.borda : 'var(--borda)'}`, borderRadius: 8, padding: '5px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                 {cfg.label} ({contPorTipo(tipo)})
               </button>
             ))}
@@ -263,7 +263,7 @@ export default function Auditoria() {
 
           {/* Chat com IA */}
           <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '20px', marginBottom: 20 }}>
-            <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16 }}>
+            <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16 }}>
               💬 Discuta com IA
             </h3>
 
@@ -312,7 +312,7 @@ export default function Auditoria() {
                   padding: '10px 14px',
                   borderRadius: 10,
                   border: '1px solid var(--borda)',
-                  fontFamily: 'Nunito',
+                  fontFamily: 'Inter',
                   fontSize: 13,
                   color: 'var(--texto)',
                   opacity: chatLoading ? 0.6 : 1,

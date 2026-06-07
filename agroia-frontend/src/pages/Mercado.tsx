@@ -93,9 +93,9 @@ const CONV_SUGGESTIONS = [
 ]
 
 // Cores das linhas do gráfico (recharts exige string de cor)
-const CHART_VERDE = '#3a7d44'
-const CHART_TERRA = '#8b5e3c'
-const CHART_CEO   = '#4a9eda'
+const CHART_VERDE = '#0f766e'
+const CHART_TERRA = '#78716c'
+const CHART_CEO   = '#1e3a5f'
 
 const fmtBRL = (v: number | null | undefined) =>
   v == null ? 'N/D' : `R$ ${v.toFixed(2).replace('.', ',')}`
@@ -328,7 +328,7 @@ export default function Mercado() {
     <div className="page">
       {/* Cabeçalho */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', margin: 0 }}>
+        <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', margin: 0 }}>
           Preços de Mercado — CEASAs
         </h2>
         <p style={{ fontSize: 14, color: 'var(--texto-suave)', marginTop: 6 }}>
@@ -436,7 +436,7 @@ export default function Mercado() {
       </div>
 
       {/* ── Consulta detalhada por produto ───────────────────────────────── */}
-      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: 17, fontWeight: 700, color: 'var(--texto)', margin: '0 0 12px' }}>
+      <h3 style={{ fontFamily: 'Inter, sans-serif', fontSize: 17, fontWeight: 700, color: 'var(--texto)', margin: '0 0 12px' }}>
         Consulta detalhada por produto
       </h3>
 
@@ -463,7 +463,7 @@ export default function Mercado() {
           style={{
             background: produto && !carregando ? 'var(--verde)' : 'var(--borda)',
             color: '#fff', border: 'none', borderRadius: 10, padding: '9px 22px',
-            fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 14,
+            fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14,
             cursor: produto && !carregando ? 'pointer' : 'not-allowed',
           }}
         >
@@ -635,7 +635,7 @@ export default function Mercado() {
       {!analise && !carregando && !erro && produtos.length === 0 && (
         <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--texto-suave)' }}>
           <p style={{ fontSize: 40, margin: 0 }}>🛒</p>
-          <p style={{ marginTop: 12, fontFamily: 'Fraunces, serif', fontSize: 17, color: 'var(--texto)' }}>
+          <p style={{ marginTop: 12, fontFamily: 'Inter, sans-serif', fontSize: 17, color: 'var(--texto)' }}>
             Selecione um produto e uma ou mais CEASAs para ver os detalhes
           </p>
           <p style={{ fontSize: 13, marginTop: 4 }}>Dados do PROHORT/CONAB · atualizados diariamente</p>

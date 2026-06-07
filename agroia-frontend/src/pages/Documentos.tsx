@@ -158,7 +158,7 @@ export default function Documentos() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
           <div style={{ background: 'var(--branco)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--borda)', flexShrink: 0, gap: 16 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 16, color: 'var(--texto)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--texto)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 📄 {pdfAberto.nome_doc || pdfAberto.nome_arquivo}
               </div>
               <div style={{ fontSize: 12, color: 'var(--texto-suave)', marginTop: 3, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -174,11 +174,11 @@ export default function Documentos() {
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <a href={toDownloadUrl(pdfAberto.url_publica)} target="_blank" rel="noopener noreferrer"
-                style={{ background: 'var(--verde)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                style={{ background: 'var(--verde)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                 ⬇️ Baixar
               </a>
               <button onClick={() => setPdfAberto(null)}
-                style={{ background: 'var(--cinza-claro)', border: '1px solid var(--borda)', borderRadius: 8, padding: '8px 14px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: 'var(--texto)' }}>
+                style={{ background: 'var(--cinza-claro)', border: '1px solid var(--borda)', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: 'var(--texto)' }}>
                 ✕ Fechar
               </button>
             </div>
@@ -195,7 +195,7 @@ export default function Documentos() {
           <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '8px 14px' }}>
             <span>🔍</span>
             <input
-              style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Nunito', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
+              style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Inter', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
               placeholder="Buscar por nome, processo ou objeto..."
               value={busca}
               onChange={e => { setBusca(e.target.value); setPage(1) }}
@@ -203,12 +203,12 @@ export default function Documentos() {
             {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
           </div>
           <button onClick={() => setShowFilters(v => !v)}
-            style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             ⚙️ Filtros{hasFilters ? ` (${[filAno,filMes,filModalidade,filSituacao,filCanal].filter(Boolean).length})` : ''}
           </button>
           {hasFilters && (
             <button onClick={clearFilters}
-              style={{ background: 'var(--terra-claro)', border: '1px solid #e0c9bc', borderRadius: 10, padding: '9px 14px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
+              style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 10, padding: '9px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
               ✕ Limpar
             </button>
           )}
@@ -307,7 +307,7 @@ export default function Documentos() {
               {doc.tamanho_bytes > 0 && (
                 <span style={{ fontSize: 11, color: 'var(--texto-suave)', fontWeight: 600 }}>{fmtBytes(doc.tamanho_bytes)}</span>
               )}
-              <span style={{ background: 'var(--verde-fundo)', color: 'var(--verde)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: '1px solid #b8dfc0', whiteSpace: 'nowrap' }}>
+              <span style={{ background: 'var(--verde-fundo)', color: 'var(--verde)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--borda)', whiteSpace: 'nowrap' }}>
                 👁️ Visualizar
               </span>
             </div>

@@ -83,7 +83,7 @@ export default function Ofertas() {
   return (
     <div className="page">
       <div style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: '0 0 2px', fontFamily: 'Fraunces, serif', color: 'var(--texto)' }}>Ofertas da agricultura familiar</h2>
+        <h2 style={{ margin: '0 0 2px', fontFamily: 'Inter, sans-serif', color: 'var(--texto)' }}>Ofertas da agricultura familiar</h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--texto-suave)' }}>
           Consulta da prefeitura: produtos cadastrados pelos produtores. Filtre por produto, disponibilidade, município ou situação.
         </p>
@@ -93,7 +93,7 @@ export default function Ofertas() {
           <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '8px 14px' }}>
             <span style={{ fontSize: 16 }}>🔍</span>
             <input
-              style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Nunito', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
+              style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Inter', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
               placeholder="Buscar por produto, produtor ou disponibilidade..."
               value={busca}
               onChange={e => setBusca(e.target.value)}
@@ -111,7 +111,7 @@ export default function Ofertas() {
             <option value="">Todas</option>
           </select>
           <button onClick={() => { clearCache(CACHE_KEY); load(true) }}
-            style={{ background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '9px 14px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: 'var(--texto)', cursor: 'pointer' }}>
+            style={{ background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '9px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--texto)', cursor: 'pointer' }}>
             🔄 Atualizar
           </button>
           <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 'auto' }}>

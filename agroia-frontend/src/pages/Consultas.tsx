@@ -130,7 +130,7 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
           <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '8px 14px' }}>
             <span style={{ fontSize: 16 }}>🔍</span>
             <input
-              style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Nunito', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
+              style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Inter', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
               placeholder="Buscar por descrição, processo ou cultura..."
               value={busca}
               onChange={e => { setBusca(e.target.value); setPage(1) }}
@@ -138,12 +138,12 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
             {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
           </div>
           <button onClick={() => setShowFilters(v => !v)}
-            style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
             ⚙️ Filtros{hasFilters ? ` (${[busca,filCultura,filCanal,filAno,valorMin,valorMax].filter(Boolean).length})` : ''}
           </button>
           {hasFilters && (
             <button onClick={clearFilters}
-              style={{ background: 'var(--terra-claro)', border: '1px solid #e0c9bc', borderRadius: 10, padding: '9px 14px', fontFamily: 'Nunito', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
+              style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 10, padding: '9px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
               ✕ Limpar
             </button>
           )}
@@ -186,7 +186,7 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
         <span style={{ fontSize: 12, color: 'var(--texto-suave)', fontWeight: 700 }}>Ordenar:</span>
         {([['dt_abertura', '📅 Data'], ['valor_total', '💰 Valor'], ['qt_solicitada', '⚖️ Qtd'], ['descricao', '🔤 Nome']] as [SortKey, string][]).map(([key, label]) => (
           <button key={key} onClick={() => toggleSort(key)}
-            style={{ background: sortKey === key ? 'var(--verde-fundo)' : 'var(--branco)', border: `1px solid ${sortKey === key ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 8, padding: '5px 12px', fontFamily: 'Nunito', fontSize: 12, fontWeight: 700, color: sortKey === key ? 'var(--verde)' : 'var(--texto-suave)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            style={{ background: sortKey === key ? 'var(--verde-fundo)' : 'var(--branco)', border: `1px solid ${sortKey === key ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 8, padding: '5px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: sortKey === key ? 'var(--verde)' : 'var(--texto-suave)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
             {label} {sortIcon(key)}
           </button>
         ))}
