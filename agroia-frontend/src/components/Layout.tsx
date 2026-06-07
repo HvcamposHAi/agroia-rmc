@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import CommandPalette from './CommandPalette'
 
 const primaryNav = [
-  { to: '/', icon: '🏠', label: 'Início' },
+  { to: '/inicio', icon: '🏠', label: 'Início' },
   { to: '/demanda', icon: '📊', label: 'Demanda' },
   { to: '/mercado', icon: '💰', label: 'Mercado' },
   { to: '/ofertas', icon: '🧺', label: 'Ofertas' },

@@ -11,7 +11,7 @@ interface Entry {
 }
 
 const STATIC_ACTIONS: Entry[] = [
-  { icon: '🏠', label: 'Início', to: '/', group: 'Navegar' },
+  { icon: '🏠', label: 'Início', to: '/inicio', group: 'Navegar' },
   { icon: '📊', label: 'Demanda — Resumo', to: '/demanda?view=resumo', group: 'Navegar' },
   { icon: '🔍', label: 'Demanda — Lista', to: '/demanda?view=lista', group: 'Navegar' },
   { icon: '💰', label: 'Mercado (preços)', to: '/mercado', group: 'Navegar' },

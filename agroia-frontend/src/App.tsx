@@ -22,7 +22,9 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
+          {/* Página inicial do portal = Assistente */}
+          <Route index element={<Navigate to="/assistente" replace />} />
+          <Route path="inicio" element={<Home />} />
           <Route path="assistente" element={<Chat />} />
           <Route path="demanda" element={<Demanda />} />
           <Route path="mercado" element={<Mercado />} />
