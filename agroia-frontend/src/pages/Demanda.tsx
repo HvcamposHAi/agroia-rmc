@@ -1,37 +1,20 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
-import { getCache, setCache } from '../lib/sessionCache'
+import { fetchItensAgro, type ItemAgro } from '../lib/itensAgro'
 import Dashboard from './Dashboard'
 import Consultas from './Consultas'
 
-// Chave compartilhada com a Home (KPIs) para evitar fetch duplicado.
-export const DEMANDA_CACHE_KEY = 'demanda_itens_agro_v1'
-
 /**
  * "Demanda" unifica Dashboard (Resumo) e Consultas (Lista): um único fetch de
- * vw_itens_agro alimenta as duas visões. Os filtros (cultura/canal/ano…) vivem na
- * URL e persistem ao alternar a visão (?view=resumo|lista).
+ * vw_itens_agro (via fetchItensAgro) alimenta as duas visões. Os filtros
+ * (cultura/canal/ano…) vivem na URL e persistem ao alternar a visão
+ * (?view=resumo|lista).
  */
 export default function Demanda() {
-  const [rows, setRows] = useState<any[] | null>(null)
+  const [rows, setRows] = useState<ItemAgro[] | null>(null)
   const [view, setView] = useUrlState('view', 'resumo')
 
-  useEffect(() => {
-    async function load() {
-      const cached = getCache<any[]>(DEMANDA_CACHE_KEY)
-      if (cached) { setRows(cached); return }
-      const { data } = await supabase
-        .from('vw_itens_agro')
-        .select('*')
-        .order('dt_abertura', { ascending: false })
-        .limit(1000)
-      const arr = data ?? []
-      setRows(arr)
-      setCache(DEMANDA_CACHE_KEY, arr)
-    }
-    load()
-  }, [])
+  useEffect(() => { fetchItensAgro().then(setRows) }, [])
 
   if (!rows) return (
     <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>

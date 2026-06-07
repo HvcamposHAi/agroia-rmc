@@ -1082,12 +1082,48 @@ button.topnav-item {
   font-size: 13.5px; font-weight: 700;
 }
 .chip:hover { border-color: var(--verde); color: var(--verde); }
+/* KPIs em bento: 2 herói (span 2) + 2 de apoio (span 1) = 6 colunas */
 .home-kpis {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px; margin-bottom: 8px;
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 16px; margin-bottom: 26px;
 }
-.home-kpis .metric-card { text-decoration: none; cursor: pointer; }
-.home-kpis .metric-card:hover { box-shadow: 0 8px 22px rgba(51,65,85,0.14); }
+.home-kpis .metric-card {
+  text-decoration: none; cursor: pointer; grid-column: span 1;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.home-kpis .metric-card.heroi { grid-column: span 2; }
+.home-kpis .metric-card.heroi .metric-value { font-size: 34px; }
+.home-kpis .metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(51,65,85,0.14);
+  border-color: var(--verde-claro);
+}
+.home-kpis .metric-card:focus-visible,
+.hub-card:focus-visible {
+  outline: 2px solid var(--verde-claro); outline-offset: 2px;
+}
+
+/* Agrupamento de serviços por jornada */
+.hub-group { margin-bottom: 8px; }
+.hub-card.accent-ceu { border-top-color: var(--ceu); }
+.hub-card.accent-ceu .hub-icon { background: var(--ceu-claro); }
+.hub-card.accent-teal { border-top-color: var(--teal); }
+.hub-card.accent-teal .hub-icon { background: var(--teal-fundo); }
+.hub-card.accent-ceu:hover { border-color: var(--ceu); }
+.hub-card.accent-teal:hover { border-color: var(--teal); }
+/* destaque (Sou Produtor) precisa vencer o accent do grupo — re-declarado após */
+.hub-card.destaque { border-top-color: var(--amarelo); }
+.hub-card.destaque .hub-icon { background: var(--amarelo-claro); }
+
+@media (max-width: 980px) {
+  .home-kpis { grid-template-columns: repeat(2, 1fr); }
+  .home-kpis .metric-card.heroi { grid-column: span 2; }
+}
+@media (max-width: 560px) {
+  .home-kpis { grid-template-columns: 1fr; }
+  .home-kpis .metric-card,
+  .home-kpis .metric-card.heroi { grid-column: span 1; }
+}
 
 @media (max-width: 860px) {
   /* No drawer mobile, o "Mais" abre inline (sem dropdown flutuante) */

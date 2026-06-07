@@ -1,25 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
-import { getCache, setCache } from '../lib/sessionCache'
+import { fetchItensAgro, type ItemAgro as Item } from '../lib/itensAgro'
 
-interface Item {
-  id: number
-  processo: string
-  descricao: string
-  cultura: string
-  canal: string
-  valor_total: number
-  dt_abertura: string
-  qt_solicitada: number
-}
-
-const fmt = (v: number) =>
+const fmt = (v?: number) =>
   v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) ?? '—'
 
 const PAGE_SIZE = 20
-const CACHE_KEY = 'consultas_itens_agro_v1'
 type SortKey = 'dt_abertura' | 'valor_total' | 'qt_solicitada' | 'descricao'
 type SortDir = 'asc' | 'desc'
 
@@ -46,21 +33,9 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
 
   useEffect(() => {
     if (dataset) return   // dataset veio por prop; não busca
-    async function load() {
-      try {
-        const cached = getCache<Item[]>(CACHE_KEY)
-        if (cached) { setFetched(cached); setLoading(false); return }
-        const { data } = await supabase
-          .from('vw_itens_agro')
-          .select('*')
-          .order('dt_abertura', { ascending: false })
-          .limit(1000)
-        if (data) { setFetched(data as Item[]); setCache(CACHE_KEY, data) }
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    fetchItensAgro()
+      .then(setFetched)
+      .finally(() => setLoading(false))
   }, [dataset])
 
   const culturas = useMemo(() =>
@@ -217,9 +192,9 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
             <div className="item-title">{item.descricao ?? '—'}</div>
             <div className="item-meta" style={{ marginTop: 6 }}>
               {item.processo && <span style={{ background: 'var(--cinza-claro)', padding: '2px 8px', borderRadius: 6, fontSize: 11 }}>📋 {item.processo}</span>}
-              {item.qt_solicitada > 0 && <span>⚖️ {item.qt_solicitada.toLocaleString('pt-BR')} kg</span>}
-              {item.qt_solicitada > 0 && item.valor_total > 0 && (
-                <span style={{ color: 'var(--verde)', fontWeight: 700 }}>≈ R$ {(item.valor_total / item.qt_solicitada).toFixed(2)}/kg</span>
+              {(item.qt_solicitada ?? 0) > 0 && <span>⚖️ {(item.qt_solicitada ?? 0).toLocaleString('pt-BR')} kg</span>}
+              {(item.qt_solicitada ?? 0) > 0 && (item.valor_total ?? 0) > 0 && (
+                <span style={{ color: 'var(--verde)', fontWeight: 700 }}>≈ R$ {((item.valor_total ?? 0) / (item.qt_solicitada ?? 1)).toFixed(2)}/kg</span>
               )}
             </div>
             {item.cultura && (
@@ -230,7 +205,7 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
               </div>
             )}
           </div>
-          {item.valor_total > 0 && <div className="item-valor">{fmt(item.valor_total)}</div>}
+          {(item.valor_total ?? 0) > 0 && <div className="item-valor">{fmt(item.valor_total)}</div>}
         </div>
       ))}
 

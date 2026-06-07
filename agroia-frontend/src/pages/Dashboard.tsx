@@ -1,13 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
-import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
-import { getCache, setCache } from '../lib/sessionCache'
+import { fetchItensAgro, type ItemAgro } from '../lib/itensAgro'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Area, AreaChart, PieChart, Pie, Cell, Legend,
 } from 'recharts'
-
-const CACHE_KEY = 'dashboard_itens_agro_v1'
 
 const fmt = (v: number) =>
   v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(1)}M`
@@ -25,18 +22,9 @@ const CANAL_COLORS: Record<string, string> = {
 }
 const DEFAULT_COLOR = '#64748b'
 
-interface RawItem {
-  cultura: string
-  canal: string
-  valor_total: number
-  dt_abertura: string
-  qt_solicitada: number
-  categoria_v2: string
-}
-
-export default function Dashboard({ items }: { items?: RawItem[] } = {}) {
+export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
   // Quando `items` é fornecido (uso embutido na Demanda), reutiliza o dataset e não busca.
-  const [fetched, setFetched] = useState<RawItem[]>([])
+  const [fetched, setFetched] = useState<ItemAgro[]>([])
   const raw = items ?? fetched
   const [loading, setLoading] = useState(!items)
   const [filAno, setFilAno] = useUrlState('ano', 'todos')
@@ -48,19 +36,9 @@ export default function Dashboard({ items }: { items?: RawItem[] } = {}) {
 
   useEffect(() => {
     if (items) return   // dataset veio por prop; não busca
-    async function load() {
-      try {
-        const cached = getCache<RawItem[]>(CACHE_KEY)
-        if (cached) { setFetched(cached); setLoading(false); return }
-        const { data } = await supabase.from('vw_itens_agro')
-          .select('cultura, canal, valor_total, dt_abertura, qt_solicitada, categoria_v2')
-          .order('dt_abertura', { ascending: false })
-        if (data) { setFetched(data as RawItem[]); setCache(CACHE_KEY, data) }
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    fetchItensAgro()
+      .then(setFetched)
+      .finally(() => setLoading(false))
   }, [items])
 
   const anos = useMemo(() =>
