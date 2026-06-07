@@ -2,7 +2,7 @@
 # Os secrets (sync:false) devem ser preenchidos no painel do Render.
 services:
   - type: web
-    name: agroia-rmc-api          # casar com o serviço Render existente (takeover)
+    name: agroia-rmc              # DEVE casar com o serviço Render existente p/ takeover via Blueprint
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: standard                # 2 GB RAM — mínimo realista p/ Chromium (starter 512MB = OOM)
