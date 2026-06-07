@@ -1,5 +1,7 @@
 import json
 import os
+import time
+import threading
 import logging
 import anthropic
 from typing import Generator
@@ -10,6 +12,10 @@ from chat.prompts import SYSTEM_PROMPT
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+# Feature flag: quando 'false' (default) o pipeline de expansão nem executa,
+# preservando o comportamento original do agente.
+USE_QUERY_EXPANSION = os.getenv("USE_QUERY_EXPANSION", "false").lower() == "true"
+
 _anthropic_client: anthropic.Anthropic | None = None
 
 def get_client() -> anthropic.Anthropic:
@@ -17,6 +23,24 @@ def get_client() -> anthropic.Anthropic:
 	if _anthropic_client is None:
 		_anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 	return _anthropic_client
+
+def _registrar_log(dados: dict) -> None:
+	"""Registra um turno em log_consultas_agente de forma não-bloqueante.
+
+	O insert roda em thread daemon; qualquer falha é silenciada para que o
+	log NUNCA quebre o fluxo principal do chat (F-04).
+	"""
+	def _run():
+		try:
+			from chat.db import get_supabase_client
+			get_supabase_client().table("log_consultas_agente").insert(dados).execute()
+		except Exception:
+			pass
+
+	try:
+		threading.Thread(target=_run, daemon=True).start()
+	except Exception:
+		pass
 
 def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT,
          tools: list = None) -> dict:
@@ -36,8 +60,24 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
         if not pergunta or not pergunta.strip():
             return {"resposta": "Por favor, faça uma pergunta válida.", "tools_usadas": []}
 
+        # === QUERY AGENT (opcional, guardado por feature flag) ===
+        # Expande a pergunta com termos canônicos/filtros do domínio e injeta um
+        # hint curto no contexto. Em qualquer falha, degrada para a pergunta original.
+        inicio_total = time.time()
+        expansion = None
+        pergunta_efetiva = pergunta
+        if USE_QUERY_EXPANSION:
+            try:
+                from chat.query_agent import expandir_consulta
+                expansion = expandir_consulta(pergunta)
+                if expansion.get("contexto_hint"):
+                    pergunta_efetiva = f"{pergunta}\n\n{expansion['contexto_hint']}"
+            except Exception as e:
+                logger.warning(f"Query expansion falhou, usando pergunta original: {e}")
+                expansion = None
+
         client = get_client()
-        messages = historico + [{"role": "user", "content": pergunta}]
+        messages = historico + [{"role": "user", "content": pergunta_efetiva}]
         tools_usadas = []
         iteracao = 0
         max_iteracoes = 10
@@ -70,6 +110,24 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
                 if not texto:
                     logger.warning("Claude returned empty text despite end_turn")
                     texto = "Não consegui gerar uma resposta. Tente reformular sua pergunta."
+                if USE_QUERY_EXPANSION:
+                    _registrar_log({
+                        "session_id": None,
+                        "consulta_original": pergunta,
+                        "consulta_expandida": pergunta_efetiva if expansion else None,
+                        "intencao_detectada": (expansion or {}).get("intencao"),
+                        "termos_expandidos": (expansion or {}).get("termos_expandidos"),
+                        "filtros_sugeridos": (expansion or {}).get("filtros_sugeridos"),
+                        "tools_usadas": tools_usadas,
+                        "retornou_dados": len(tools_usadas) > 0,
+                        "num_tools": len(tools_usadas),
+                        "resposta_gerada": texto[:500],
+                        "motor_llm": "claude-haiku-4-5",
+                        "latencia_query_agent_ms": (expansion or {}).get("latencia_ms"),
+                        "latencia_total_ms": int((time.time() - inicio_total) * 1000),
+                        "grupo_experimento": os.getenv("GRUPO_EXPERIMENTO", "pos_implementacao"),
+                        "is_baseline": os.getenv("GRUPO_EXPERIMENTO", "") == "baseline",
+                    })
                 return {
                     "resposta": texto,
                     "tools_usadas": tools_usadas
