@@ -23,7 +23,9 @@ concurrency:
 
 jobs:
   coleta:
-    runs-on: ubuntu-latest
+    # 22.04 (jammy): Playwright 1.40 instala as deps do Chromium nele. Em ubuntu-latest
+    # (24.04/noble) o `playwright install --with-deps` falha (pacotes apt renomeados, ex. libasound2t64).
+    runs-on: ubuntu-22.04
     timeout-minutes: 350      # limite do runner é 6h; coleta incremental costuma ser curta
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
