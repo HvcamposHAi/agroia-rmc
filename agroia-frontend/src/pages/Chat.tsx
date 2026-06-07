@@ -24,7 +24,19 @@ const SUGGESTIONS = [
   '🥗 É bom momento para vender alface agora?',
 ]
 
-export default function Chat() {
+interface ChatProps {
+  suggestions?: string[]
+  welcomeIcon?: string
+  welcomeTitle?: string
+  welcomeText?: string
+}
+
+export default function Chat({
+  suggestions = SUGGESTIONS,
+  welcomeIcon = '🌾',
+  welcomeTitle = 'Olá! Como posso ajudar?',
+  welcomeText = 'Consulte dados de licitações agrícolas da SMSAN/FAAC de Curitiba em linguagem natural.',
+}: ChatProps = {}) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -106,11 +118,11 @@ export default function Chat() {
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="chat-welcome">
-            <span className="welcome-icon">🌾</span>
-            <h3>Olá! Como posso ajudar?</h3>
-            <p>Consulte dados de licitações agrícolas da SMSAN/FAAC de Curitiba em linguagem natural.</p>
+            <span className="welcome-icon">{welcomeIcon}</span>
+            <h3>{welcomeTitle}</h3>
+            <p>{welcomeText}</p>
             <div className="suggestions">
-              {SUGGESTIONS.map(s => (
+              {suggestions.map(s => (
                 <button key={s} className="suggestion-btn" onClick={() => send(s)}>{s}</button>
               ))}
             </div>
