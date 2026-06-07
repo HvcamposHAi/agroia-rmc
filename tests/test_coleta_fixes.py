@@ -68,12 +68,11 @@ class TestGateColetaB3:
         monkeypatch.setenv("COLETA_ENABLED", "false")
         assert coleta_mod.coleta_habilitada() is False
 
-    def test_iniciar_bloqueado_na_nuvem(self):
-        # Com chave válida porém COLETA_ENABLED=false → 400 com mensagem de execução local.
-        # (não dispara subprocess/navegador)
+    def test_iniciar_bloqueado_quando_desabilitada(self):
+        # Com chave válida porém COLETA_ENABLED=false → 400 (não dispara nada).
         resp = client.post("/coleta/iniciar", headers={"X-API-Key": API_KEY})
         assert resp.status_code == 400
-        assert "local" in resp.json()["detail"].lower()
+        assert "desabilitada" in resp.json()["detail"].lower()
 
 
 class TestPidVivo:
@@ -170,6 +169,72 @@ class TestUltimaExecucao:
     def test_sem_registro(self, monkeypatch):
         monkeypatch.setattr(coleta_mod, "get_supabase_client", lambda: _FakeSB([]))
         assert coleta_mod.get_ultima_execucao() is None
+
+
+class TestColetaModo:
+    def test_default_local(self, monkeypatch):
+        monkeypatch.delenv("COLETA_MODE", raising=False)
+        assert coleta_mod.coleta_modo() == "local"
+
+    def test_github(self, monkeypatch):
+        monkeypatch.setenv("COLETA_MODE", "github")
+        assert coleta_mod.coleta_modo() == "github"
+
+
+class TestStaleness:
+    def test_status_estagnado_true(self):
+        antigo = {"status": "running", "atualizado_em": "2020-01-01T00:00:00"}
+        assert coleta_mod._status_estagnado(antigo, limite_seg=900) is True
+
+    def test_status_estagnado_false_recente(self):
+        from datetime import datetime
+        agora = {"status": "running", "atualizado_em": datetime.now().isoformat()}
+        assert coleta_mod._status_estagnado(agora, limite_seg=900) is False
+
+    def test_idade_seg_invalida(self):
+        assert coleta_mod._idade_seg(None) is None
+
+
+class TestDispatchGithub:
+    """iniciar_coleta no modo github chama a API do GitHub (workflow_dispatch)."""
+
+    def test_dispara_workflow(self, monkeypatch):
+        monkeypatch.setenv("COLETA_ENABLED", "true")
+        monkeypatch.setenv("COLETA_MODE", "github")
+        monkeypatch.setenv("GITHUB_REPO", "owner/repo")
+        monkeypatch.setenv("GH_DISPATCH_TOKEN", "tok")
+        monkeypatch.setattr(coleta_mod, "get_status", lambda: {"status": "idle"})
+        monkeypatch.setattr(coleta_mod, "_upsert_status", lambda d: None)
+
+        chamado = {}
+
+        class FakeResp:
+            status_code = 204
+            text = ""
+
+        def fake_post(url, **kwargs):
+            chamado["url"] = url
+            chamado["json"] = kwargs.get("json")
+            return FakeResp()
+
+        import requests
+        monkeypatch.setattr(requests, "post", fake_post)
+
+        ok, msg = coleta_mod.iniciar_coleta(dt_inicio="01/01/2026", dt_fim="07/01/2026")
+        assert ok is True
+        assert "GitHub" in msg
+        assert "/actions/workflows/" in chamado["url"]
+        assert chamado["json"]["ref"]  # ref enviado
+
+    def test_falta_config(self, monkeypatch):
+        monkeypatch.setenv("COLETA_ENABLED", "true")
+        monkeypatch.setenv("COLETA_MODE", "github")
+        monkeypatch.delenv("GITHUB_REPO", raising=False)
+        monkeypatch.delenv("GH_DISPATCH_TOKEN", raising=False)
+        monkeypatch.setattr(coleta_mod, "get_status", lambda: {"status": "idle"})
+        ok, msg = coleta_mod.iniciar_coleta(dt_inicio="01/01/2026", dt_fim="07/01/2026")
+        assert ok is False
+        assert "GITHUB_REPO" in msg or "GH_DISPATCH_TOKEN" in msg
 
 
 class TestHeadlessEnv:

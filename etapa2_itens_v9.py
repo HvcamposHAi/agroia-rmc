@@ -132,7 +132,10 @@ def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando"
         "empenhos": stats.get("empenhos", 0),
         "iniciado_em": stats.get("iniciado_em", datetime.now().isoformat()),
         "atualizado_em": datetime.now().isoformat(),
-        "pid": os.getpid()
+        "pid": os.getpid(),
+        # ID do run do GitHub Actions (quando a coleta roda como workflow) — usado
+        # para o backend conseguir cancelar o run. None quando roda localmente.
+        "run_id": os.getenv("GITHUB_RUN_ID"),
     }
 
     # Adicionar informações de consulta ao portal se disponíveis
@@ -151,6 +154,19 @@ def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando"
     except Exception as e:
         if DEBUG:
             print(f"[!] Erro ao escrever {progress_file}: {e}")
+
+    # Espelha o status no Supabase (tabela coleta_status, linha única id=1) — é a
+    # FONTE COMPARTILHADA que o backend (Render) lê para mostrar progresso ao vivo,
+    # independentemente de onde a coleta roda (GitHub Actions, local, etc.).
+    # Blindado: falha aqui nunca interrompe a coleta.
+    try:
+        sb.table("coleta_status").upsert(
+            {"id": 1, "dados": dados, "atualizado_em": dados["atualizado_em"]},
+            on_conflict="id",
+        ).execute()
+    except Exception as e:
+        if DEBUG:
+            print(f"[!] Erro ao espelhar status no Supabase (ignorado): {e}")
 
 
 def registrar_erro(stats: dict, processo: str, mensagem: str, limite: int = 50):

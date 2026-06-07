@@ -164,26 +164,34 @@ SUPABASE_KEY=<key>
 GOOGLE_DRIVE_FOLDER_ID=<folder_id>
 ```
 
-### Coleta (Atualização de Dados) — variáveis de ambiente
+### Coleta (Atualização de Dados) — arquitetura e variáveis de ambiente
 
-A coleta usa Playwright + Chromium e **só roda de forma confiável localmente** (Windows).
-No backend de nuvem (Render) ela deve ficar desabilitada — a página `/coleta` então
-exibe apenas status e estatísticas da base.
+A coleta usa Playwright + Chromium (não roda no Render free — 512MB/sem navegador).
+**Estratégia de produção (free): GitHub Actions** (`COLETA_MODE=github`). O botão
+"Buscar Dados" chama o backend, que dispara o workflow `.github/workflows/coleta.yml`
+(runner gratuito com Chromium). O etapa2 grava progresso ao vivo na tabela Supabase
+`coleta_status` (linha id=1) e o resumo em `coleta_execucoes`. O backend lê `coleta_status`
+e transmite via SSE → indicador "Em andamento" funciona em qualquer máquina.
+SQL da tabela: `sql/coleta_status.sql`.
 
-Backend (API):
-- `COLETA_ENABLED` — `true` (padrão, local) habilita o botão/agendamento de coleta;
-  `false` (Render) bloqueia o disparo e o job semanal.
-- `PLAYWRIGHT_HEADLESS` — `false` (padrão, navegador visível local); `true` em servidor
-  sem display (adiciona `--no-sandbox --disable-dev-shm-usage`).
-- `PLAYWRIGHT_SLOW_MO` — ms entre ações (padrão 80 quando visível, 0 quando headless).
-- `ALLOWED_ORIGINS` — CSV de origens permitidas no CORS; **incluir a URL do Cloudflare Pages** em produção.
-- `API_SECRET_KEY` — chave validada por `verify_api_key` nos endpoints de escrita
-  (`/coleta/iniciar|cancelar|config|stream`).
+Backend (Render / API):
+- `COLETA_MODE` — `github` (dispara workflow no GitHub) ou `local` (subprocess local; padrão).
+- `COLETA_ENABLED` — `true` habilita o disparo; `false` deixa a página só leitura.
+- `GITHUB_REPO` — `owner/repo` (ex.: `HvcamposHAi/agroia-rmc`) — usado no modo github.
+- `GH_DISPATCH_TOKEN` — PAT do GitHub com escopo de Actions (`workflow`) — modo github.
+- `GITHUB_WORKFLOW_FILE` (opcional, padrão `coleta.yml`), `GITHUB_REF` (opcional, padrão `main`).
+- `COLETA_STALE_SECS` (opcional, padrão 360) — sem update do status por mais que isto ⇒ erro.
+- `ALLOWED_ORIGINS` — CSV de origens do CORS; **incluir a URL do Cloudflare Pages**.
+- `API_SECRET_KEY` — validada por `verify_api_key` em `/coleta/iniciar|cancelar|config|stream`.
+- (modo local) `PLAYWRIGHT_HEADLESS` (`false` padrão), `PLAYWRIGHT_SLOW_MO` (80 headed / 60 headless).
+
+GitHub repo → Settings → Secrets and variables → Actions:
+- `SUPABASE_URL`, `SUPABASE_KEY` — usados pelo runner para gravar no banco.
 
 Frontend (Cloudflare Pages / Vite):
-- `VITE_API_URL` — URL do backend (Render) em produção.
-- `VITE_API_SECRET_KEY` — deve ser igual ao `API_SECRET_KEY` do backend (header `X-API-Key`).
-- `VITE_COLETA_ENABLED` — `false` no build de nuvem para desabilitar o botão "Buscar Dados".
+- `VITE_API_URL` — URL do backend (Render).
+- `VITE_API_SECRET_KEY` — **igual** ao `API_SECRET_KEY` do backend (header `X-API-Key`).
+- `VITE_COLETA_ENABLED` — `true` para habilitar o botão "Buscar Dados".
 
 ### Fonte única de verdade das métricas (escopo agrícola)
 

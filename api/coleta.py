@@ -46,15 +46,7 @@ def get_data_mais_recente() -> str:
         return "01/01/2019"
 
 
-def get_status() -> dict:
-    """Lê coleta_status.json ou retorna status idle."""
-    try:
-        if os.path.exists(STATUS_FILE):
-            with open(STATUS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception as e:
-        logger.error(f"Erro ao ler {STATUS_FILE}: {e}")
-
+def _status_idle() -> dict:
     return {
         "status": "idle",
         "etapa": "nenhuma",
@@ -67,26 +59,145 @@ def get_status() -> dict:
         "empenhos": 0,
         "iniciado_em": None,
         "atualizado_em": datetime.now().isoformat(),
-        "pid": None
+        "pid": None,
+        "run_id": None,
     }
+
+
+def coleta_modo() -> str:
+    """'github' (coleta roda no GitHub Actions) ou 'local' (subprocess local)."""
+    return os.getenv("COLETA_MODE", "local").lower()
+
+
+def _upsert_status(dados: dict) -> None:
+    """Grava o status compartilhado na tabela coleta_status (linha id=1). Blindado."""
+    try:
+        sb = get_supabase_client()
+        sb.table("coleta_status").upsert(
+            {"id": 1, "dados": dados, "atualizado_em": dados.get("atualizado_em")},
+            on_conflict="id",
+        ).execute()
+    except Exception as e:
+        logger.error(f"Erro ao gravar coleta_status no Supabase: {e}")
+
+
+def _idade_seg(iso: Optional[str]) -> Optional[float]:
+    """Idade (segundos) de um timestamp ISO; None se não der para parsear."""
+    if not iso:
+        return None
+    try:
+        dt = datetime.fromisoformat(iso)
+        agora = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
+        return (agora - dt).total_seconds()
+    except Exception:
+        return None
+
+
+def _status_estagnado(status: dict, limite_seg: int = 900) -> bool:
+    """True se um status 'running' não é atualizado há mais de `limite_seg` (15 min):
+    indica coleta morta/abandonada — destrava novo disparo."""
+    idade = _idade_seg(status.get("atualizado_em"))
+    return idade is not None and idade > limite_seg
+
+
+def get_status() -> dict:
+    """Status compartilhado da coleta. Fonte primária: tabela coleta_status no Supabase
+    (reflete a coleta rode ela onde rodar — GitHub Actions/local). Fallbacks: arquivo
+    local (dev) e, por fim, idle."""
+    # 1) Supabase — fonte compartilhada
+    try:
+        sb = get_supabase_client()
+        resp = sb.table("coleta_status").select("dados").eq("id", 1).limit(1).execute()
+        if resp.data and resp.data[0].get("dados"):
+            return resp.data[0]["dados"]
+    except Exception as e:
+        logger.error(f"Erro ao ler coleta_status do Supabase: {e}")
+
+    # 2) Arquivo local (modo local / dev)
+    try:
+        if os.path.exists(STATUS_FILE):
+            with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Erro ao ler {STATUS_FILE}: {e}")
+
+    # 3) idle
+    return _status_idle()
+
+
+def _disparar_github_actions(dt_inicio: str, dt_fim: str) -> Tuple[bool, str]:
+    """Dispara o workflow de coleta no GitHub Actions (workflow_dispatch)."""
+    import requests
+
+    repo = os.getenv("GITHUB_REPO")            # ex.: HvcamposHAi/agroia-rmc
+    token = os.getenv("GH_DISPATCH_TOKEN")     # PAT com escopo de Actions (workflow)
+    workflow = os.getenv("GITHUB_WORKFLOW_FILE", "coleta.yml")
+    ref = os.getenv("GITHUB_REF", "main")
+
+    if not repo or not token:
+        return False, "Configuração ausente: defina GITHUB_REPO e GH_DISPATCH_TOKEN no servidor."
+
+    url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches"
+    inputs = {}
+    if dt_inicio:
+        inputs["dt_inicio"] = dt_inicio
+    if dt_fim:
+        inputs["dt_fim"] = dt_fim
+    try:
+        r = requests.post(
+            url,
+            json={"ref": ref, "inputs": inputs},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+    except Exception as e:
+        logger.error(f"Falha ao chamar a API do GitHub: {e}")
+        return False, f"Falha ao contatar o GitHub: {e}"
+
+    if r.status_code not in (201, 204):
+        logger.error(f"GitHub recusou o dispatch ({r.status_code}): {r.text[:300]}")
+        return False, f"GitHub recusou o disparo ({r.status_code}). Verifique token/permissões."
+
+    # Status inicial imediato (o runner leva ~30-60s para subir) → UI mostra "Em andamento".
+    inicial = _status_idle()
+    inicial.update({
+        "status": "running",
+        "etapa": "iniciando",
+        "iniciado_em": datetime.now().isoformat(),
+        "atualizado_em": datetime.now().isoformat(),
+        "consulta_portal": {
+            "url": os.getenv("PORTAL_URL", "http://consultalictacao.curitiba.pr.gov.br:9090/"),
+            "orgao": "SMSAN/FAAC",
+            "dt_inicio": dt_inicio,
+            "dt_fim": dt_fim,
+            "registros_por_pagina": 5,
+        },
+    })
+    _upsert_status(inicial)
+    logger.info(f"Coleta disparada no GitHub Actions ({repo}/{workflow})")
+    return True, "Coleta disparada no GitHub Actions. O progresso aparecerá em instantes."
 
 
 def iniciar_coleta(dt_inicio: Optional[str] = None, dt_fim: Optional[str] = None) -> Tuple[bool, str]:
     """
-    Inicia uma coleta de dados via subprocess (etapa2_itens_v9.py).
+    Inicia uma coleta de dados. Em COLETA_MODE=github dispara um workflow no GitHub
+    Actions (runner gratuito com Chromium); caso contrário roda localmente via subprocess.
     Retorna (sucesso: bool, mensagem: str).
     """
     global PROCESS_PID
 
-    # No ambiente de nuvem (Render) a coleta via navegador não roda — execute localmente.
     if not coleta_habilitada():
-        return False, ("Coleta deve ser executada na máquina local. "
+        return False, ("Coleta desabilitada neste ambiente. "
                        "Esta página exibe apenas status e estatísticas.")
 
-    # Verificar se já há coleta em andamento
+    # Já em andamento? (a menos que o status esteja estagnado = coleta morta)
     status = get_status()
-    if status.get("status") == "running":
-        return False, f"Coleta já em andamento (PID: {status.get('pid')})"
+    if status.get("status") == "running" and not _status_estagnado(status):
+        return False, "Coleta já em andamento."
 
     # Resolver datas
     if not dt_inicio:
@@ -94,52 +205,81 @@ def iniciar_coleta(dt_inicio: Optional[str] = None, dt_fim: Optional[str] = None
     if not dt_fim:
         dt_fim = datetime.now().strftime("%d/%m/%Y")
 
-    logger.info(f"Iniciando coleta: {dt_inicio} → {dt_fim}")
+    logger.info(f"Iniciando coleta ({coleta_modo()}): {dt_inicio} → {dt_fim}")
 
+    # ── Modo nuvem: GitHub Actions ──
+    if coleta_modo() == "github":
+        return _disparar_github_actions(dt_inicio, dt_fim)
+
+    # ── Modo local: subprocess ──
     try:
-        # Lançar subprocess com arguments
         cmd = [
-            "python",
-            "etapa2_itens_v9.py",
+            "python", "etapa2_itens_v9.py",
             "--dt-inicio", dt_inicio,
             "--dt-fim", dt_fim,
-            "--progress-file", STATUS_FILE
+            "--progress-file", STATUS_FILE,
         ]
-
-        # IMPORTANTE: não usar PIPE sem drenar. No Linux (Render) o etapa2 imprime
-        # muito (DEBUG); se o buffer do pipe encher (~64KB) o subprocess BLOQUEIA no
-        # print() e a coleta congela sem erro. DEVNULL evita o deadlock — o progresso
-        # útil já vai para coleta_status.json e a tabela coleta_execucoes.
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        # DEVNULL evita deadlock: o etapa2 imprime muito; PIPE sem drenar trava o
+        # subprocess quando o buffer enche (~64KB). Progresso vai p/ Supabase/arquivo.
+        process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         PROCESS_PID = process.pid
-
         logger.info(f"Processo iniciado: PID {process.pid}")
         return True, f"Coleta iniciada com sucesso (PID: {process.pid})"
-
     except Exception as e:
         logger.error(f"Erro ao iniciar coleta: {e}")
         return False, f"Erro ao iniciar coleta: {str(e)}"
 
 
+def _cancelar_github_run(run_id) -> Tuple[bool, str]:
+    """Cancela um run do GitHub Actions pelo id."""
+    import requests
+    repo = os.getenv("GITHUB_REPO")
+    token = os.getenv("GH_DISPATCH_TOKEN")
+    if not repo or not token:
+        return False, "Configuração do GitHub ausente."
+    url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/cancel"
+    try:
+        r = requests.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+    except Exception as e:
+        return False, f"Falha ao contatar o GitHub: {e}"
+    if r.status_code not in (202, 200):
+        return False, f"GitHub recusou o cancelamento ({r.status_code})."
+    return True, "Cancelamento solicitado ao GitHub Actions."
+
+
 def cancelar_coleta() -> Tuple[bool, str]:
-    """
-    Envia SIGTERM ao processo de coleta.
-    Retorna (sucesso: bool, mensagem: str).
-    """
+    """Cancela a coleta em andamento (run do GitHub Actions ou subprocess local)."""
     global PROCESS_PID
     status = get_status()
 
     if status.get("status") != "running":
         return False, "Nenhuma coleta em andamento"
 
+    # ── Modo nuvem: cancelar o run do GitHub ──
+    if coleta_modo() == "github":
+        run_id = status.get("run_id")
+        # Marca cancelado no status compartilhado (feedback imediato)
+        cancelado = dict(status)
+        cancelado.update({"status": "cancelled", "etapa": "finalizado",
+                          "atualizado_em": datetime.now().isoformat()})
+        _upsert_status(cancelado)
+        if not run_id:
+            return True, "Cancelamento registrado (o run ainda não reportou o ID)."
+        ok, msg = _cancelar_github_run(run_id)
+        return (True, msg) if ok else (False, msg)
+
+    # ── Modo local: SIGTERM no subprocess ──
     pid = status.get("pid")
     if not pid:
-        return False, "PID não encontrado no arquivo de status"
-
+        return False, "PID não encontrado no status"
     try:
         os.kill(pid, signal.SIGTERM)
         logger.info(f"SIGTERM enviado ao PID {pid}")
@@ -386,10 +526,10 @@ def configurar_agendamento(app):
         hora = config.get("hora", 6)
         minuto = config.get("minuto", 0)
 
-        # Segunda-feira às 06:00 (weekday 0 = Monday) - ou conforme config.
-        # Só agenda a coleta por navegador onde ela pode rodar (local). No Render
-        # (COLETA_ENABLED=false) não agenda — evita falhas silenciosas semanais.
-        if coleta_habilitada():
+        # Agenda a coleta semanal apenas no modo LOCAL. No modo github o
+        # agendamento vive no cron do próprio workflow (.github/workflows/coleta.yml),
+        # pois o Render free hiberna e o APScheduler não dispararia de forma confiável.
+        if coleta_habilitada() and coleta_modo() != "github":
             trigger = CronTrigger(day_of_week=dia_semana, hour=hora, minute=minuto)
             scheduler.add_job(
                 job_coleta_semanal,
@@ -399,7 +539,8 @@ def configurar_agendamento(app):
                 replace_existing=True
             )
         else:
-            logger.info("COLETA_ENABLED=false → job semanal de coleta NÃO agendado (execução local).")
+            logger.info(f"Job semanal de coleta NÃO agendado no APScheduler "
+                        f"(habilitada={coleta_habilitada()}, modo={coleta_modo()}).")
 
         # Job diário PROHORT (preços de atacado CEASA) — 06:30 todos os dias
         scheduler.add_job(

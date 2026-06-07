@@ -19,7 +19,7 @@ from chat.db import get_supabase_client
 from api.coleta import (
     iniciar_coleta, cancelar_coleta, get_status as get_coleta_status,
     get_stats_classificacao, configurar_agendamento, get_config, salvar_config,
-    get_ultima_execucao, proxima_execucao_iso
+    get_ultima_execucao, proxima_execucao_iso, coleta_modo, _idade_seg
 )
 import asyncio
 
@@ -1100,10 +1100,12 @@ def _pid_vivo(pid) -> bool:
 async def endpoint_coleta_stream(request: Request, _: str = Depends(verify_api_key)):
     """Stream SSE do progresso da coleta (atualiza a cada 2 segundos)."""
 
+    # Sem atualização do status por mais que isto (s) com status "running" => coleta
+    # morta (runner caiu, processo travou) → emite erro real em vez de ficar preso.
+    STALE_SECS = int(os.getenv("COLETA_STALE_SECS", "360"))  # 6 min
+
     async def evento_generator():
         ticks = 0
-        stale_ticks = 0
-        ultimo_atualizado = None
         while True:
             # Encerra se o cliente fechou a conexão
             if await request.is_disconnected():
@@ -1111,19 +1113,22 @@ async def endpoint_coleta_stream(request: Request, _: str = Depends(verify_api_k
             try:
                 status = get_coleta_status()
 
-                # Detecta subprocess morto: status "running" mas o PID sumiu e
-                # o arquivo de progresso parou de avançar → erro real (não silêncio).
+                # Detecta coleta morta sem depender de PID local (no modo github a
+                # coleta roda em outra máquina): usa a idade de `atualizado_em`.
+                # No modo local, o PID morto acelera a detecção.
                 if status.get("status") == "running":
-                    if status.get("atualizado_em") == ultimo_atualizado:
-                        stale_ticks += 1
-                    else:
-                        stale_ticks = 0
-                        ultimo_atualizado = status.get("atualizado_em")
-                    if not _pid_vivo(status.get("pid")) and stale_ticks >= 3:
-                        yield f"data: {json.dumps({'status': 'error', 'etapa': 'falha', 'msg': 'Processo de coleta encerrou inesperadamente. Verifique os logs do servidor.'})}\n\n"
+                    idade = _idade_seg(status.get("atualizado_em"))
+                    estagnado = idade is not None and idade > STALE_SECS
+                    pid = status.get("pid")
+                    pid_morto_local = (
+                        coleta_modo() != "github"
+                        and isinstance(pid, int)
+                        and not _pid_vivo(pid)
+                        and (idade is None or idade > 10)
+                    )
+                    if estagnado or pid_morto_local:
+                        yield f"data: {json.dumps({'status': 'error', 'etapa': 'falha', 'msg': 'A coleta parou de responder (sem atualização). Verifique os logs do runner.'})}\n\n"
                         break
-                else:
-                    stale_ticks = 0
 
                 yield f"data: {json.dumps(status)}\n\n"
 

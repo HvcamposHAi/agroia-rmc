@@ -1,0 +1,59 @@
+name: Coleta de Dados (AgroIA-RMC)
+
+# Runner gratuito do GitHub Actions = "máquina de coleta" (Chromium completo, ~7GB RAM).
+# Disparado pelo botão "Buscar Dados" (via API, workflow_dispatch) e semanalmente (cron).
+# O etapa2 grava progresso ao vivo na tabela Supabase coleta_status e o resumo em coleta_execucoes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dt_inicio:
+        description: "Data inicial DD/MM/AAAA (vazio = a partir da última coletada)"
+        required: false
+      dt_fim:
+        description: "Data final DD/MM/AAAA (vazio = hoje)"
+        required: false
+  schedule:
+    - cron: "0 9 * * 1"   # toda segunda 09:00 UTC = 06:00 BRT
+
+# Evita coletas sobrepostas
+concurrency:
+  group: coleta
+  cancel-in-progress: false
+
+jobs:
+  coleta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350      # limite do runner é 6h; coleta incremental costuma ser curta
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      PLAYWRIGHT_HEADLESS: "true"
+      PLAYWRIGHT_SLOW_MO: "60"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Instalação mínima: etapa2 + enriquecer_classificacao só precisam disto
+      # (sem torch/sentence-transformers). playwright fixado p/ casar com o browser.
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright==1.40.0 beautifulsoup4==4.12.2 lxml==4.9.3 supabase==2.28.3 python-dotenv==1.0.0
+
+      - name: Instalar Chromium do Playwright
+        run: python -m playwright install --with-deps chromium
+
+      - name: Rodar coleta
+        env:
+          IN_INI: ${{ github.event.inputs.dt_inicio }}
+          IN_FIM: ${{ github.event.inputs.dt_fim }}
+        run: |
+          ARGS="--progress-file coleta_status.json"
+          if [ -n "$IN_INI" ]; then ARGS="$ARGS --dt-inicio $IN_INI"; fi
+          if [ -n "$IN_FIM" ]; then ARGS="$ARGS --dt-fim $IN_FIM"; fi
+          echo "Executando: python etapa2_itens_v9.py $ARGS"
+          python etapa2_itens_v9.py $ARGS
