@@ -6,7 +6,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: standard                # 2 GB RAM — mínimo realista p/ Chromium (starter 512MB = OOM)
-    region: oregon                # ajustar p/ a região atual do serviço
+    region: ohio                  # = região do serviço existente (Ohio / US East)
     numInstances: 1               # OBRIGATÓRIO: modelo subprocess+arquivo exige 1 instância (sem autoscaling)
     healthCheckPath: /health
     autoDeploy: true
