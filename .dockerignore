@@ -1,0 +1,42 @@
+# Controle de versão / segredos / logs
+.git
+.gitignore
+.env
+.env.*
+*.log
+
+# Frontend (build separado no Cloudflare Pages) e deps Node
+agroia-frontend
+node_modules
+**/node_modules
+
+# Artefatos pesados de coleta/PDF — não vão para a imagem
+pdfs/
+pdfs_downloads/
+Amostras/
+*.pdf
+*.pickle
+
+# CRÍTICO: não copiar estado/config locais (a nuvem herdaria status velho)
+coleta_status.json
+coleta_config.json
+coleta_checkpoint.json
+captura_visual.*
+pagina*.html
+diagnostico_*.html
+debug_*
+
+# Caches Python / venvs / IDE
+__pycache__/
+*.py[cod]
+.venv
+venv/
+env/
+.pytest_cache/
+.vscode/
+.idea/
+
+# Planos e diversos do SO
+Plans/
+desktop.ini
+Thumbs.db

@@ -106,11 +106,14 @@ def iniciar_coleta(dt_inicio: Optional[str] = None, dt_fim: Optional[str] = None
             "--progress-file", STATUS_FILE
         ]
 
+        # IMPORTANTE: não usar PIPE sem drenar. No Linux (Render) o etapa2 imprime
+        # muito (DEBUG); se o buffer do pipe encher (~64KB) o subprocess BLOQUEIA no
+        # print() e a coleta congela sem erro. DEVNULL evita o deadlock — o progresso
+        # útil já vai para coleta_status.json e a tabela coleta_execucoes.
         process = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         PROCESS_PID = process.pid
 

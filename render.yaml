@@ -1,0 +1,29 @@
+# Blueprint do Render para rodar a API + coleta Playwright na nuvem (B1).
+# Os secrets (sync:false) devem ser preenchidos no painel do Render.
+services:
+  - type: web
+    name: agroia-rmc-api          # casar com o serviço Render existente (takeover)
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard                # 2 GB RAM — mínimo realista p/ Chromium (starter 512MB = OOM)
+    region: oregon                # ajustar p/ a região atual do serviço
+    numInstances: 1               # OBRIGATÓRIO: modelo subprocess+arquivo exige 1 instância (sem autoscaling)
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: COLETA_ENABLED
+        value: "true"
+      - key: PLAYWRIGHT_HEADLESS
+        value: "true"
+      - key: PLAYWRIGHT_SLOW_MO
+        value: "60"               # slow_mo=0 em headless pode quebrar o timing do portal JSF
+      - key: ALLOWED_ORIGINS
+        value: "https://agroia-rmc.pages.dev"   # AJUSTAR p/ a(s) origem(ns) real(is) do Pages
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: API_SECRET_KEY
+        sync: false
