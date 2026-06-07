@@ -21,6 +21,7 @@ const STATIC_ACTIONS: Entry[] = [
   { icon: '📄', label: 'Documentos', to: '/documentos', group: 'Navegar' },
   { icon: '🚨', label: 'Alertas IA', to: '/alertas', group: 'Navegar' },
   { icon: '🔎', label: 'Auditoria', to: '/auditoria', group: 'Navegar' },
+  { icon: '⚡', label: 'Benchmark — Comparação de Motores', to: '/benchmark', group: 'Navegar' },
   { icon: '🔄', label: 'Atualização de dados', to: '/coleta', group: 'Navegar' },
 ]
 

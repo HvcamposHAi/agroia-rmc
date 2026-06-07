@@ -10,6 +10,7 @@ import Coleta from './pages/Coleta'
 import Mercado from './pages/Mercado'
 import Produtor from './pages/Produtor'
 import Ofertas from './pages/Ofertas'
+import BenchmarkMotores from './pages/BenchmarkMotores'
 
 // Redireciona rotas antigas para /demanda preservando a query (?cultura=...&ano=...).
 function RedirectToDemanda() {
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="documentos" element={<Documentos />} />
           <Route path="alertas" element={<Alertas />} />
           <Route path="auditoria" element={<Auditoria />} />
+          <Route path="benchmark" element={<BenchmarkMotores />} />
           <Route path="coleta" element={<Coleta />} />
           {/* Compatibilidade: rotas antigas → Demanda */}
           <Route path="dashboard" element={<RedirectToDemanda />} />

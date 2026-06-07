@@ -16,6 +16,7 @@ const moreNav = [
   { to: '/documentos', icon: '📄', label: 'Documentos' },
   { to: '/alertas', icon: '🚨', label: 'Alertas IA' },
   { to: '/auditoria', icon: '🔎', label: 'Auditoria' },
+  { to: '/benchmark', icon: '⚡', label: 'Benchmark de Motores' },
   { to: '/coleta', icon: '🔄', label: 'Atualização' },
 ]
 

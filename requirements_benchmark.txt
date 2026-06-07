@@ -1,0 +1,14 @@
+# Dependências EXCLUSIVAS do benchmark de motores LLM (benchmark/).
+# Produção continua usando requirements.txt — NÃO importa nada daqui.
+# Recomendado: instalar em uma venv Python 3.11 DEDICADA (evita conflito de
+# protobuf/huggingface_hub com supabase/google-api-python-client em produção).
+#
+#   py -3.11 -m venv .venv-bench
+#   .venv-bench\Scripts\Activate.ps1
+#   pip install -r requirements_benchmark.txt
+
+-r requirements.txt
+
+openai>=1.30,<2                 # cliente OpenAI-compatible p/ Groq + Maritaca
+google-generativeai>=0.7,<0.9   # Gemini 2.0 Flash
+scipy>=1.10,<1.13               # ttest_rel; <1.13 p/ compatibilidade com numpy 1.24.3
