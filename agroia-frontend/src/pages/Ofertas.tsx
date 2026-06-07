@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { NavLink } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
 import { getCache, setCache, clearCache } from '../lib/sessionCache'
@@ -130,7 +131,6 @@ export default function Ofertas() {
         <div key={o.id} className="item-card">
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-              <span className="item-cultura-badge">{o.produtor_tipo?.replace('_', ' ') || 'PRODUTOR'}</span>
               {o.municipio && (
                 <span style={{ background: 'var(--ceu-claro)', color: 'var(--ceu)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 7, border: '1px solid #b3d9f5' }}>
                   📍 {o.municipio}
@@ -151,10 +151,12 @@ export default function Ofertas() {
             </div>
             <div className="item-title">{o.descricao}</div>
             <div className="item-meta" style={{ marginTop: 6 }}>
-              <span style={{ fontWeight: 700 }}>👤 {o.produtor_nome}</span>
               {o.quantidade != null && <span>⚖️ {o.quantidade.toLocaleString('pt-BR')} {o.unidade}</span>}
               {o.disponibilidade && <span>🗓️ {o.disponibilidade}</span>}
-              {o.contato && <span style={{ background: 'var(--cinza-claro)', padding: '2px 8px', borderRadius: 6, fontSize: 11 }}>📞 {o.contato}</span>}
+            </div>
+            <div className="item-links">
+              <NavLink to={`/mercado?produto=${encodeURIComponent(o.descricao)}`}>💰 Preço de mercado</NavLink>
+              <NavLink to={`/demanda?view=lista&q=${encodeURIComponent(o.descricao)}`}>📊 Demanda da prefeitura</NavLink>
             </div>
           </div>
           {o.preco_pretendido != null && (
