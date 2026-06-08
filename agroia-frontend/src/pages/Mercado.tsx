@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -12,6 +12,8 @@ import type { SSEEvent, ProhortStatus } from '../lib/apiClient'
 import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
 import { formatarDataHora, formatarDataCurta } from '../lib/format'
+import { PERIODOS, recortarJanela, agregarJanela, labelPeriodo } from '../lib/janelaPreco'
+import type { PontoSerie } from '../lib/janelaPreco'
 
 interface Analise {
   produto_norm: string
@@ -53,14 +55,6 @@ interface Cruz {
 
 interface LinhaComp { ceasa: string; analise: Analise | null; cruz: Cruz | null }
 
-interface PontoSerie {
-  data_coleta: string
-  preco_medio: number
-  preco_min: number
-  preco_max: number
-  unidade: string | null
-}
-
 // Entrepostos coletados (mesmo contrato do coletor/backend). Agrupados por UF na tela.
 const CEASAS = [
   { value: 'CURITIBA',              label: 'Curitiba/PR (RMC)',    uf: 'PR' },
@@ -76,15 +70,6 @@ const CEASAS = [
   { value: 'PORTO ALEGRE',          label: 'Porto Alegre/RS',      uf: 'RS' },
 ]
 const UFS = ['PR', 'SP', 'SC', 'RS']   // ordem de exibição (PR primeiro — RMC)
-
-const PERIODOS = [
-  { value: 30, label: '30 dias' },
-  { value: 60, label: '60 dias' },
-  { value: 90, label: '90 dias' },
-  { value: 180, label: '6 meses' },
-  { value: 365, label: '12 meses' },
-  { value: 730, label: '24 meses' },
-]
 
 const CONV_SUGGESTIONS = [
   '🍅 Tomate, alface e cenoura — como estão os preços?',
@@ -141,11 +126,12 @@ export default function Mercado() {
   const [ceasasRaw, setCeasasRaw]   = useUrlState('ceasas', 'CURITIBA')
   const ceasasSelRaw = ceasasRaw.split(',').filter(Boolean)
   const ceasasSel = ceasasSelRaw.length ? ceasasSelRaw : ['CURITIBA']
-  const [periodoRaw, setPeriodo]    = useUrlState('periodo', '30')
-  const periodo = Number(periodoRaw) || 30
+  const [periodo, setPeriodo]       = useUrlState('periodo', '30')   // 'hoje' | 'N' | 'custom'
+  const [de, setDe]                 = useUrlState('de')    // custom: data inicial ISO
+  const [ate, setAte]               = useUrlState('ate')   // custom: data final ISO
   const [analise, setAnalise]       = useState<Analise | null>(null)   // CEASA principal
   const [comparativo, setComparativo] = useState<LinhaComp[]>([])
-  const [serie, setSerie]           = useState<PontoSerie[]>([])
+  const [serieCompleta, setSerieCompleta] = useState<PontoSerie[]>([])  // série inteira (recortada na exibição)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro]             = useState<string | null>(null)
 
@@ -267,7 +253,7 @@ export default function Mercado() {
       if (aRes.error) throw new Error(aRes.error.message)
       const aData = (aRes.data ?? []) as Analise[]
       if (aData.length === 0) {
-        setAnalise(null); setComparativo([]); setSerie([])
+        setAnalise(null); setComparativo([]); setSerieCompleta([])
         setErro(`Produto "${prod}" não encontrado nas CEASAs selecionadas. Escolha um da lista abaixo.`)
         return
       }
@@ -307,14 +293,14 @@ export default function Mercado() {
           .order('data_coleta', { ascending: true })
         todos = (sRes.data ?? []) as PontoSerie[]
       }
-      setSerie(todos.slice(Math.max(0, todos.length - periodo)))
+      setSerieCompleta(todos)   // recorte por janela é derivado na exibição (useMemo)
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro desconhecido')
-      setAnalise(null); setComparativo([]); setSerie([])
+      setAnalise(null); setComparativo([]); setSerieCompleta([])
     } finally {
       setCarregando(false)
     }
-  }, [produto, ceasasSel, primaria, periodo])
+  }, [produto, ceasasSel, primaria])
 
   // Restaura a consulta ao voltar para a página (produto vindo da URL)
   const restaurado = useRef(false)
@@ -334,6 +320,17 @@ export default function Mercado() {
   const sugerido = analise ? precoSugerido(analise) : null
   const unidade = analise?.unidade || 'kg'
   const periodoPref = comparativo.find((l) => l.cruz?.ano_min != null)?.cruz
+
+  // Recorte da série pela janela escolhida + agregados dos cards (reativos, sem refetch).
+  const serie = useMemo(() => recortarJanela(serieCompleta, periodo, de, ate), [serieCompleta, periodo, de, ate])
+  const janelaAgg = useMemo(() => agregarJanela(serie), [serie])
+  const periodoLabel = labelPeriodo(periodo, de, ate, serieCompleta)
+  // MÍN/MÉD/MÁX vêm da janela; fallback à view de 30d quando a série está vazia.
+  const temJanela = janelaAgg.n > 0
+  const cardMin   = temJanela ? janelaAgg.min   : analise?.min_30d ?? null
+  const cardMedia = temJanela ? janelaAgg.media : analise?.media_30d ?? null
+  const cardMax   = temJanela ? janelaAgg.max   : analise?.max_30d ?? null
+  const cardSub   = temJanela ? periodoLabel : '30 dias'
 
   return (
     <div className="page">
@@ -476,6 +473,20 @@ export default function Mercado() {
           {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
 
+        {periodo === 'custom' && (
+          <>
+            <input
+              type="date" className="filter-select" value={de} max={ate || undefined}
+              onChange={(e) => setDe(e.target.value)} aria-label="Data inicial"
+            />
+            <span style={{ color: 'var(--texto-suave)', fontSize: 13 }}>até</span>
+            <input
+              type="date" className="filter-select" value={ate} min={de || undefined}
+              onChange={(e) => setAte(e.target.value)} aria-label="Data final"
+            />
+          </>
+        )}
+
         <button
           onClick={() => consultar()}
           disabled={!produto || carregando}
@@ -527,20 +538,20 @@ export default function Mercado() {
             <div className="metric-card verde">
               <span className="metric-icon">⬇️</span>
               <div className="metric-label">Mínimo · {labelCeasa(primaria)}</div>
-              <div className="metric-value">{fmtBRL(analise.min_30d)}</div>
-              <div className="metric-sub">/{unidade} · 30 dias</div>
+              <div className="metric-value">{fmtBRL(cardMin)}</div>
+              <div className="metric-sub">/{unidade} · {cardSub}</div>
             </div>
             <div className="metric-card ceu">
               <span className="metric-icon">📊</span>
               <div className="metric-label">Médio</div>
-              <div className="metric-value">{fmtBRL(analise.media_30d)}</div>
-              <div className="metric-sub">/{unidade} · 30 dias</div>
+              <div className="metric-value">{fmtBRL(cardMedia)}</div>
+              <div className="metric-sub">/{unidade} · {cardSub}</div>
             </div>
             <div className="metric-card terra">
               <span className="metric-icon">⬆️</span>
               <div className="metric-label">Máximo</div>
-              <div className="metric-value">{fmtBRL(analise.max_30d)}</div>
-              <div className="metric-sub">/{unidade} · 30 dias</div>
+              <div className="metric-value">{fmtBRL(cardMax)}</div>
+              <div className="metric-sub">/{unidade} · {cardSub}</div>
             </div>
             <div className="metric-card amarelo">
               <span className="metric-icon">🎯</span>
