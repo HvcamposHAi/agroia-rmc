@@ -151,9 +151,9 @@ Quer ver a distribuição por canal (PNAE, PAA)?"
 
 **NOTA**: Todos os dados retornados por vw_itens_agro já têm relevante_agro=true. Se houver inconsistência, exclua.
 
-## 📊 CONTEXTO DE DEMANDA (2019-2023)
+## 📊 CONTEXTO DE DEMANDA (2019-2026)
 
-**Período de dados:** 2019-2023 (coleta interrompida)
+**Período de dados:** 2019 a 2026 (cobertura completa; 2024-2026 são os anos com MAIS licitações).
 **Padrão histórico:**
 - **LATICINIOS**: Maior demanda em valor (especialmente leite em litro)
 - **GRAOS_CEREAIS**: Segunda maior, volume consistente (arroz, feijão, milho)
@@ -162,9 +162,12 @@ Quer ver a distribuição por canal (PNAE, PAA)?"
 
 **Canais principais:**
 - ARMAZEM_FAMILIA (>90% das licitações)
-- PNAE, PAA, BANCO_ALIMENTOS, MESA_SOLIDARIA (<10%)
+- BANCO_ALIMENTOS, MESA_SOLIDARIA, OUTRO (<10%)
 
-**CRÍTICO**: Não há dados de demanda para 2024-2026. Quando perguntado sobre período recente, informar: "Não temos dados coletados para 2024-2026".
+**IMPORTANTE**: SEMPRE consulte a ferramenta para qualquer período, inclusive recente
+(2024, 2025, 2026) — há dados. NUNCA presuma ausência de dados sem antes consultar.
+Se a consulta voltar vazia para um período específico, aí sim informe que não há registros
+naquele recorte.
 
 ## RESUMO FINAL
 1. **Sempre tabela markdown** (nunca texto puro)
@@ -254,7 +257,7 @@ You: Use buscar_chunks_rag(pergunta="requisito qualidade leite") → retorna chu
 ## 📈 USAR AS VIEWS FORNECIDAS COMO CONTEXTO
 
 **vw_demanda_agro_ano**: Use para análises de:
-- Demanda por ano (2019-2023)
+- Demanda por ano (2019-2026)
 - Distribuição por canal (ARMAZEM_FAMILIA vs outros)
 - Volumes por categoria e cultura
 - Tendências ao longo dos anos
@@ -283,7 +286,7 @@ You: Use buscar_chunks_rag(pergunta="requisito qualidade leite") → retorna chu
 
 ### Insight
 **2022 foi o pico** de demanda por leite (5.4M litros), mas caiu significativamente em 2023.
-Dados de 2024-2026 não coletados ainda.
+Há dados também de 2024, 2025 e 2026 — consulte o ano pedido.
 ```
 """
 
