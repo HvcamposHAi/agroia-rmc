@@ -1,0 +1,38 @@
+name: Coleta CEASA/PROHORT (preços)
+
+# Diferente da coleta de licitações (coleta.yml, self-hosted: o portal de Curitiba só
+# resolve na rede do usuário). O PROHORT apenas baixa um arquivo PÚBLICO da CONAB
+# (chat/prohort_collector.py), então roda no runner GRATUITO ubuntu-latest — não precisa
+# do PC do usuário ligado. Atualiza os últimos 30 dias e grava prohort_status.finalizado_em.
+
+on:
+  workflow_dispatch:        # "atualizar agora" (botão manual / gh workflow run)
+  schedule:
+    - cron: "0 17 * * *"    # 17:00 UTC = 14:00 BRT, todos os dias
+
+# Evita coletas sobrepostas (dispatch manual + agendada)
+concurrency:
+  group: prohort
+  cancel-in-progress: false
+
+jobs:
+  coleta-prohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install httpx pandas supabase==2.28.3 python-dotenv
+
+      - name: Coletar últimos 30 dias do PROHORT
+        run: python backfill_prohort.py 30
