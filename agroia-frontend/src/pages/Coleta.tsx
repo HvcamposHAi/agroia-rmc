@@ -30,6 +30,8 @@ interface StatusColeta {
   iniciado_em: string | null
   atualizado_em: string
   pid: number | null
+  run_id?: string | null
+  msg?: string
   consulta_portal?: ConsultaPortal
 }
 
@@ -77,9 +79,12 @@ interface UltimaExecucao {
 }
 
 const ETAPA_LABELS: Record<string, string> = {
+  'nenhuma': '—',
   'iniciando': '🔄 Iniciando...',
   'coletando': '📥 Coletando dados...',
   'finalizado': '✓ Finalizado',
+  'timeout': '⏱️ Sem resposta',
+  'falha': '⚠️ Falha',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -413,6 +418,31 @@ export default function Coleta() {
                 )}
               </div>
 
+              {/* Resumo legível — distingue "concluída sem novidades" de falha real,
+                  evitando que KPIs zerados pareçam erro. */}
+              {ultimaExec.status === 'completed'
+                && ultimaExec.novos === 0
+                && ultimaExec.itens_coletados === 0
+                && ultimaExec.erros === 0 && (
+                <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, color: '#065f46', margin: 0 }}>
+                    ✅ Concluída — nenhuma licitação nova no período
+                    {ultimaExec.pulados > 0
+                      ? ` (${ultimaExec.pulados} já ${ultimaExec.pulados === 1 ? 'existente foi pulada' : 'existentes foram puladas'}).`
+                      : '.'}
+                  </p>
+                </div>
+              )}
+              {(ultimaExec.status === 'error' || ultimaExec.etapa === 'timeout') && (
+                <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, color: '#9a3412', margin: 0 }}>
+                    {ultimaExec.etapa === 'timeout'
+                      ? '⏱️ A coleta expirou sem responder (runner offline ou job travado). Tente novamente.'
+                      : '❌ A coleta terminou com erro — veja o detalhe abaixo.'}
+                  </p>
+                </div>
+              )}
+
               {/* O que foi atualizado */}
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8, textTransform: 'uppercase' }}>
                 O que foi atualizado
@@ -441,7 +471,9 @@ export default function Coleta() {
               ) : (
                 <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: 12 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: '#b91c1c', margin: 0 }}>
-                    ❌ {ultimaExec.erros} {ultimaExec.erros === 1 ? 'falha registrada' : 'falhas registradas'}
+                    {ultimaExec.erros > 0
+                      ? `❌ ${ultimaExec.erros} ${ultimaExec.erros === 1 ? 'falha registrada' : 'falhas registradas'}`
+                      : '❌ Falha na execução'}
                   </p>
                   {ultimaExec.erro_resumo && (
                     <pre style={{ fontSize: 12, color: '#7f1d1d', margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', maxHeight: 160, overflow: 'auto' }}>

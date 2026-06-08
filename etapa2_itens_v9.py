@@ -1131,7 +1131,9 @@ if __name__ == "__main__":
         tb = traceback.format_exc()
         print(f"[!] Coleta falhou com erro fatal:\n{tb}")
         # Marca status de erro no arquivo de progresso e no histórico.
-        stats_erro = {"iniciado_em": datetime.now().isoformat()}
+        # UTC tz-aware (coerência com escrever_progresso/registrar_execucao; a idade
+        # de staleness no backend depende de timestamps comparáveis).
+        stats_erro = {"iniciado_em": datetime.now(timezone.utc).isoformat()}
         escrever_progresso(PROGRESS_FILE, stats_erro, etapa="falha", status="error",
                           dt_inicio=DT_INICIO, dt_fim=DT_FIM, portal_url=PORTAL_URL,
                           orgao=ORGAO, regs_por_pag=REGS_POR_PAG)

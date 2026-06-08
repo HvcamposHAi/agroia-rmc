@@ -26,7 +26,7 @@ os.environ["COLETA_ENABLED"] = "false"  # simula nuvem (Render) por padrão
 from fastapi.testclient import TestClient  # noqa: E402
 
 from api import coleta as coleta_mod  # noqa: E402
-from api.main import app, _pid_vivo  # noqa: E402
+from api.main import app  # noqa: E402
 
 client = TestClient(app)
 
@@ -75,13 +75,9 @@ class TestGateColetaB3:
         assert "desabilitada" in resp.json()["detail"].lower()
 
 
-class TestPidVivo:
-    def test_pid_none_morto(self):
-        assert _pid_vivo(None) is False
-
-    def test_pid_proprio_vivo(self):
-        # O processo do próprio teste está vivo (no Windows a função retorna True por design).
-        assert _pid_vivo(os.getpid()) is True
+# Nota: a antiga detecção de PID vivo no SSE foi REMOVIDA — a coleta travada agora é
+# detectada e auto-curada de forma centralizada em api/coleta._aplicar_staleness
+# (idade do status + verificação opcional via GitHub API), coberta abaixo.
 
 
 # ─── Fakes leves do cliente Supabase (sem rede) ──────────────────────────────
@@ -235,6 +231,119 @@ class TestDispatchGithub:
         ok, msg = coleta_mod.iniciar_coleta(dt_inicio="01/01/2026", dt_fim="07/01/2026")
         assert ok is False
         assert "GITHUB_REPO" in msg or "GH_DISPATCH_TOKEN" in msg
+
+
+# ─── Fake de escrita (insert/upsert) para a auto-cura ────────────────────────
+class _FakeWriteSB:
+    def __init__(self):
+        self.inserted = []
+        self.upserted = []
+        self._tbl = None
+
+    def table(self, name, *a, **k):
+        self._tbl = name
+        return self
+
+    def insert(self, registro, **k):
+        self.inserted.append((self._tbl, registro))
+        return self
+
+    def upsert(self, registro, **k):
+        self.upserted.append((self._tbl, registro))
+        return self
+
+    def execute(self):
+        return _FakeResp([{"id": 777}])
+
+
+class TestAplicarStalenessPersistente:
+    """Núcleo do fix: 'running' travado vira erro PERSISTIDO + execução de timeout."""
+
+    _VELHO = "2020-01-01T00:00:00+00:00"
+
+    def test_running_recente_inalterado(self):
+        from datetime import datetime, timezone
+        dados = {"status": "running", "etapa": "coletando",
+                 "atualizado_em": datetime.now(timezone.utc).isoformat()}
+        assert coleta_mod._aplicar_staleness(dict(dados))["status"] == "running"
+
+    def test_terminal_inalterado(self):
+        dados = {"status": "completed", "atualizado_em": self._VELHO}
+        assert coleta_mod._aplicar_staleness(dict(dados))["status"] == "completed"
+
+    def test_running_estagnado_cura_e_audita(self, monkeypatch):
+        fake = _FakeWriteSB()
+        monkeypatch.setattr(coleta_mod, "get_supabase_client", lambda: fake)
+        monkeypatch.setattr(coleta_mod, "_verificar_run_github", lambda r, i: None)
+        dados = {"status": "running", "etapa": "coletando", "atualizado_em": self._VELHO,
+                 "run_id": None, "iniciado_em": self._VELHO,
+                 "consulta_portal": {"dt_inicio": "01/01/2026", "dt_fim": "07/01/2026"}}
+        out = coleta_mod._aplicar_staleness(dados)
+        assert out["status"] == "error"
+        assert out["etapa"] == "timeout"
+        assert out["auto_cura"]["feito"] is True
+        assert out["auto_cura"]["execucao_id"] == 777
+        # Registrou execução de timeout E persistiu o status terminal.
+        assert fake.inserted and fake.inserted[0][0] == "coleta_execucoes"
+        assert fake.inserted[0][1]["etapa"] == "timeout"
+        assert fake.upserted and fake.upserted[0][0] == "coleta_status"
+
+    def test_idempotente_nao_recura(self, monkeypatch):
+        # Já curado (flag setada) → não toca no banco nem reinsere.
+        chamado = {"sb": False}
+        monkeypatch.setattr(coleta_mod, "get_supabase_client",
+                            lambda: chamado.__setitem__("sb", True))
+        dados = {"status": "running", "atualizado_em": self._VELHO,
+                 "auto_cura": {"feito": True}}
+        out = coleta_mod._aplicar_staleness(dados)
+        assert out["status"] == "running"
+        assert chamado["sb"] is False
+
+    def test_github_active_nao_cura(self, monkeypatch):
+        # Job só lento (run ainda ativo) → mantém 'running', não marca erro.
+        monkeypatch.setattr(coleta_mod, "_verificar_run_github", lambda r, i: "active")
+        dados = {"status": "running", "atualizado_em": self._VELHO, "run_id": "123"}
+        assert coleta_mod._aplicar_staleness(dados)["status"] == "running"
+
+
+class TestVerificarRunGithub:
+    def test_modo_local_none(self, monkeypatch):
+        monkeypatch.setenv("COLETA_MODE", "local")
+        assert coleta_mod._verificar_run_github("1", None) is None
+
+    def test_github_sem_token_none(self, monkeypatch):
+        monkeypatch.setenv("COLETA_MODE", "github")
+        monkeypatch.setenv("GITHUB_REPO", "o/r")
+        monkeypatch.delenv("GH_DISPATCH_TOKEN", raising=False)
+        assert coleta_mod._verificar_run_github("1", None) is None
+
+    def test_run_in_progress_active(self, monkeypatch):
+        monkeypatch.setenv("COLETA_MODE", "github")
+        monkeypatch.setenv("GITHUB_REPO", "o/r")
+        monkeypatch.setenv("GH_DISPATCH_TOKEN", "tok")
+
+        class R:
+            status_code = 200
+            def json(self):
+                return {"status": "in_progress", "conclusion": None}
+
+        import requests
+        monkeypatch.setattr(requests, "get", lambda url, **k: R())
+        assert coleta_mod._verificar_run_github("123", None) == "active"
+
+    def test_run_id_null_lista_vazia_failed(self, monkeypatch):
+        monkeypatch.setenv("COLETA_MODE", "github")
+        monkeypatch.setenv("GITHUB_REPO", "o/r")
+        monkeypatch.setenv("GH_DISPATCH_TOKEN", "tok")
+
+        class R:
+            status_code = 200
+            def json(self):
+                return {"workflow_runs": []}
+
+        import requests
+        monkeypatch.setattr(requests, "get", lambda url, **k: R())
+        assert coleta_mod._verificar_run_github(None, None) == "failed"
 
 
 class TestHeadlessEnv:

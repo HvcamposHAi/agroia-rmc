@@ -1,0 +1,51 @@
+name: Probe de Conectividade do Portal (descartável)
+
+# GATE da migração da coleta para runner hospedado.
+# O DNS público (8.8.8.8 / 1.1.1.1) JÁ resolve consultalicitacao.curitiba.pr.gov.br,
+# mas isso não garante que a porta :9090 aceite o IP (Azure) de um runner hospedado.
+# Este workflow testa exatamente isso a partir de um ubuntu-latest:
+#   * verde (HTTP 200/302 + Playwright abre a home) → migrar coleta.yml p/ ubuntu-latest;
+#   * vermelho (timeout/recusa) → portal bloqueia IPs hospedados → manter self-hosted.
+# Rodar em: Actions → "Probe de Conectividade do Portal" → Run workflow.
+# Pode ser removido depois de decidir.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: HTTP (curl) na home do portal
+        run: |
+          set -x
+          code=$(curl -sS -m 25 -o /dev/null -w "%{http_code}" \
+            "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/" || echo "000")
+          echo "HTTP code = $code"
+          if [ "$code" = "000" ]; then
+            echo "::error::Portal inacessível (timeout/recusa) a partir de runner hospedado — MANTER self-hosted."
+            exit 1
+          fi
+          echo "::notice::Portal respondeu HTTP $code a partir de ubuntu-latest — migração viável."
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Playwright (Chromium headless) abrindo a home
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright==1.40.0
+          python -m playwright install --with-deps chromium
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+          url = "http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/"
+          with sync_playwright() as p:
+              b = p.chromium.launch(headless=True)
+              pg = b.new_page()
+              pg.goto(url, timeout=45000, wait_until="domcontentloaded")
+              print("TITLE:", pg.title())
+              b.close()
+          print("OK: Chromium hospedado conseguiu carregar o portal.")
+          PY

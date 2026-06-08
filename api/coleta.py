@@ -64,23 +64,184 @@ def _status_idle() -> dict:
     }
 
 
-def _aplicar_staleness(dados: dict) -> dict:
-    """Auto-cura: se o status está 'running' mas não é atualizado há muito tempo
-    (runner offline/job travado), reporta erro — evita 'Em andamento' eterno na tela.
-    Não altera o banco; só corrige o que é devolvido ao cliente."""
+_TIMEOUT_MSG = ("A coleta excedeu o tempo limite sem reportar progresso "
+                "(runner offline ou job travado).")
+
+
+def _verificar_run_github(run_id: Optional[str], iniciado_em: Optional[str]) -> Optional[str]:
+    """Consulta o estado real do run de coleta no GitHub Actions, para não marcar erro
+    num job que está apenas lento. Retorna estado normalizado:
+    'active' (queued/in_progress), 'success', 'failed', 'cancelled', ou None quando não
+    dá para determinar (modo != github, sem repo/token, erro de rede)."""
+    if coleta_modo() != "github":
+        return None
+    repo = os.getenv("GITHUB_REPO")
+    token = os.getenv("GH_DISPATCH_TOKEN")
+    if not repo or not token:
+        return None
+
+    import requests
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    def _normalizar(run: dict) -> str:
+        st = (run.get("status") or "").lower()       # queued | in_progress | completed
+        cc = (run.get("conclusion") or "").lower()   # success | failure | cancelled | ...
+        if st in ("queued", "in_progress", "waiting", "requested", "pending"):
+            return "active"
+        if cc == "success":
+            return "success"
+        if cc == "cancelled":
+            return "cancelled"
+        return "failed"  # failure, timed_out, startup_failure, stale, None, ...
+
     try:
-        if dados.get("status") == "running":
-            limite = int(os.getenv("COLETA_STALE_SECS", "600"))
-            idade = _idade_seg(dados.get("atualizado_em"))
-            if idade is not None and idade > limite:
-                d = dict(dados)
-                d["status"] = "error"
-                d["etapa"] = "falha"
-                d["msg"] = "A coleta parou de responder (runner offline ou job travado)."
-                return d
-    except Exception:
-        pass
-    return dados
+        # Caminho determinístico: temos o run_id (etapa2 chegou a reportar).
+        if run_id:
+            r = requests.get(
+                f"https://api.github.com/repos/{repo}/actions/runs/{run_id}",
+                headers=headers, timeout=8,
+            )
+            if r.status_code == 200:
+                return _normalizar(r.json())
+            # 404 etc. → cai para o fallback por listagem.
+
+        # Fallback (caso do bug): o dispatch travado não registrou run_id. Lista os runs
+        # recentes do workflow e casa pelo horário de início.
+        workflow = os.getenv("GITHUB_WORKFLOW_FILE", "coleta.yml")
+        r = requests.get(
+            f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs",
+            headers=headers, params={"event": "workflow_dispatch", "per_page": 5}, timeout=8,
+        )
+        if r.status_code != 200:
+            return None
+        runs = (r.json() or {}).get("workflow_runs") or []
+        if not runs:
+            return "failed"  # nenhum run para o workflow → dispatch nunca virou run
+        alvo = None
+        if iniciado_em:
+            try:
+                alvo = datetime.fromisoformat(iniciado_em)
+            except Exception:
+                alvo = None
+        if alvo is not None:
+            for run in runs:
+                try:
+                    dt = datetime.fromisoformat((run.get("created_at") or "").replace("Z", "+00:00"))
+                except Exception:
+                    continue
+                if abs((dt - alvo).total_seconds()) <= 600:
+                    return _normalizar(run)
+            return "failed"  # nenhum run próximo do horário do dispatch
+        return _normalizar(runs[0])  # sem horário p/ casar: melhor palpite
+    except Exception as e:
+        logger.error(f"Erro ao verificar run no GitHub: {e}")
+        return None
+
+
+def _registrar_execucao_auto_cura(dados: dict, status: str, etapa: str, motivo: str) -> Optional[int]:
+    """Insere uma linha em coleta_execucoes documentando um travamento auto-curado
+    (auditoria) — assim banner (ao vivo) e card (histórico) contam a mesma história.
+    Retorna o id inserido ou None. Blindado: falha apenas loga."""
+    try:
+        sb = get_supabase_client()
+        iniciado = dados.get("iniciado_em")
+        finalizado = datetime.now(timezone.utc)
+        duracao = None
+        if iniciado:
+            try:
+                duracao = int((finalizado - datetime.fromisoformat(iniciado)).total_seconds())
+            except Exception:
+                duracao = None
+        consulta = dados.get("consulta_portal") or {}
+        registro = {
+            "iniciado_em":     iniciado,
+            "finalizado_em":   finalizado.isoformat(),
+            "duracao_seg":     duracao,
+            "status":          status,
+            "etapa":           etapa,
+            "origem":          "auto-cura",
+            "dt_inicio":       consulta.get("dt_inicio"),
+            "dt_fim":          consulta.get("dt_fim"),
+            "processados":     dados.get("processados", 0),
+            "novos":           dados.get("novos", 0),
+            "pulados":         dados.get("pulados", 0),
+            "erros":           dados.get("erros", 0),
+            "itens_coletados": dados.get("itens_coletados", 0),
+            "fornecedores":    dados.get("fornecedores", 0),
+            "empenhos":        dados.get("empenhos", 0),
+            "erro_resumo":     ((motivo or "")[:2000] or None),
+            "erro_detalhes":   [],
+        }
+        resp = sb.table("coleta_execucoes").insert(registro).execute()
+        if resp.data and len(resp.data) > 0:
+            return resp.data[0].get("id")
+        return None
+    except Exception as e:
+        logger.error(f"Erro ao registrar execução de auto-cura: {e}")
+        return None
+
+
+def _aplicar_staleness(dados: dict) -> dict:
+    """Auto-cura PERSISTENTE de status travado. Se 'running' não é atualizado há mais que
+    COLETA_STALE_SECS (runner offline/job travado), grava um estado terminal de erro em
+    coleta_status E registra uma execução de 'timeout' em coleta_execucoes (auditoria),
+    para o banner (ao vivo) e o card (histórico) deixarem de divergir.
+
+    Idempotente: cura no máximo uma vez por travamento (após curar, o status vira terminal
+    e a flag `auto_cura.feito` impede reprocessamento). Quando possível (modo github +
+    token), confirma o estado real do run via API antes de marcar erro — evita
+    falso-positivo em job apenas lento."""
+    try:
+        if dados.get("status") != "running":
+            return dados
+        if (dados.get("auto_cura") or {}).get("feito"):
+            return dados  # defensivo — já curado
+        limite = int(os.getenv("COLETA_STALE_SECS", "900"))
+        idade = _idade_seg(dados.get("atualizado_em"))
+        if idade is None or idade <= limite:
+            return dados
+
+        # Confirma o estado real do run (quando dá).
+        estado = _verificar_run_github(dados.get("run_id"), dados.get("iniciado_em"))
+        if estado == "active":
+            return dados  # só lento — não curar
+        if estado == "success":
+            # Run concluiu OK mas o espelhamento do status ficou preso em 'running' (raro).
+            # Cura para 'completed' (sem inventar erro nem reinserir execução — o etapa2 já
+            # registrou) e seta a flag, para parar de reconsultar a API a cada poll.
+            agora = datetime.now(timezone.utc).isoformat()
+            d = dict(dados)
+            d.update({
+                "status": "completed", "etapa": "finalizado",
+                "atualizado_em": agora,
+                "auto_cura": {"feito": True, "execucao_id": None, "em": agora},
+            })
+            _upsert_status(d)
+            return d
+
+        terminal = "cancelled" if estado == "cancelled" else "error"
+        etapa = "finalizado" if estado == "cancelled" else "timeout"
+        motivo = "Coleta cancelada no runner." if estado == "cancelled" else _TIMEOUT_MSG
+
+        exec_id = _registrar_execucao_auto_cura(dados, terminal, etapa, motivo)
+        agora = datetime.now(timezone.utc).isoformat()
+        d = dict(dados)
+        d.update({
+            "status": terminal,
+            "etapa": etapa,
+            "msg": motivo,
+            "atualizado_em": agora,
+            "auto_cura": {"feito": True, "execucao_id": exec_id, "em": agora},
+        })
+        _upsert_status(d)
+        return d
+    except Exception as e:
+        logger.error(f"Erro na auto-cura de staleness: {e}")
+        return dados
 
 
 def coleta_modo() -> str:
