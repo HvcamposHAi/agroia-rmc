@@ -97,6 +97,17 @@ class TestRestProviders:
         with pytest.raises(RuntimeError):
             rp.get_live_provider("groq_llama")
 
+    def test_erro_redige_chave(self, monkeypatch):
+        # Gemini põe a chave na URL; o erro NÃO pode vazá-la na resposta.
+        chave = "AQ.SUPER_SECRETA_123"
+        def boom(*a, **k):
+            raise RuntimeError(f"429 Too Many Requests for url: https://x?key={chave}")
+        monkeypatch.setattr(rp.requests, "post", boom)
+        prov = rp.GeminiRestProvider(chave)
+        out = prov.gerar("SYS", [], [{"role": "user", "content": "x"}])
+        assert out.stop_reason == "erro"
+        assert chave not in out.texto and "***" in out.texto
+
 
 # ---------------------------------------------------------------------------
 # 2. motor_router — cliente Supabase fake

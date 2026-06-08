@@ -30,6 +30,14 @@ MARITACA_BASE_URL_PADRAO = "https://chat.maritaca.ai/api"
 GEMINI_MODELO = "gemini-2.0-flash"
 
 
+def _redigir_chave(msg: str, chave: str) -> str:
+    """Remove a chave de API de mensagens de erro (evita vazamento na UI/logs)."""
+    texto = str(msg)
+    if chave and chave in texto:
+        texto = texto.replace(chave, "***")
+    return texto
+
+
 # ---------------------------------------------------------------------------
 # Groq + Maritaca — endpoints compatíveis com OpenAI (/chat/completions)
 # ---------------------------------------------------------------------------
@@ -60,7 +68,7 @@ class OpenAICompatRestProvider(LLMProvider):
             r.raise_for_status()
             data = r.json()
         except Exception as e:  # noqa: BLE001 — contrato base.py: nunca levanta
-            return LLMResponse(texto=str(e), stop_reason="erro",
+            return LLMResponse(texto=_redigir_chave(e, self.api_key), stop_reason="erro",
                                latencia_ms=int((time.monotonic() - t0) * 1000))
 
         latencia = int((time.monotonic() - t0) * 1000)
@@ -151,7 +159,7 @@ class GeminiRestProvider(LLMProvider):
             r.raise_for_status()
             data = r.json()
         except Exception as e:  # noqa: BLE001
-            return LLMResponse(texto=str(e), stop_reason="erro",
+            return LLMResponse(texto=_redigir_chave(e, self.api_key), stop_reason="erro",
                                latencia_ms=int((time.monotonic() - t0) * 1000))
 
         latencia = int((time.monotonic() - t0) * 1000)
