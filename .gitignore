@@ -79,3 +79,7 @@ indexacao_log.txt
 indexacao_ocr_log.txt
 drive_mapeamento_procesos.txt
 agro_lic_ids.txt
+
+# Métricas (saídas regeneradas a cada medição) — snapshots de referência são
+# versionados explicitamente com `git add -f`; o resto da pasta é ignorado.
+metrics/

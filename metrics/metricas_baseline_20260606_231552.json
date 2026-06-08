@@ -1,0 +1,397 @@
+{
+  "resumo": {
+    "grupo": "baseline",
+    "total": 30,
+    "sucesso_http_pct": 100.0,
+    "tsr_pct": 93.3,
+    "latencia_p50_ms": 5447,
+    "latencia_p95_ms": 9383,
+    "latencia_media_ms": 5883.0,
+    "coletado_em": "2026-06-06T23:15:52.603657"
+  },
+  "detalhes": [
+    {
+      "consulta_id": "P01",
+      "consulta": "qual o preço da alface hoje na ceasa de curitiba",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 9383,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 571,
+      "resposta": "🌾 Ótimo! Aqui está o **preço da alface** em Curitiba (CEASA):\n\n## Preço Atual (Últimos 30 dias)\n\n| Indicador | Valor |\n|-----------|-------|\n| **Preço Médio** | R$ 33,89/DZ |\n| **Preço Mínimo** | R$ 25,00/DZ |\n| **Preço Máximo** | R$ 50,00/DZ |\n| **Variação Semanal** | -13% ↓ |\n| **Avaliação** | ⚠️ "
+    },
+    {
+      "consulta_id": "P02",
+      "consulta": "quanto custa cenoura na ceasa",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5901,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 637,
+      "resposta": "🥕 A cenoura está **acima da média** na CEASA de Curitiba.\n\n## Preço Atual (Últimos 30 dias)\n\n| Indicador | Valor |\n|-----------|-------|\n| **Mínimo** | R$ 5,00/kg |\n| **Médio** | R$ 5,54/kg |\n| **Máximo** | R$ 6,00/kg |\n| **Sugerido** | R$ 5,54/kg |\n\n### Contexto\nComparando com os últimos **90 dias*"
+    },
+    {
+      "consulta_id": "P03",
+      "consulta": "preço do tomate em curitiba",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 6092,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 583,
+      "resposta": "🍅 Aqui está o preço do **tomate em Curitiba** (CEASA):\n\n| Período | Preço Mín | Preço Médio | Preço Máx | Sugerido |\n|---------|-----------|------------|-----------|----------|\n| Últimos 30 dias | R$ 7,00 | **R$ 8,56** | R$ 9,50 | R$ 8,99 |\n| Últimos 90 dias | — | R$ 6,83 | — | — |\n| 24 meses | R$ 2"
+    },
+    {
+      "consulta_id": "P04",
+      "consulta": "cotação da couve manteiga",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 6683,
+      "tools_usadas": [
+        "consultar_preco_produto",
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 540,
+      "resposta": "🥬 Ótimo! Aqui está a cotação de **couve** na CEASA de Curitiba:\n\n## Preços Atuais (Últimos 30 dias)\n\n| Preço | Valor |\n|-------|-------|\n| **Mínimo** | R$ 3,00/kg |\n| **Médio** | **R$ 3,86/kg** |\n| **Máximo** | R$ 7,50/kg |\n| **Sugerido para venda** | R$ 4,05/kg |\n\n### Avaliação\n**Preço em baixa** —"
+    },
+    {
+      "consulta_id": "P05",
+      "consulta": "quanto está valendo a beterraba",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5046,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 600,
+      "resposta": "🌾 A **beterraba está com preço elevado** na CEASA de Curitiba:\n\n| Métrica | Valor |\n|---------|-------|\n| **Preço médio (30d)** | R$ 3,28/kg |\n| Preço mínimo | R$ 2,75/kg |\n| Preço máximo | R$ 4,00/kg |\n| Preço sugerido | R$ 3,28/kg |\n\n### Análise\nA beterraba **caiu 12,7%** na semana, mas ainda está"
+    },
+    {
+      "consulta_id": "P06",
+      "consulta": "valor do chuchu no mercado hoje",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 4981,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 568,
+      "resposta": "🥒 Aqui está o preço do **chuchu na CEASA Curitiba hoje**:\n\n| Métrica | Valor |\n|---------|-------|\n| **Preço Médio (30d)** | R$ 3,53/kg |\n| **Mínimo (30d)** | R$ 2,50/kg |\n| **Máximo (30d)** | R$ 5,00/kg |\n| **Tendência Semanal** | -10,3% ⬇️ |\n\n### Avaliação\nO chuchu está **acima da média histórica*"
+    },
+    {
+      "consulta_id": "P07",
+      "consulta": "preço batata doce ceasa curitiba",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5073,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 510,
+      "resposta": "💰 Aqui está o **preço atual de Batata Doce** na CEASA Curitiba:\n\n## Cotação Atual (últimos 30 dias)\n\n| Métrica | Valor |\n|---------|-------|\n| **Preço Médio** | **R$ 3,07/kg** |\n| Preço Mínimo | R$ 2,50/kg |\n| Preço Máximo | R$ 3,50/kg |\n| Variação Semanal | -4,4% (em queda) |\n\n### Status\n**Batata D"
+    },
+    {
+      "consulta_id": "P08",
+      "consulta": "cotação da banana para venda",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5559,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 635,
+      "resposta": "## Cotação Atual - Banana (CEASA Curitiba)\n\n| Preço | Valor |\n|-------|-------|\n| **Mínimo (30d)** | R$ 2,25/kg |\n| **Médio (30d)** | **R$ 3,19/kg** |\n| **Máximo (30d)** | R$ 4,25/kg |\n| **Sugerido para venda** | **R$ 3,19/kg** |\n\n### Análise de Preço\nA banana está **na média histórica** dos últimos"
+    },
+    {
+      "consulta_id": "P09",
+      "consulta": "qual o preço do pimentão essa semana",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 4666,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 476,
+      "resposta": "💰 Aqui está o preço do **pimentão** na CEASA Curitiba:\n\n| Métrica | Valor |\n|---------|-------|\n| **Preço Médio** | R$ 5,51/kg |\n| **Mínimo (30 dias)** | R$ 5,00/kg |\n| **Máximo (30 dias)** | R$ 5,83/kg |\n| **Variação Semanal** | -3,2% ↓ |\n\n### Situação Atual\nO pimentão está **na média histórica** ("
+    },
+    {
+      "consulta_id": "P10",
+      "consulta": "quanto tá pagando por quilo de mandioca",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5388,
+      "tools_usadas": [
+        "consultar_preco_produto"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 555,
+      "resposta": "## Preço Atual da Mandioca (CEASA Curitiba)\n\n| Período | Valor (R$/kg) | Situação |\n|---------|--------------|----------|\n| **Média últimos 30 dias** | **R$ 3,86** | Acima da média |\n| Mínimo (30 dias) | R$ 2,50 | - |\n| Máximo (30 dias) | R$ 4,00 | - |\n| Média 90 dias | R$ 2,95 | - |\n\n### O que está"
+    },
+    {
+      "consulta_id": "L01",
+      "consulta": "quanto de alface a merenda comprou em 2025",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5424,
+      "tools_usadas": [
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 550,
+      "resposta": "🌾 Aqui está a compra de **alface em 2025**:\n\n| Processo | Data | Quantidade | Unidade | Valor Total |\n|----------|------|------------|---------|------------|\n| IN 1/2025 | 25/03/2025 | 300 | Maço | R$ 2.679 |\n| IN 5/2025 | 27/03/2025 | 300 | Maço | R$ 2.679 |\n| CR 2/2025 | 06/03/2025 | — | Maço | — "
+    },
+    {
+      "consulta_id": "L02",
+      "consulta": "volume de cenoura comprado pelo armazém da família",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5185,
+      "tools_usadas": [
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 624,
+      "resposta": "🥕 Encontrei **1.000 kg de cenoura** solicitados pelo Armazém da Família:\n\n| Processo | Abertura | Quantidade | Unidade | Valor Total |\n|----------|----------|------------|---------|------------|\n| IN 5/2025 | 27/03/2025 | 500 | kg | R$ 2.565 |\n| IN 1/2025 | 25/03/2025 | 500 | kg | R$ 2.565 |\n| CR 2/"
+    },
+    {
+      "consulta_id": "L03",
+      "consulta": "quais culturas a merenda escolar compra mais",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 6015,
+      "tools_usadas": [
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 686,
+      "resposta": "🌾 Ótimo! Aqui estão as **top 5 culturas compradas pela merenda escolar (PNAE)**:\n\n| Cultura | Valor Total | Qtd de Itens | Categoria |\n|---------|------------|--------------|-----------|\n| Tomate | R$ 4.313.630 | 15 | Hortifruti |\n| Batata | R$ 2.357.305 | 23 | Hortifruti |\n| Hortaliça | R$ 2.300.19"
+    },
+    {
+      "consulta_id": "L04",
+      "consulta": "quanto a prefeitura de curitiba comprou de tomate",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 6582,
+      "tools_usadas": [
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 643,
+      "resposta": "🍅 Ótimo! Aqui está o histórico de compras de **tomate** pela Prefeitura de Curitiba:\n\n| Ano | Licitações | Qtd Itens | Valor Total |\n|-----|-----------|-----------|------------|\n| 2023 | 15 | 34 | R$ 3.711.850 |\n| 2022 | 14 | 23 | R$ 3.221.110 |\n| 2025 | 19 | 168 | R$ 2.316.115 |\n| 2024 | 16 | 21 | "
+    },
+    {
+      "consulta_id": "L05",
+      "consulta": "volume de couve nas licitações do armazém da família",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5179,
+      "tools_usadas": [
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 692,
+      "resposta": "🌾 Encontrei **couve** nas licitações do Armazém da Família, mas com um detalhe importante:\n\n| Item | Processo | Unidade | Qtd Solicitada | Valor Total |\n|------|----------|---------|----------------|------------|\n| Couve | CR 2/2025 | Bandeja | 0 | R$ 0 |\n| Couve-Flor | CR 2/2025 | Kg | 0 | R$ 0 |\n|"
+    },
+    {
+      "consulta_id": "L06",
+      "consulta": "quais são as compras do paa em 2025",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 4351,
+      "tools_usadas": [
+        "query_licitacoes"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 363,
+      "resposta": "⚠️ **Nenhuma licitação do PAA encontrada em 2025.**\n\n### Situação Atual\nOs dados coletados na base AgroIA cobrem o período de **2019 a 2023**. Não há registros de licitações para 2024-2026 ainda.\n\n### O que você pode fazer\nQuer consultar:\n- **PAA em 2023** (último ano com dados)?\n- **Outro canal** ("
+    },
+    {
+      "consulta_id": "L07",
+      "consulta": "quanto de batata foi licitado pela merenda",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 7470,
+      "tools_usadas": [
+        "query_itens_agro",
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 837,
+      "resposta": "📊 Ótimo! Aqui está a demanda de **batata** nas licitações da merenda (todos os canais):\n\n| Processo | Data | Quantidade | Unidade | Valor Total |\n|----------|------|-----------|---------|------------|\n| PE 25/2025 | 2025-03-18 | 180.000 | Pacote | R$ 309.600 |\n| PE 25/2025 | 2025-03-18 | 90.000 | Pa"
+    },
+    {
+      "consulta_id": "L08",
+      "consulta": "me mostre as aquisições de banana deste ano",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 4981,
+      "tools_usadas": [
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 526,
+      "resposta": "Entendo sua pergunta, mas preciso esclarecer: **os dados que temos coletados vão até 2023**. Não há registros de 2024 em nossa base de licitações.\n\nO que apareceu acima é de **2025** (ainda em processamento/não finalizado). Para dados consolidados, posso mostrar as aquisições de banana de **2019-202"
+    },
+    {
+      "consulta_id": "L09",
+      "consulta": "qual o maior volume comprado em um processo",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 10559,
+      "tools_usadas": [
+        "query_itens_agro",
+        "query_itens_agro",
+        "query_licitacoes"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 955,
+      "resposta": "Com base nos dados, vejo que os processos têm múltiplos itens. Deixa eu responder de forma clara:\n\n📊 **O maior volume comprado em um processo depende de como você mede:**\n\n| Métrica | Processo | Valor | Detalhes |\n|---------|----------|-------|----------|\n| **Por Valor Total (R$)** | PE 98/2025 | R$"
+    },
+    {
+      "consulta_id": "L10",
+      "consulta": "compras de hortifruti pela merenda escolar",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 7808,
+      "tools_usadas": [
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 762,
+      "resposta": "🌾 Ótimo! Aqui está a demanda de **hortifruti do PNAE (merenda escolar)**:\n\n| Cultura | Valor Total | Qtd Itens | Preço Médio |\n|---------|------------|-----------|------------|\n| Tomate | R$ 4.313.630 | 15 | R$ 287.575 |\n| Batata | R$ 2.357.305 | 23 | R$ 102.492 |\n| Hortaliça | R$ 2.300.199 | 29 | R"
+    },
+    {
+      "consulta_id": "E01",
+      "consulta": "quais editais foram publicados pelo armazém da família em 2025",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 7721,
+      "tools_usadas": [
+        "query_licitacoes"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 1190,
+      "resposta": "Ótimo! Encontrei **46 licitações** do Armazém da Família em 2025. Mostrando as **principais**:\n\n## Editais Publicados em 2025\n\n| Processo | Data | Situação | Objeto |\n|----------|------|----------|--------|\n| PE 107/2025 | 28/11 | Concluído | Leite integral, semidesnatado e óleo de soja |\n| PE 106/2"
+    },
+    {
+      "consulta_id": "E02",
+      "consulta": "resultado do chamamento público de hortifruti",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5447,
+      "tools_usadas": [
+        "query_itens_agro",
+        "query_itens_agro"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 546,
+      "resposta": "📊 Aqui está o resultado dos chamamentos públicos de **hortifruti**:\n\n| Categoria | Qtd de Itens | Licitações | Valor Total |\n|-----------|-------------|-----------|------------|\n| HORTIFRUTI | 197 | 66 | R$ 11.393.148 |\n| FRUTAS | 82 | 25 | R$ 1.530.321 |\n\n### Destaque Principal\n**Hortaliças dominam"
+    },
+    {
+      "consulta_id": "E03",
+      "consulta": "quais processos licitatórios estão ativos",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 6864,
+      "tools_usadas": [
+        "query_licitacoes"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 1022,
+      "resposta": "🌾 Encontrei **27 processos** em 2026, mas nenhum está realmente \"ativo\" (aberto para participação). Veja o status atual:\n\n| Processo | Situação | Data de Abertura | Objeto |\n|----------|----------|-----------------|--------|\n| PE 26/2026 | Aguardando Inicio | 08/04/2026 | Aveia, Farinha, Fórmulas In"
+    },
+    {
+      "consulta_id": "E04",
+      "consulta": "me mostre o edital de credenciamento de 2025",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 2973,
+      "tools_usadas": [],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 390,
+      "resposta": "🔍 Entendo que você quer ver um edital de credenciamento de 2025, mas preciso de algumas informações para localizá-lo:\n\n1. **Qual canal?** (PNAE, PAA, Armazém da Família, Banco de Alimentos ou Mesa Solidária)\n2. **Qual processo específico?** (ex: \"DE 2/2025\", \"PNAE 3/2025\")\n3. **Ou você quer ver todo"
+    },
+    {
+      "consulta_id": "E05",
+      "consulta": "chamamento público agricultura familiar curitiba",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 7057,
+      "tools_usadas": [
+        "query_licitacoes"
+      ],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 1088,
+      "resposta": "## 📋 Chamamentos Públicos Armazém da Família - Curitiba\n\nAqui estão os **chamamentos públicos e licitações ativas** para agricultura familiar em Curitiba no Programa **Armazém da Família**:\n\n| Processo | Status | Abertura | Objeto |\n|----------|--------|----------|--------|\n| PE 27/2026 | Aguardando"
+    },
+    {
+      "consulta_id": "G01",
+      "consulta": "bom dia",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 3674,
+      "tools_usadas": [],
+      "tem_dados_estruturados": false,
+      "tamanho_resposta": 563,
+      "resposta": "Bom dia! 🌾\n\nBem-vindo ao **AgroIA**! Sou seu assistente especializado em licitações públicas de alimentos da Região Metropolitana de Curitiba para agricultura familiar.\n\nPosso te ajudar com:\n- 📊 **Demanda de produtos** (tomate, alface, leite, etc.)\n- 💰 **Valores e volumes** de licitações (PNAE, PAA,"
+    },
+    {
+      "consulta_id": "G02",
+      "consulta": "como faço para me cadastrar como fornecedor",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5314,
+      "tools_usadas": [],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 1139,
+      "resposta": "🌾 Ótimo pergunta! Porém, devo ser honesto: **não sou a ferramenta certa para isso**.\n\nSou especializado em **consultar dados** de licitações já publicadas (volumes, preços, fornecedores que participaram, editais). Meu banco de dados não gerencia cadastros novos.\n\n## Para se cadastrar como fornecedor"
+    },
+    {
+      "consulta_id": "G03",
+      "consulta": "o que é o programa paa",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 6813,
+      "tools_usadas": [],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 1498,
+      "resposta": "# 📋 O Programa de Aquisição de Alimentos (PAA)\n\nO **PAA** é um programa federal de compras públicas de alimentos da agricultura familiar, gerenciado pelo **Ministério da Cidadania** (e antes pelo MAPA). É um dos principais canais de escoamento de produtos agrícolas de pequenos produtores.\n\n## Como f"
+    },
+    {
+      "consulta_id": "G04",
+      "consulta": "quais documentos preciso para participar do chamamento",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 3212,
+      "tools_usadas": [],
+      "tem_dados_estruturados": true,
+      "tamanho_resposta": 461,
+      "resposta": "🤔 Ótimo! Mas preciso de um detalhe para ajudar melhor:\n\n**Qual chamamento/licitação você quer participar?**\n- Um processo específico? (ex: \"DE 4/2019\", \"PNAE 5/2023\")\n- Um canal específico? (PNAE, PAA, Armazém da Família, Banco de Alimentos, Mesa Solidária)\n- Uma cultura específica? (tomate, leite, "
+    },
+    {
+      "consulta_id": "G05",
+      "consulta": "como planto alface no inverno",
+      "status_http": 200,
+      "sucesso_http": true,
+      "latencia_ms": 5093,
+      "tools_usadas": [],
+      "tem_dados_estruturados": false,
+      "tamanho_resposta": 752,
+      "resposta": "🌾 Opa! Essa pergunta é sobre **técnicas de cultivo**, que está fora do meu escopo.\n\nSou especializado em **licitações públicas de alimentos** da Região Metropolitana de Curitiba — dados sobre demanda, preços, fornecedores e editais de compras públicas (PNAE, PAA, Armazém da Família, etc.).\n\nPara ori"
+    }
+  ]
+}
