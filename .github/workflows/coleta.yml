@@ -1,16 +1,18 @@
 name: Coleta de Dados (AgroIA-RMC)
 
-# A coleta de licitações roda no runner GRATUITO ubuntu-latest (igual ao prohort.yml) —
-# NÃO depende da máquina do usuário estar ligada.
+# A coleta de licitações roda num SELF-HOSTED RUNNER na máquina do usuário (Windows).
 #
-# Histórico: antes usava self-hosted por se acreditar que o portal de Curitiba só
-# resolvia na rede do usuário. ISSO ESTAVA DESATUALIZADO: o DNS público (8.8.8.8 /
-# 1.1.1.1) resolve consultalicitacao.curitiba.pr.gov.br → 177.125.178.158 (IP público).
-# A migração foi validada pelo workflow "coleta-probe.yml" (Actions → Run workflow):
-# o portal responde e o Chromium hospedado carrega a home. Se algum dia a Prefeitura
-# passar a bloquear IPs hospedados (Azure), o probe falha → reverter para self-hosted
-# (runs-on: self-hosted + shell powershell). Ver sql/ e api/coleta.py (auto-cura) — um
-# job que não conclui é marcado como timeout/erro auditado, sem travar a tela.
+# Por quê self-hosted (e não ubuntu-latest como o prohort): o portal de Curitiba
+# (consultalicitacao.curitiba.pr.gov.br:9090) RESOLVE no DNS público, mas RECUSA
+# conexões dos IPs (Azure) de runners hospedados — confirmado pelo probe
+# coleta-probe.yml (run #1: curl HTTP 000 + Playwright timeout a partir de
+# ubuntu-latest). Ou seja: só dá para coletar de dentro da rede do usuário.
+# => A máquina precisa estar ligada com o runner ativo nos horários da coleta.
+#    Dica de confiabilidade: instalar o runner como SERVIÇO do Windows
+#    (repo → Settings → Actions → Runners), para subir no boot.
+#
+# Se um job não concluir (runner offline/travado), o backend auto-cura o status
+# (api/coleta.py: vira "timeout" auditado em coleta_execucoes) — sem travar a tela.
 
 on:
   workflow_dispatch:
@@ -22,7 +24,7 @@ on:
         description: "Data final DD/MM/AAAA (vazio = hoje)"
         required: false
   schedule:
-    - cron: "0 9 * * 1"   # toda segunda 09:00 UTC = 06:00 BRT
+    - cron: "0 9 * * 1"   # toda segunda 09:00 UTC = 06:00 BRT (PC precisa estar ligado)
 
 # Evita coletas sobrepostas
 concurrency:
@@ -31,35 +33,44 @@ concurrency:
 
 jobs:
   coleta:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted          # runner na máquina do usuário (Windows)
     timeout-minutes: 350
+    defaults:
+      run:
+        shell: powershell
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       PLAYWRIGHT_HEADLESS: "true"
       PLAYWRIGHT_SLOW_MO: "60"
+      # Evita UnicodeEncodeError nos print() com "→" no console Windows (cp1252).
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
     steps:
       - uses: actions/checkout@v4
 
-      # Python 3.11 tem wheels p/ lxml==4.9.3/greenlet (evita compilar).
+      # Usa Python 3.11 (tem wheels p/ lxml==4.9.3/greenlet; o 3.13 da máquina exigiria
+      # compilar com MSVC). O setup-python baixa o 3.11 no runner na 1ª vez.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # No Linux o Chromium do Playwright precisa das libs do SO (--with-deps).
+      # Idempotente: instala as deps nesse Python 3.11 (wheels, rápido). No Windows o
+      # Chromium do Playwright instala sem --with-deps.
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           python -m pip install playwright==1.40.0 beautifulsoup4==4.12.2 lxml==4.9.3 supabase==2.28.3 python-dotenv==1.0.0
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium
 
       - name: Rodar coleta
         env:
           IN_INI: ${{ github.event.inputs.dt_inicio }}
           IN_FIM: ${{ github.event.inputs.dt_fim }}
         run: |
-          args=(etapa2_itens_v9.py --progress-file coleta_status.json)
-          if [ -n "$IN_INI" ]; then args+=(--dt-inicio "$IN_INI"); fi
-          if [ -n "$IN_FIM" ]; then args+=(--dt-fim "$IN_FIM"); fi
-          echo "Executando: python ${args[*]}"
-          python "${args[@]}"
+          $cmd = @('etapa2_itens_v9.py','--progress-file','coleta_status.json')
+          if ($env:IN_INI) { $cmd += @('--dt-inicio', $env:IN_INI) }
+          if ($env:IN_FIM) { $cmd += @('--dt-fim', $env:IN_FIM) }
+          Write-Host "Executando: python $($cmd -join ' ')"
+          python @cmd
+          exit $LASTEXITCODE
