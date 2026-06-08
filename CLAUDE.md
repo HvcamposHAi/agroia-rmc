@@ -167,12 +167,23 @@ GOOGLE_DRIVE_FOLDER_ID=<folder_id>
 ### Coleta (Atualização de Dados) — arquitetura e variáveis de ambiente
 
 A coleta usa Playwright + Chromium (não roda no Render free — 512MB/sem navegador).
-**Estratégia de produção (free): GitHub Actions** (`COLETA_MODE=github`). O botão
-"Buscar Dados" chama o backend, que dispara o workflow `.github/workflows/coleta.yml`
-(runner gratuito com Chromium). O etapa2 grava progresso ao vivo na tabela Supabase
-`coleta_status` (linha id=1) e o resumo em `coleta_execucoes`. O backend lê `coleta_status`
-e transmite via SSE → indicador "Em andamento" funciona em qualquer máquina.
-SQL da tabela: `sql/coleta_status.sql`.
+**Estratégia de produção: GitHub Actions** (`COLETA_MODE=github`). O botão
+"Buscar Dados" chama o backend, que dispara o workflow `.github/workflows/coleta.yml`.
+O etapa2 grava progresso ao vivo na tabela Supabase `coleta_status` (linha id=1) e o
+resumo em `coleta_execucoes`. O backend lê `coleta_status` e transmite via SSE →
+indicador "Em andamento" funciona em qualquer máquina.
+SQL das tabelas: `sql/coleta_status.sql`, `sql/coleta_execucoes.sql`.
+
+**IMPORTANTE — runner SELF-HOSTED (não hospedado):** o portal de Curitiba RESOLVE no
+DNS público mas RECUSA conexões de IPs de datacenter (GitHub-hosted/Azure, Render) —
+confirmado por probe (curl HTTP 000 + Playwright timeout de ubuntu-latest). Logo a
+coleta NÃO pode rodar em runner hospedado nem em edge/serverless (que também não rodam
+navegador). `coleta.yml` usa `runs-on: self-hosted` numa máquina em rede BR aceita.
+Isso é UM nó coletor de bastidor — o app em si é 100% nuvem (Cloudflare/Render/Supabase),
+usado de qualquer computador. Para o coletor não depender de login, rodar uma vez (como
+admin) `scripts/setup-runner-autostart.ps1` → cria Tarefa Agendada que sobe o runner no
+boot. Se o runner cair, o backend auto-cura o status travado (vira `error/timeout`
+auditado em `coleta_execucoes`), sem deixar a tela contraditória.
 
 Backend (Render / API):
 - `COLETA_MODE` — `github` (dispara workflow no GitHub) ou `local` (subprocess local; padrão).
