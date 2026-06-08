@@ -21,7 +21,7 @@ Estratégia (memória controlada p/ Render free 512 MB):
 import os
 import logging
 import tempfile
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import httpx
 import pandas as pd
@@ -106,6 +106,39 @@ def _upsert_lotes(supabase, registros: list[dict]) -> int:
     return inseridos
 
 
+def _registrar_status(
+    supabase,
+    *,
+    finalizado_em: str,
+    data_max: str | None,
+    data_min: str | None,
+    linhas: int,
+    modo: str,
+    status: str,
+    erro: str | None = None,
+) -> None:
+    """
+    Grava o resultado da coleta na linha única id=1 de prohort_status (fonte da "última
+    atualização" exibida na página Mercado). Best-effort: qualquer falha aqui é apenas logada
+    e NÃO propaga — a ingestão de preços nunca pode ser derrubada por isto (mesma filosofia
+    de _upsert_lotes). Tabela criada por sql/prohort_status.sql.
+    """
+    try:
+        supabase.table("prohort_status").upsert({
+            "id": 1,
+            "finalizado_em": finalizado_em,
+            "data_max": data_max,
+            "data_min": data_min,
+            "linhas_inseridas": linhas,
+            "modo": modo,
+            "status": status,
+            "erro": erro,
+            "atualizado_em": finalizado_em,
+        }, on_conflict="id").execute()
+    except Exception as e:
+        logger.warning(f"Não foi possível gravar prohort_status (ignorado): {e}")
+
+
 def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = False) -> dict:
     """
     Baixa o ProhortDiario.txt, filtra as CEASAs alvo, normaliza e faz upsert em prohort_precos.
@@ -124,19 +157,27 @@ def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = Fals
     """
     logger.info(f"Iniciando coleta PROHORT (dias_recentes={dias_recentes}, flush_por_chunk={flush_por_chunk})...")
 
+    modo = "backfill" if dias_recentes is None else "diario"
+    agora = lambda: datetime.now(timezone.utc).isoformat()
+    supabase = get_supabase_client()
+
     try:
         caminho = _baixar_para_tempfile()
     except Exception as e:
         logger.error(f"Falha no download PROHORT: {e}")
+        _registrar_status(supabase, finalizado_em=agora(), data_max=None, data_min=None,
+                          linhas=0, modo=modo, status="erro", erro=f"download:{str(e)[:200]}")
         return {"erro": f"download:{e}", "linhas_inseridas": 0}
 
     cutoff = None
     if dias_recentes is not None:
         cutoff = pd.Timestamp(date.today() - timedelta(days=dias_recentes))
 
-    supabase = get_supabase_client()
     dedup: dict[tuple, dict] = {}
     total_filtradas = 0
+    # Faixa de datas (data_coleta) vista nesta execução — alimenta prohort_status.
+    data_max_vista: str | None = None
+    data_min_vista: str | None = None
     # Modo streaming (flush_por_chunk): acumula contagens/CEASAs sem reter os registros.
     total_inseridos_stream = 0
     ceasas_vistas: set[str] = set()
@@ -150,6 +191,8 @@ def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = Fals
             obrig = {"dsc_ceasa", "dsc_produto", "data_preco", "preco_diario"}
             if not obrig.issubset(chunk.columns):
                 logger.error(f"Colunas inesperadas no PROHORT: {list(chunk.columns)}")
+                _registrar_status(supabase, finalizado_em=agora(), data_max=None, data_min=None,
+                                  linhas=0, modo=modo, status="erro", erro="colunas_inesperadas")
                 return {"erro": "colunas_inesperadas", "linhas_inseridas": 0}
 
             # nomes sem underscore inicial: itertuples renomearia colunas "_x" por posição
@@ -178,6 +221,11 @@ def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = Fals
                 produto_raw = str(getattr(row, "dsc_produto")).strip()
                 ceasa = getattr(row, "ceasa_key")
                 data_iso = d.date().isoformat()
+                # ISO yyyy-mm-dd compara lexicograficamente == cronologicamente
+                if data_max_vista is None or data_iso > data_max_vista:
+                    data_max_vista = data_iso
+                if data_min_vista is None or data_iso < data_min_vista:
+                    data_min_vista = data_iso
                 chave = (data_iso, ceasa, produto_raw)
                 destino[chave] = {
                     "data_coleta": data_iso,
@@ -196,6 +244,9 @@ def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = Fals
                 ceasas_vistas.update(r["ceasa"] for r in registros_chunk)
     except Exception as e:
         logger.error(f"Erro ao processar PROHORT: {e}", exc_info=True)
+        _registrar_status(supabase, finalizado_em=agora(), data_max=data_max_vista,
+                          data_min=data_min_vista, linhas=total_inseridos_stream, modo=modo,
+                          status="erro", erro=f"parse:{str(e)[:200]}")
         return {"erro": f"parse:{e}", "linhas_inseridas": 0}
     finally:
         try:
@@ -207,9 +258,13 @@ def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = Fals
     if flush_por_chunk:
         if total_inseridos_stream == 0:
             logger.warning("Nenhum registro PROHORT para as CEASAs alvo no período.")
+            _registrar_status(supabase, finalizado_em=agora(), data_max=data_max_vista,
+                              data_min=data_min_vista, linhas=0, modo=modo, status="sem_dados")
             return {"erro": "sem_dados", "linhas_inseridas": 0, "total_filtradas": total_filtradas}
         ceasas = sorted(ceasas_vistas)
         logger.info(f"Coleta PROHORT (streaming) concluída: {total_inseridos_stream} registros (CEASAs: {ceasas}).")
+        _registrar_status(supabase, finalizado_em=agora(), data_max=data_max_vista,
+                          data_min=data_min_vista, linhas=total_inseridos_stream, modo=modo, status="ok")
         return {
             "linhas_inseridas": total_inseridos_stream,
             "total_filtradas": total_filtradas,
@@ -220,12 +275,16 @@ def coletar_prohort(dias_recentes: int | None = 30, flush_por_chunk: bool = Fals
     registros = list(dedup.values())
     if not registros:
         logger.warning("Nenhum registro PROHORT para as CEASAs alvo no período.")
+        _registrar_status(supabase, finalizado_em=agora(), data_max=data_max_vista,
+                          data_min=data_min_vista, linhas=0, modo=modo, status="sem_dados")
         return {"erro": "sem_dados", "linhas_inseridas": 0, "total_filtradas": total_filtradas}
 
     total_inseridos = _upsert_lotes(supabase, registros)
 
     ceasas = sorted({r["ceasa"] for r in registros})
     logger.info(f"Coleta PROHORT concluída: {total_inseridos} registros (CEASAs: {ceasas}).")
+    _registrar_status(supabase, finalizado_em=agora(), data_max=data_max_vista,
+                      data_min=data_min_vista, linhas=total_inseridos, modo=modo, status="ok")
     return {
         "linhas_inseridas": total_inseridos,
         "total_filtradas": total_filtradas,

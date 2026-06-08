@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { streamPost, iniciarColeta as apiIniciarColeta, cancelarColeta as apiCancelarColeta, salvarConfigColeta } from '../lib/apiClient'
+import { formatarDataHora } from '../lib/format'
 import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -73,16 +74,6 @@ interface UltimaExecucao {
   empenhos: number
   erro_resumo: string | null
   erro_detalhes: ErroDetalhe[] | null
-}
-
-function formatarDataHora(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return '—'
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(d)
 }
 
 const ETAPA_LABELS: Record<string, string> = {

@@ -7,10 +7,11 @@ import { NavLink } from 'react-router-dom'
 import { SemaforoPreco } from '../components/SemaforoPreco'
 import type { SemaforoCor } from '../components/SemaforoPreco'
 import ResponseRenderer from '../components/ResponseRenderer'
-import { streamPost } from '../lib/apiClient'
-import type { SSEEvent } from '../lib/apiClient'
+import { streamPost, getProhortStatus } from '../lib/apiClient'
+import type { SSEEvent, ProhortStatus } from '../lib/apiClient'
 import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
+import { formatarDataHora, formatarDataCurta } from '../lib/format'
 
 interface Analise {
   produto_norm: string
@@ -147,6 +148,16 @@ export default function Mercado() {
   const [serie, setSerie]           = useState<PontoSerie[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro]             = useState<string | null>(null)
+
+  // Última atualização dos preços (cabeçalho). Falha silenciosa: nunca bloqueia a página.
+  const [statusPreco, setStatusPreco] = useState<ProhortStatus | null>(null)
+  useEffect(() => {
+    let ativo = true
+    getProhortStatus()
+      .then((s) => { if (ativo) setStatusPreco(s) })
+      .catch(() => { /* sem indicador de data — cabeçalho permanece com o texto padrão */ })
+    return () => { ativo = false }
+  }, [])
 
   const primaria = ceasasSel[0]
 
@@ -334,6 +345,14 @@ export default function Mercado() {
         <p style={{ fontSize: 14, color: 'var(--texto-suave)', marginTop: 6 }}>
           Atacado PROHORT/CONAB × o que a prefeitura paga nas licitações · atualização diária
         </p>
+        {statusPreco && (statusPreco.finalizado_em || statusPreco.data_max) && (
+          <p style={{ fontSize: 12, color: 'var(--texto-suave)', marginTop: 4, fontWeight: 600 }}>
+            {statusPreco.finalizado_em
+              ? `🕒 Última coleta: ${formatarDataHora(statusPreco.finalizado_em)}`
+              : '📅 Dados de mercado'}
+            {statusPreco.data_max ? ` · dados até ${formatarDataCurta(statusPreco.data_max)}` : ''}
+          </p>
+        )}
       </div>
 
       {/* ── Assistente conversacional de preços (IA) — destaque ───────────── */}

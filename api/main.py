@@ -849,6 +849,8 @@ def root():
         "endpoints": {
             "GET /health": "Status do banco de dados",
             "POST /chat": "Enviar pergunta e receber resposta",
+            "POST /prohort/coletar": "Aciona a coleta de preços PROHORT/CONAB (atacado CEASA)",
+            "GET /prohort/status": "Última atualização dos preços PROHORT (cabeçalho da página Mercado)",
             "POST /produtor/chat/stream": "Assistente de cadastro de ofertas do produtor (SSE)",
             "POST /produtor/ofertas/upload": "Carga em lote de ofertas do produtor via planilha (CSV/XLSX)",
             "POST /alertas": "Gerar alertas inteligentes com IA",
@@ -905,6 +907,57 @@ async def endpoint_prohort_coletar(
         "sucesso": True,
         "modo": "background",
         "mensagem": f"Coleta PROHORT iniciada em background (completo={completo}).",
+    }
+
+
+@app.get("/prohort/status")
+async def endpoint_prohort_status():
+    """
+    Última atualização dos preços PROHORT/CONAB (exibida no cabeçalho da página Mercado).
+
+    Lê a linha única id=1 de prohort_status (gravada pelo coletor ao fim de cada execução):
+      - finalizado_em: instante real da última coleta (timestamptz ISO).
+      - data_max/data_min: faixa de datas de preço (data_coleta) cobertas.
+
+    Fallback robusto: se a tabela ainda não existe (SQL não aplicado) ou está vazia/idle,
+    deriva data_max de MAX(data_coleta) em prohort_precos (CURITIBA) com finalizado_em=None.
+    Nunca lança 500 — a página sempre renderiza.
+    """
+    sb = get_supabase_client()
+    try:
+        resp = (sb.from_('prohort_status').select('*').eq('id', 1).limit(1).execute())
+        linha = resp.data[0] if resp.data else None
+    except Exception as e:
+        logger.warning(f"prohort_status indisponível ({str(e)[:80]}); usando fallback.")
+        linha = None
+
+    if linha and linha.get('finalizado_em'):
+        return {
+            "finalizado_em": linha.get('finalizado_em'),
+            "data_max": linha.get('data_max'),
+            "data_min": linha.get('data_min'),
+            "linhas_inseridas": linha.get('linhas_inseridas'),
+            "modo": linha.get('modo'),
+            "status": linha.get('status'),
+        }
+
+    # Fallback: ainda sem execução registrada — deriva a data mais recente dos próprios preços.
+    data_max = (linha.get('data_max') if linha else None)
+    if not data_max:
+        try:
+            r = (sb.from_('prohort_precos').select('data_coleta')
+                 .eq('ceasa', 'CURITIBA').order('data_coleta', desc=True).limit(1).execute())
+            data_max = r.data[0]['data_coleta'] if r.data else None
+        except Exception as e:
+            logger.warning(f"Fallback MAX(data_coleta) falhou: {str(e)[:80]}")
+            data_max = None
+    return {
+        "finalizado_em": None,
+        "data_max": data_max,
+        "data_min": None,
+        "linhas_inseridas": None,
+        "modo": None,
+        "status": (linha.get('status') if linha else None),
     }
 
 

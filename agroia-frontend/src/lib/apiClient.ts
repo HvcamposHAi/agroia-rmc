@@ -57,6 +57,21 @@ export async function healthCheck(): Promise<{ status: string }> {
   return response.data
 }
 
+export interface ProhortStatus {
+  finalizado_em: string | null
+  data_max: string | null
+  data_min: string | null
+  linhas_inseridas: number | null
+  modo: string | null
+  status: string | null
+}
+
+/** Última atualização dos preços PROHORT/CONAB (cabeçalho da página Mercado). */
+export async function getProhortStatus(): Promise<ProhortStatus> {
+  const response = await apiClient.get<ProhortStatus>('/prohort/status')
+  return response.data
+}
+
 export interface UploadOfertasResult {
   total: number
   inseridas: number
