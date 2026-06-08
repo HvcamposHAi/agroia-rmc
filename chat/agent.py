@@ -60,6 +60,25 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
         if not pergunta or not pergunta.strip():
             return {"resposta": "Por favor, faça uma pergunta válida.", "tools_usadas": []}
 
+        # === SWITCH GLOBAL DE MOTOR ===
+        # Com motor != claude, delega ao loop agêntico fiel (benchmark.agentic_loop),
+        # usando o MESMO system_prompt e tools. Com claude (default), segue o
+        # caminho de produção abaixo, byte-idêntico ao histórico.
+        try:
+            from chat.motor_router import get_motor_ativo, resolver_provider
+            _motor = get_motor_ativo()
+            if _motor != "claude":
+                provider = resolver_provider(_motor)
+                from benchmark.agentic_loop import rodar_loop
+                _res = rodar_loop(provider, pergunta, system_prompt=system_prompt, tools_schema=tools)
+                if _res.erro:
+                    logger.error(f"Motor {_motor} erro: {_res.erro}")
+                    return {"resposta": "Desculpe, houve um erro ao consultar o assistente. Tente novamente.",
+                            "tools_usadas": _res.tools_usadas}
+                return {"resposta": _res.resposta, "tools_usadas": _res.tools_usadas}
+        except Exception as e:
+            logger.warning(f"Switch de motor falhou ({e}); usando Claude (default).")
+
         # === QUERY AGENT (opcional, guardado por feature flag) ===
         # Expande a pergunta com termos canônicos/filtros do domínio e injeta um
         # hint curto no contexto. Em qualquer falha, degrada para a pergunta original.
@@ -188,6 +207,28 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
             yield {"tipo": "token", "texto": "Por favor, faça uma pergunta válida."}
             yield {"tipo": "fim", "tools_usadas": []}
             return
+
+        # === SWITCH GLOBAL DE MOTOR (não-streaming p/ não-Claude) ===
+        # Claude mantém o streaming nativo abaixo (intacto). Outros motores rodam o
+        # loop agêntico completo e emitem a resposta inteira de uma vez.
+        try:
+            from chat.motor_router import get_motor_ativo, resolver_provider
+            from benchmark.providers.factory import ROTULOS
+            _motor = get_motor_ativo()
+            if _motor != "claude":
+                yield {"tipo": "status", "msg": f"🔄 Consultando {ROTULOS.get(_motor, _motor)}..."}
+                provider = resolver_provider(_motor)
+                from benchmark.agentic_loop import rodar_loop
+                _res = rodar_loop(provider, pergunta, system_prompt=system_prompt, tools_schema=tools)
+                if _res.erro:
+                    logger.error(f"Motor {_motor} erro: {_res.erro}")
+                    yield {"tipo": "token", "texto": "⚠️ Desculpe, houve um erro ao consultar o assistente. Tente novamente."}
+                else:
+                    yield {"tipo": "token", "texto": _res.resposta}
+                yield {"tipo": "fim", "tools_usadas": _res.tools_usadas}
+                return
+        except Exception as e:
+            logger.warning(f"Switch de motor (stream) falhou ({e}); usando Claude (default).")
 
         client = get_client()
         yield {"tipo": "status", "msg": "🔍 Analisando sua pergunta..."}

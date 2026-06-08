@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell,
 } from 'recharts'
+import ComparadorVivo from '../components/ComparadorVivo'
 
 // ---------------------------------------------------------------------------
 // Tipos do resultados.json (gerado por benchmark/benchmark_executor.py)
@@ -135,36 +136,33 @@ export default function BenchmarkMotores() {
     })
   }, [dados, motores, filCategoria])
 
-  if (carregando) {
-    return (
-      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
-        <span style={{ color: 'var(--texto-suave)' }}>Carregando resultados do benchmark…</span>
-      </div>
-    )
-  }
+  return (
+    <div className="page">
+      <h2 style={{ margin: 0 }}>⚡ Benchmark de Motores LLM</h2>
 
-  if (erro || !dados) {
-    return (
-      <div className="page">
-        <h2>⚡ Benchmark de Motores LLM</h2>
+      {/* Switch global de motor + comparador ao vivo (sempre visível) */}
+      <ComparadorVivo />
+
+      {/* Dashboard agregado (corridas offline / GitHub Actions) */}
+      {carregando ? (
+        <div className="chart-card" style={{ textAlign: 'center', color: 'var(--texto-suave)' }}>
+          Carregando resultados agregados…
+        </div>
+      ) : (erro || !dados) ? (
         <div className="chart-card" style={{ textAlign: 'center', padding: 40 }}>
-          <p style={{ fontSize: 18, marginBottom: 8 }}>Nenhum benchmark executado ainda.</p>
+          <p style={{ fontSize: 16, marginBottom: 8 }}>Dashboard agregado ainda sem dados.</p>
           <p style={{ color: 'var(--texto-suave)' }}>
-            Rode a coleta localmente e exporte para o front:
+            Rode o benchmark completo (offline ou via GitHub Actions) para preencher:
           </p>
           <pre style={{ background: '#f1f5f9', padding: 12, borderRadius: 8, display: 'inline-block', textAlign: 'left', fontSize: 13 }}>
 {`python -m benchmark.benchmark_executor --motores all --reps 3
 python -m benchmark.benchmark_executor --export-frontend`}
           </pre>
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="page">
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <h2 style={{ margin: 0 }}>⚡ Benchmark de Motores LLM</h2>
+      ) : (
+      <>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+        <h3 style={{ margin: 0 }}>📈 Resultados agregados</h3>
         <span style={{ fontSize: 12, color: 'var(--texto-suave)' }}>
           {dados.n_repeticoes} repetições × {dados.n_perguntas} perguntas · gerado em {fmtData(dados.gerado_em)} · dados coletados offline
         </span>
@@ -385,6 +383,8 @@ python -m benchmark.benchmark_executor --export-frontend`}
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }

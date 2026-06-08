@@ -142,3 +142,46 @@ export async function* streamPost<T = any>(endpoint: string, body?: any): AsyncG
 export async function* streamChat(request: ChatRequest): AsyncGenerator<SSEEvent> {
   yield* streamPost<SSEEvent>('/chat/stream', request)
 }
+
+// ─── Switch de motor LLM + comparador ao vivo ───────────────────────────────
+export interface MotorInfo {
+  motor: string
+  rotulo: string
+  disponivel: boolean
+  baseline: boolean
+}
+
+export interface ConfigMotor {
+  motor_ativo: string
+  motores: MotorInfo[]
+}
+
+export interface ComparadorEvent {
+  tipo: 'inicio' | 'motor'
+  motores?: string[]
+  pergunta?: string
+  motor?: string
+  rotulo?: string
+  resposta?: string
+  latencia_ms?: number
+  tokens_entrada?: number
+  tokens_saida?: number
+  custo_usd?: number
+  tools_usadas?: string[]
+  iteracoes?: number
+  erro?: string | null
+}
+
+export async function getConfigMotor(): Promise<ConfigMotor> {
+  const r = await apiClient.get<ConfigMotor>('/config/motor')
+  return r.data
+}
+
+export async function setMotorAtivo(motor: string): Promise<ConfigMotor> {
+  const r = await apiClient.post<ConfigMotor>('/config/motor', { motor })
+  return r.data
+}
+
+export async function* compararMotores(pergunta: string, motores: string[]): AsyncGenerator<ComparadorEvent> {
+  yield* streamPost<ComparadorEvent>('/benchmark/comparar/stream', { pergunta, motores })
+}

@@ -73,6 +73,10 @@ def verify_api_key(api_key: str = Security(api_key_header)) -> str:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
     return api_key
 
+# Switch global de motor + comparador ao vivo (router isolado, aditivo).
+from api.benchmark_api import router as benchmark_router  # noqa: E402
+app.include_router(benchmark_router)
+
 class ChatRequest(BaseModel):
     pergunta: str
     historico: list[dict] = []
@@ -334,13 +338,17 @@ Responda APENAS em JSON válido, sem markdown, no formato:
 
 Gere no máximo 10 alertas, priorizando os mais críticos."""
 
-        msg = client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        texto = msg.content[0].text.strip()
+        # Honra o switch global de motor; cai p/ Claude se outro motor falhar/JSON quebrar.
+        from chat.motor_router import completar_texto_motor
+        texto = completar_texto_motor(prompt, max_tokens=4000)
+        if texto is None:
+            msg = client.messages.create(
+                model="claude-haiku-4-5",
+                max_tokens=4000,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            texto = msg.content[0].text
+        texto = texto.strip()
 
         # Remove markdown code blocks se presentes
         if '```json' in texto:
@@ -436,13 +444,16 @@ Responda APENAS em JSON (sem markdown):
 
 Máximo 5 alertas."""
 
-            msg = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=2000,
-                messages=[{"role": "user", "content": prompt}]
-            )
-
-            texto = msg.content[0].text.strip()
+            from chat.motor_router import completar_texto_motor
+            texto = completar_texto_motor(prompt, max_tokens=2000)
+            if texto is None:
+                msg = client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=2000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                texto = msg.content[0].text
+            texto = texto.strip()
             if '```json' in texto:
                 texto = texto.split('```json', 1)[1].split('```', 1)[0].strip()
             elif '```' in texto:
@@ -675,14 +686,18 @@ PERGUNTA DO GESTOR:
 
 Responda em português de forma clara, direta e executiva. Se a pergunta se refere aos dados da auditoria, cite números específicos."""
 
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
-        )
+        from chat.motor_router import completar_texto_motor
+        _texto = completar_texto_motor(prompt, max_tokens=2000)
+        if _texto is None:
+            msg = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=2000,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            _texto = msg.content[0].text
 
         return {
-            'resposta': msg.content[0].text,
+            'resposta': _texto,
             'timestamp': datetime.now().isoformat()
         }
     except Exception as e:
