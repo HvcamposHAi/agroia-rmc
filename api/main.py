@@ -1170,7 +1170,7 @@ async def endpoint_coleta_stream(request: Request, _: str = Depends(verify_api_k
 
     # Sem atualização do status por mais que isto (s) com status "running" => coleta
     # morta (runner caiu, processo travou) → emite erro real em vez de ficar preso.
-    STALE_SECS = int(os.getenv("COLETA_STALE_SECS", "360"))  # 6 min
+    STALE_SECS = int(os.getenv("COLETA_STALE_SECS", "600"))  # 10 min (acomoda setup do runner)
 
     async def evento_generator():
         ticks = 0

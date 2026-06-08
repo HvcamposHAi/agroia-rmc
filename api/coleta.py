@@ -8,7 +8,7 @@ import json
 import subprocess
 import signal
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from pathlib import Path
 from typing import Tuple, Dict, Any, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -58,10 +58,29 @@ def _status_idle() -> dict:
         "fornecedores": 0,
         "empenhos": 0,
         "iniciado_em": None,
-        "atualizado_em": datetime.now().isoformat(),
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
         "pid": None,
         "run_id": None,
     }
+
+
+def _aplicar_staleness(dados: dict) -> dict:
+    """Auto-cura: se o status está 'running' mas não é atualizado há muito tempo
+    (runner offline/job travado), reporta erro — evita 'Em andamento' eterno na tela.
+    Não altera o banco; só corrige o que é devolvido ao cliente."""
+    try:
+        if dados.get("status") == "running":
+            limite = int(os.getenv("COLETA_STALE_SECS", "600"))
+            idade = _idade_seg(dados.get("atualizado_em"))
+            if idade is not None and idade > limite:
+                d = dict(dados)
+                d["status"] = "error"
+                d["etapa"] = "falha"
+                d["msg"] = "A coleta parou de responder (runner offline ou job travado)."
+                return d
+    except Exception:
+        pass
+    return dados
 
 
 def coleta_modo() -> str:
@@ -109,7 +128,7 @@ def get_status() -> dict:
         sb = get_supabase_client()
         resp = sb.table("coleta_status").select("dados").eq("id", 1).limit(1).execute()
         if resp.data and resp.data[0].get("dados"):
-            return resp.data[0]["dados"]
+            return _aplicar_staleness(resp.data[0]["dados"])
     except Exception as e:
         logger.error(f"Erro ao ler coleta_status do Supabase: {e}")
 
@@ -117,7 +136,7 @@ def get_status() -> dict:
     try:
         if os.path.exists(STATUS_FILE):
             with open(STATUS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                return _aplicar_staleness(json.load(f))
     except Exception as e:
         logger.error(f"Erro ao ler {STATUS_FILE}: {e}")
 
@@ -167,8 +186,8 @@ def _disparar_github_actions(dt_inicio: str, dt_fim: str) -> Tuple[bool, str]:
     inicial.update({
         "status": "running",
         "etapa": "iniciando",
-        "iniciado_em": datetime.now().isoformat(),
-        "atualizado_em": datetime.now().isoformat(),
+        "iniciado_em": datetime.now(timezone.utc).isoformat(),
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
         "consulta_portal": {
             "url": os.getenv("PORTAL_URL", "http://consultalicitacao.curitiba.pr.gov.br:9090/"),
             "orgao": "SMSAN/FAAC",
@@ -269,7 +288,7 @@ def cancelar_coleta() -> Tuple[bool, str]:
         # Marca cancelado no status compartilhado (feedback imediato)
         cancelado = dict(status)
         cancelado.update({"status": "cancelled", "etapa": "finalizado",
-                          "atualizado_em": datetime.now().isoformat()})
+                          "atualizado_em": datetime.now(timezone.utc).isoformat()})
         _upsert_status(cancelado)
         if not run_id:
             return True, "Cancelamento registrado (o run ainda não reportou o ID)."

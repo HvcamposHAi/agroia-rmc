@@ -26,7 +26,7 @@ import time
 import json
 import signal
 import argparse
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 from bs4 import BeautifulSoup
@@ -130,8 +130,8 @@ def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando"
         "itens_coletados": stats.get("itens", 0),
         "fornecedores": stats.get("fornecedores", 0),
         "empenhos": stats.get("empenhos", 0),
-        "iniciado_em": stats.get("iniciado_em", datetime.now().isoformat()),
-        "atualizado_em": datetime.now().isoformat(),
+        "iniciado_em": stats.get("iniciado_em", datetime.now(timezone.utc).isoformat()),
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
         "pid": os.getpid(),
         # ID do run do GitHub Actions (quando a coleta roda como workflow) — usado
         # para o backend conseguir cancelar o run. None quando roda localmente.
@@ -185,7 +185,7 @@ def registrar_execucao(stats: dict, final_status: str, dt_inicio: str = None,
     interrompe a coleta nem propaga exceção."""
     try:
         iniciado = stats.get("iniciado_em")
-        finalizado = datetime.now()
+        finalizado = datetime.now(timezone.utc)
         duracao = None
         if iniciado:
             try:
