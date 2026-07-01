@@ -1,7 +1,7 @@
 {
   "meta": {
-    "versao": "1.0",
-    "data": "2026-06-01",
+    "versao": "2.0",
+    "data": "2026-07-01",
     "gerado_por": "auditoria-automatica-bot",
     "repositorio": "hvcamposhai/agroia-rmc"
   },
@@ -13,13 +13,20 @@
         "api": "OK",
         "chat": "OK",
         "tests": "OK",
-        "agroia-frontend": "OK"
+        "agroia-frontend": "OK",
+        "benchmark": "OK",
+        "ingestion": "OK",
+        "scripts": "OK",
+        "sql": "OK"
       },
       "arquivos_raiz": {
         "CLAUDE.md": "OK",
         "README.md": "OK",
         "requirements.txt": "OK",
-        ".env.example": "OK"
+        ".env.example": "OK",
+        ".gitignore": "OK",
+        "Dockerfile": "OK",
+        "render.yaml": "OK"
       },
       "scripts_essenciais_7": {
         "etapa2_itens_v9.py": "OK",
@@ -32,214 +39,127 @@
       }
     },
     "problemas_encontrados": {
-      "logs_rastreados_em_git": {
-        "gravidade": "MEDIA",
-        "descricao": "28 arquivos *.log rastreados no git apesar da regra '*.log' no .gitignore (adicionados antes da regra)",
-        "quantidade": 28
-      },
-      "api_key_exposta": {
-        "gravidade": "CRITICA",
-        "descricao": "Motores.txt continha API key Maritaca em texto plano: '110251697308955125271_7da38b249823d70b'",
-        "acao_realizada": "Arquivo removido do repositório",
-        "aviso": "A chave consta no histórico git. Recomenda-se revogar/rotacionar a chave imediatamente no painel Maritaca."
-      },
-      "pycache_rastreado": {
-        "gravidade": "BAIXA",
-        "descricao": "9 arquivos compilados (.pyc) e desktop.ini de __pycache__ rastreados no git",
-        "quantidade": 10
-      },
-      "desktop_ini_rastreado": {
-        "gravidade": "BAIXA",
-        "descricao": "19 arquivos desktop.ini (artefatos Windows) rastreados em vários diretórios",
-        "quantidade": 19
-      },
-      "scripts_obsoletos": {
-        "gravidade": "MEDIA",
-        "descricao": "13 scripts Python obsoletos (versões alternativas / one-off) sem referências em nenhum import",
-        "lista": [
-          "classificacao_agro.py",
-          "classificacao_com_instrucoes.py",
-          "classificacao_via_api.py",
-          "executar_classificacao_corrigida.py",
-          "reindexacao_completa.py",
-          "indexar_agro_apenas.py",
-          "indexar_agro_corrigido.py",
-          "dados_atualizados_agro.py",
-          "setup_rpc_e_classifica.py",
-          "validar_consistencia.py",
-          "teste_busca_rag.py",
-          "teste_chat_com_rag.py",
-          "test_coleta_integration.py"
-        ]
-      },
-      "debug_artifacts": {
-        "gravidade": "BAIXA",
-        "descricao": "28 arquivos HTML/PNG de debug e captura rastreados no git",
-        "quantidade": 28
-      },
-      "runtime_data_em_git": {
-        "gravidade": "MEDIA",
-        "descricao": "9 arquivos JSON de runtime/testes e 6 arquivos .txt de log rastreados indevidamente",
-        "lista": [
-          "agente_contexto_agro.json",
-          "licitacoes_faltantes.json",
-          "processo_lic_mapping.json",
-          "retry_failed.json",
-          "indexacao_erros.json",
-          "teste_download_resultado.json",
-          "teste_download_route_resultado.json",
-          "teste_final_simples_resultado.json",
-          "teste_requests_resultado.json",
-          "coleta_log.txt",
-          "coleta_resultado.txt",
-          "indexacao_log.txt",
-          "indexacao_ocr_log.txt",
-          "drive_mapeamento_procesos.txt",
-          "agro_lic_ids.txt"
-        ]
-      },
-      "documentacao_desatualizada": {
-        "gravidade": "BAIXA",
-        "descricao": "4 documentos de narrativa/relatório desatualizado removidos",
-        "lista": [
-          "MANIFEST_AUDITORIA.txt (auditoria anterior 2026-04-21)",
-          "CONCLUSAO.txt (narrativa de implementação)",
-          "Sistemas de Chat de Voz.txt (fora do escopo agrícola)",
-          "Motores.txt (continha API key - CRÍTICO)"
-        ]
-      },
-      "requirements_multiplos": {
-        "gravidade": "BAIXA",
-        "descricao": "3 arquivos requirements com sobreposição parcial: requirements.txt (principal), requirements_chat.txt, requirements_rag.txt",
-        "recomendacao": "Consolidar em requirements.txt com extras opcionais ou manter como está para ambientes separados"
-      },
-      "gitignore_incompleto": {
-        "gravidade": "BAIXA",
-        "descricao": "Faltavam regras para: desktop.ini, debug_*, artefatos de diagnóstico, CSVs gerados e dados runtime JSON"
+      "gitignore_credentials": {
+        "gravidade": "ALTA",
+        "descricao": "credentials.json (Google OAuth) e service_account*.json ausentes do .gitignore — risco de commit acidental de chaves privadas (SEC-005 da auditoria anterior não resolvido)",
+        "status": "CORRIGIDO_NESTA_AUDITORIA",
+        "acao": "Adicionadas entradas credentials.json e service_account*.json ao .gitignore"
       }
-    }
+    },
+    "sem_problemas": [
+      "Nenhum script obsoleto encontrado (auditoria anterior 2026-06-01 limpou 127 arquivos)",
+      "Nenhum arquivo de log rastreado no git",
+      "Nenhum artefato de debug/diagnóstico rastreado",
+      "Nenhum __pycache__ ou .pyc rastreado",
+      "Nenhuma chave de API exposta em arquivos rastreados",
+      "Todos os 7 scripts essenciais presentes",
+      "Estrutura de diretórios completa (api/, chat/, tests/, benchmark/)",
+      ".env não rastreado — .env.example presente",
+      "token.pickle não rastreado (nunca commitado na auditoria atual)"
+    ]
   },
 
   "fase2_limpeza": {
     "status": "CONCLUIDA",
     "acoes_realizadas": [
       {
-        "acao": "git rm *.log",
-        "quantidade": 28,
-        "descricao": "Arquivos de log removidos do rastreamento git e deletados"
-      },
-      {
-        "acao": "git rm --cached token.pickle coleta_checkpoint.json",
-        "quantidade": 2,
-        "descricao": "Removidos do rastreamento git, mantidos no disco (runtime essentials)"
-      },
-      {
-        "acao": "git rm debug_* captura_visual.* pagina*.html diagnostico_*.html ...",
-        "quantidade": 28,
-        "descricao": "Artefatos de debug/diagnóstico HTML/PNG removidos e deletados"
-      },
-      {
-        "acao": "git rm desktop.ini (todas ocorrências)",
-        "quantidade": 19,
-        "descricao": "Artefatos Windows desktop.ini removidos de todos os diretórios"
-      },
-      {
-        "acao": "git rm __pycache__/ (todos arquivos)",
-        "quantidade": 10,
-        "descricao": "Bytecode Python compilado removido"
-      },
-      {
-        "acao": "git rm (13 scripts obsoletos)",
-        "quantidade": 13,
-        "descricao": "Scripts Python obsoletos/one-off sem referências removidos"
-      },
-      {
-        "acao": "git rm (9 JSONs runtime/testes + 6 TXTs log)",
-        "quantidade": 15,
-        "descricao": "Dados runtime e logs textuais removidos"
-      },
-      {
-        "acao": "git rm (4 docs desatualizados incluindo Motores.txt)",
-        "quantidade": 4,
-        "descricao": "Documentação desatualizada removida; API key exposta deletada"
-      },
-      {
-        "acao": "git rm (3 CSVs gerados + 5 CSVs de Amostras/)",
-        "quantidade": 8,
-        "descricao": "Dados analíticos gerados e amostras removidos"
-      },
-      {
         "acao": "Atualização .gitignore",
-        "descricao": "Adicionadas regras para: desktop.ini, debug_*, artefatos diagnóstico, dados runtime JSON, CSVs gerados"
+        "descricao": "Adicionadas entradas credentials.json e service_account*.json para prevenir vazamento de credenciais Google OAuth/Service Account"
       }
     ],
-    "total_arquivos_removidos": 127,
+    "total_arquivos_removidos": 0,
+    "nota": "Repositório já estava limpo após auditoria de 2026-06-01. Única ação necessária foi corrigir .gitignore.",
     "preservados": [
-      "7 scripts essenciais (etapa2, etapa3, coleta_criticos, enriquecer_classificacao, diagnostico_portal, indexar_pdfs, reconciliar_drive_supabase)",
-      "api/ (main.py, coleta.py, __init__.py)",
-      "chat/ (agent.py, db.py, prompts.py, tools.py, api_rag.py, example_rag_integration.py, __init__.py)",
-      "tests/test_critical_hotfixes.py",
-      "agroia-frontend/ (completo)",
-      "dados_atualizados.py",
-      "CLAUDE.md, README.md",
-      "requirements.txt, requirements_chat.txt, requirements_rag.txt",
-      "ARCHITECTURE_RAG.txt (documentação arquitetural RAG)",
-      "SECURITY_ACTIONS.json (recomendações de segurança ativas)",
-      ".env.example, .gitignore, netlify.toml, python-version",
-      "coleta_checkpoint.json (disco apenas, fora do git)",
-      "token.pickle (disco apenas, fora do git)"
+      "7 scripts essenciais (etapa2_itens_v9, etapa3_producao, coleta_criticos, enriquecer_classificacao, diagnostico_portal, indexar_pdfs, reconciliar_drive_supabase)",
+      "api/ completo (main.py, coleta.py, benchmark_api.py, test_upload_ofertas.py, __init__.py)",
+      "chat/ completo (agent.py, db.py, prompts.py, tools.py, api_rag.py, motor_router.py, prohort_collector.py, prohort_normalizer.py, query_agent.py, example_rag_integration.py, __init__.py)",
+      "tests/ completo (10 arquivos de teste)",
+      "benchmark/ completo (módulo de benchmarking multi-provedor)",
+      "agroia-frontend/ completo (React/Vite/TypeScript)",
+      "dados_atualizados.py (utilitário de diagnóstico referenciado no CLAUDE.md)",
+      "backfill_prohort.py (script operacional de backfill histórico PROHORT/CONAB)",
+      "scripts/coletar_baseline.py (script de coleta de baseline para benchmark)",
+      "sql/ (6 arquivos SQL de schema e views)",
+      "ingestion/ (módulo de indexação de PDFs)",
+      ".github/workflows/ (3 workflows: coleta, benchmark, prohort)",
+      "metrics/ (2 snapshots de referência versionados explicitamente)",
+      "CLAUDE.md, README.md, ARCHITECTURE_RAG.txt",
+      "SECURITY_ACTIONS.json (22 ações de segurança pendentes de 2026-04-21)",
+      "requirements.txt + requirements_benchmark.txt + requirements_chat.txt + requirements_rag.txt",
+      ".env.example, .gitignore, Dockerfile, render.yaml, netlify.toml"
     ]
   },
 
   "fase3_validacao": {
     "status": "CONCLUIDA",
     "estrutura": {
-      "diretorios_essenciais": "OK — api/, chat/, tests/ presentes",
+      "diretorios_essenciais": "OK — api/, chat/, tests/, benchmark/ presentes",
       "scripts_7_essenciais": "OK — todos presentes",
-      "frontend": "OK — agroia-frontend/ completo com React/Vite/TS"
+      "frontend": "OK — agroia-frontend/ completo com React/Vite/TS (43 arquivos)",
+      "workflows_ci_cd": "OK — .github/workflows/ com 3 workflows ativos"
     },
     "dependencias": {
-      "requirements_txt": "OK — 15 dependências principais com versões fixas",
-      "requirements_chat_txt": "OK — dependências chat/API",
-      "requirements_rag_txt": "OK — dependências RAG/embeddings"
+      "requirements_txt": "OK — dependências principais com versões fixas (FastAPI, Supabase, Anthropic, Playwright)",
+      "requirements_benchmark_txt": "OK — dependências do módulo de benchmarking multi-provedor",
+      "requirements_chat_txt": "OK — dependências adicionais de chat/API",
+      "requirements_rag_txt": "OK — dependências RAG/embeddings",
+      "nota_atualizacao": "SEC-015 recomenda atualizar google-api-python-client para >=2.0, migrar PyPDF2 para pypdf — pendente"
     },
     "seguranca": {
       "env_nao_no_git": "OK — .env está no .gitignore",
       "env_example_existe": "OK — .env.example presente",
-      "token_pickle_fora_do_git": "OK — removido do rastreamento git",
-      "api_key_exposta": "ACAO_REQUERIDA — Maritaca key estava em Motores.txt (agora deletado). Rotacionar a chave no painel Maritaca.",
-      "historico_git": "AVISO — API key ainda existe no histórico git. Para remover permanentemente: git filter-branch ou BFG Repo Cleaner."
+      "credentials_json_no_gitignore": "OK — CORRIGIDO nesta auditoria (estava ausente)",
+      "service_account_no_gitignore": "OK — CORRIGIDO nesta auditoria (estava ausente)",
+      "token_pickle_fora_do_git": "OK — nunca commitado na auditoria atual",
+      "secrets_em_codigo": "OK — nenhum secret hardcoded detectado em arquivos rastreados",
+      "acoes_seguranca_pendentes": "Ver SECURITY_ACTIONS.json (22 itens de 2026-04-21, nenhum novo detectado)"
     },
     "git_status": {
       "branch": "main",
-      "estado_apos_limpeza": "Aguardando commit de consolidação"
+      "estado_apos_limpeza": "LIMPO — 1 arquivo modificado (.gitignore), 1 arquivo atualizado (AUDIT_REPORT.json)"
     }
   },
 
   "acoes_pendentes_recomendadas": [
     {
       "prioridade": "CRITICA",
-      "acao": "Revogar e rotacionar a Maritaca API key (110251697308955125271_7da38b249823d70b) imediatamente no painel Maritaca"
+      "referencia": "SEC-001",
+      "acao": "Corrigir CORS wildcard em api/main.py: substituir allow_origins=['*'] por ALLOWED_ORIGINS do ambiente"
+    },
+    {
+      "prioridade": "CRITICA",
+      "referencia": "SEC-002",
+      "acao": "Implementar autenticação (API Key / JWT) nos endpoints públicos da API"
+    },
+    {
+      "prioridade": "CRITICA",
+      "referencia": "SEC-003",
+      "acao": "Adicionar rate limiting (slowapi) nos endpoints /alertas e /auditoria/executar"
+    },
+    {
+      "prioridade": "CRITICA",
+      "referencia": "SEC-004",
+      "acao": "Remover SUPABASE_URL hardcoded como fallback em etapa2_itens_v9.py:37"
     },
     {
       "prioridade": "ALTA",
-      "acao": "Considerar limpar o histórico git da API key com: git filter-branch --tree-filter 'rm -f Motores.txt' HEAD ou BFG Repo Cleaner"
+      "referencia": "SEC-005",
+      "acao": "CONCLUIDA nesta auditoria — credentials.json e service_account*.json adicionados ao .gitignore"
     },
     {
       "prioridade": "ALTA",
-      "acao": "Corrigir CORS wildcard em api/main.py (SEC-001 do SECURITY_ACTIONS.json): substituir allow_origins=['*'] por lista explícita de origens"
-    },
-    {
-      "prioridade": "ALTA",
-      "acao": "Implementar autenticação nos endpoints da API (SEC-002 do SECURITY_ACTIONS.json)"
+      "referencia": "SEC-015",
+      "acao": "Atualizar dependências: google-api-python-client >=2.0, migrar PyPDF2 para pypdf, executar pip-audit"
     },
     {
       "prioridade": "MEDIA",
-      "acao": "Consolidar requirements_chat.txt e requirements_rag.txt em requirements.txt com extras opcionais (pip extras_require)"
+      "referencia": "SEC-011",
+      "acao": "Separar chaves Supabase: SUPABASE_ANON_KEY para API pública, SUPABASE_SERVICE_ROLE_KEY para scripts de coleta"
     },
     {
-      "prioridade": "BAIXA",
-      "acao": "Mover test_coleta_integration.py para tests/ caso seja necessário mantê-lo (foi removido nesta auditoria por estar fora de /tests/)"
+      "prioridade": "MEDIA",
+      "referencia": "REQ",
+      "acao": "Considerar consolidar requirements_chat.txt e requirements_rag.txt em requirements.txt com extras opcionais"
     }
   ]
 }

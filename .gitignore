@@ -5,6 +5,8 @@
 token.pickle
 *.key
 *.pem
+credentials.json
+service_account*.json
 
 # Logs
 *.log
