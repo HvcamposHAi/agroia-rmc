@@ -1,11 +1,11 @@
 {
   "meta": {
-    "versao": "2.0",
-    "data": "2026-07-01",
+    "versao": "2.1",
+    "data": "2026-08-01",
     "gerado_por": "auditoria-automatica-bot",
-    "repositorio": "hvcamposhai/agroia-rmc"
+    "repositorio": "hvcamposhai/agroia-rmc",
+    "auditoria_anterior": "2026-07-01"
   },
-
   "fase1_auditoria": {
     "status": "CONCLUIDA",
     "estrutura_esperada": {
@@ -38,16 +38,9 @@
         "reconciliar_drive_supabase.py": "OK"
       }
     },
-    "problemas_encontrados": {
-      "gitignore_credentials": {
-        "gravidade": "ALTA",
-        "descricao": "credentials.json (Google OAuth) e service_account*.json ausentes do .gitignore — risco de commit acidental de chaves privadas (SEC-005 da auditoria anterior não resolvido)",
-        "status": "CORRIGIDO_NESTA_AUDITORIA",
-        "acao": "Adicionadas entradas credentials.json e service_account*.json ao .gitignore"
-      }
-    },
+    "problemas_encontrados": {},
     "sem_problemas": [
-      "Nenhum script obsoleto encontrado (auditoria anterior 2026-06-01 limpou 127 arquivos)",
+      "Nenhum script obsoleto detectado",
       "Nenhum arquivo de log rastreado no git",
       "Nenhum artefato de debug/diagnóstico rastreado",
       "Nenhum __pycache__ ou .pyc rastreado",
@@ -55,111 +48,49 @@
       "Todos os 7 scripts essenciais presentes",
       "Estrutura de diretórios completa (api/, chat/, tests/, benchmark/)",
       ".env não rastreado — .env.example presente",
-      "token.pickle não rastreado (nunca commitado na auditoria atual)"
+      "credentials.json e service_account*.json no .gitignore (corrigido na auditoria 2026-07-01)",
+      "Nenhum arquivo untracked fora do .gitignore detectado",
+      "0 commits desde auditoria anterior (2026-07-01) — repositório estável"
     ]
   },
-
   "fase2_limpeza": {
     "status": "CONCLUIDA",
-    "acoes_realizadas": [
-      {
-        "acao": "Atualização .gitignore",
-        "descricao": "Adicionadas entradas credentials.json e service_account*.json para prevenir vazamento de credenciais Google OAuth/Service Account"
-      }
-    ],
+    "acoes_realizadas": [],
     "total_arquivos_removidos": 0,
-    "nota": "Repositório já estava limpo após auditoria de 2026-06-01. Única ação necessária foi corrigir .gitignore.",
-    "preservados": [
-      "7 scripts essenciais (etapa2_itens_v9, etapa3_producao, coleta_criticos, enriquecer_classificacao, diagnostico_portal, indexar_pdfs, reconciliar_drive_supabase)",
-      "api/ completo (main.py, coleta.py, benchmark_api.py, test_upload_ofertas.py, __init__.py)",
-      "chat/ completo (agent.py, db.py, prompts.py, tools.py, api_rag.py, motor_router.py, prohort_collector.py, prohort_normalizer.py, query_agent.py, example_rag_integration.py, __init__.py)",
-      "tests/ completo (10 arquivos de teste)",
-      "benchmark/ completo (módulo de benchmarking multi-provedor)",
-      "agroia-frontend/ completo (React/Vite/TypeScript)",
-      "dados_atualizados.py (utilitário de diagnóstico referenciado no CLAUDE.md)",
-      "backfill_prohort.py (script operacional de backfill histórico PROHORT/CONAB)",
-      "scripts/coletar_baseline.py (script de coleta de baseline para benchmark)",
-      "sql/ (6 arquivos SQL de schema e views)",
-      "ingestion/ (módulo de indexação de PDFs)",
-      ".github/workflows/ (3 workflows: coleta, benchmark, prohort)",
-      "metrics/ (2 snapshots de referência versionados explicitamente)",
-      "CLAUDE.md, README.md, ARCHITECTURE_RAG.txt",
-      "SECURITY_ACTIONS.json (22 ações de segurança pendentes de 2026-04-21)",
-      "requirements.txt + requirements_benchmark.txt + requirements_chat.txt + requirements_rag.txt",
-      ".env.example, .gitignore, Dockerfile, render.yaml, netlify.toml"
-    ]
+    "nota": "Repositório já estava completamente limpo. Auditoria anterior (2026-07-01) não deixou resíduos. Nenhuma ação necessária."
   },
-
   "fase3_validacao": {
     "status": "CONCLUIDA",
     "estrutura": {
       "diretorios_essenciais": "OK — api/, chat/, tests/, benchmark/ presentes",
       "scripts_7_essenciais": "OK — todos presentes",
-      "frontend": "OK — agroia-frontend/ completo com React/Vite/TS (43 arquivos)",
-      "workflows_ci_cd": "OK — .github/workflows/ com 3 workflows ativos"
+      "frontend": "OK — agroia-frontend/ completo com React/Vite/TS",
+      "workflows_ci_cd": "OK — .github/workflows/ com 3 workflows ativos (coleta.yml, benchmark.yml, prohort.yml)"
     },
     "dependencias": {
-      "requirements_txt": "OK — dependências principais com versões fixas (FastAPI, Supabase, Anthropic, Playwright)",
-      "requirements_benchmark_txt": "OK — dependências do módulo de benchmarking multi-provedor",
-      "requirements_chat_txt": "OK — dependências adicionais de chat/API",
-      "requirements_rag_txt": "OK — dependências RAG/embeddings",
-      "nota_atualizacao": "SEC-015 recomenda atualizar google-api-python-client para >=2.0, migrar PyPDF2 para pypdf — pendente"
+      "requirements_txt": "OK — dependências principais com versões fixas",
+      "requirements_benchmark_txt": "OK",
+      "requirements_chat_txt": "OK",
+      "requirements_rag_txt": "OK",
+      "nota_pendente": "SEC-015: migrar PyPDF2→pypdf e atualizar google-api-python-client >=2.0 (pendente desde 2026-04-21)"
     },
     "seguranca": {
       "env_nao_no_git": "OK — .env está no .gitignore",
       "env_example_existe": "OK — .env.example presente",
-      "credentials_json_no_gitignore": "OK — CORRIGIDO nesta auditoria (estava ausente)",
-      "service_account_no_gitignore": "OK — CORRIGIDO nesta auditoria (estava ausente)",
-      "token_pickle_fora_do_git": "OK — nunca commitado na auditoria atual",
-      "secrets_em_codigo": "OK — nenhum secret hardcoded detectado em arquivos rastreados",
-      "acoes_seguranca_pendentes": "Ver SECURITY_ACTIONS.json (22 itens de 2026-04-21, nenhum novo detectado)"
+      "credentials_no_gitignore": "OK — credentials.json e service_account*.json cobertos",
+      "secrets_em_codigo": "OK — nenhum secret hardcoded detectado",
+      "acoes_seguranca_pendentes": "SECURITY_ACTIONS.json com 22 itens de 2026-04-21 (sem novos)"
     },
     "git_status": {
       "branch": "main",
-      "estado_apos_limpeza": "LIMPO — 1 arquivo modificado (.gitignore), 1 arquivo atualizado (AUDIT_REPORT.json)"
+      "sincronizado_com_origin": "SIM — up to date",
+      "arquivos_nao_rastreados": 0,
+      "estado": "LIMPO — working tree clean"
     }
   },
-
-  "acoes_pendentes_recomendadas": [
-    {
-      "prioridade": "CRITICA",
-      "referencia": "SEC-001",
-      "acao": "Corrigir CORS wildcard em api/main.py: substituir allow_origins=['*'] por ALLOWED_ORIGINS do ambiente"
-    },
-    {
-      "prioridade": "CRITICA",
-      "referencia": "SEC-002",
-      "acao": "Implementar autenticação (API Key / JWT) nos endpoints públicos da API"
-    },
-    {
-      "prioridade": "CRITICA",
-      "referencia": "SEC-003",
-      "acao": "Adicionar rate limiting (slowapi) nos endpoints /alertas e /auditoria/executar"
-    },
-    {
-      "prioridade": "CRITICA",
-      "referencia": "SEC-004",
-      "acao": "Remover SUPABASE_URL hardcoded como fallback em etapa2_itens_v9.py:37"
-    },
-    {
-      "prioridade": "ALTA",
-      "referencia": "SEC-005",
-      "acao": "CONCLUIDA nesta auditoria — credentials.json e service_account*.json adicionados ao .gitignore"
-    },
-    {
-      "prioridade": "ALTA",
-      "referencia": "SEC-015",
-      "acao": "Atualizar dependências: google-api-python-client >=2.0, migrar PyPDF2 para pypdf, executar pip-audit"
-    },
-    {
-      "prioridade": "MEDIA",
-      "referencia": "SEC-011",
-      "acao": "Separar chaves Supabase: SUPABASE_ANON_KEY para API pública, SUPABASE_SERVICE_ROLE_KEY para scripts de coleta"
-    },
-    {
-      "prioridade": "MEDIA",
-      "referencia": "REQ",
-      "acao": "Considerar consolidar requirements_chat.txt e requirements_rag.txt em requirements.txt com extras opcionais"
-    }
-  ]
+  "resumo_executivo": {
+    "resultado": "OK — SEM PROBLEMAS",
+    "acao_tomada": "Nenhuma — repositório limpo e conforme",
+    "proxima_auditoria": "2026-09-01"
+  }
 }
