@@ -1,10 +1,10 @@
 {
   "meta": {
-    "versao": "2.1",
-    "data": "2026-08-01",
+    "versao": "2.2",
+    "data": "2026-09-01",
     "gerado_por": "auditoria-automatica-bot",
     "repositorio": "hvcamposhai/agroia-rmc",
-    "auditoria_anterior": "2026-07-01"
+    "auditoria_anterior": "2026-08-01"
   },
   "fase1_auditoria": {
     "status": "CONCLUIDA",
@@ -36,28 +36,32 @@
         "diagnostico_portal.py": "OK",
         "indexar_pdfs.py": "OK",
         "reconciliar_drive_supabase.py": "OK"
+      },
+      "scripts_suporte_adicionais": {
+        "dados_atualizados.py": "OK — referenciado no CLAUDE.md como ferramenta de consulta",
+        "backfill_prohort.py": "OK — script de backfill ProHort legítimo"
       }
     },
     "problemas_encontrados": {},
     "sem_problemas": [
-      "Nenhum script obsoleto detectado",
+      "Nenhum script obsoleto detectado (padrões *_v[2-8].py, debug_*, diag_*, teste_* ausentes)",
       "Nenhum arquivo de log rastreado no git",
       "Nenhum artefato de debug/diagnóstico rastreado",
       "Nenhum __pycache__ ou .pyc rastreado",
       "Nenhuma chave de API exposta em arquivos rastreados",
       "Todos os 7 scripts essenciais presentes",
-      "Estrutura de diretórios completa (api/, chat/, tests/, benchmark/)",
+      "Estrutura de diretórios completa (api/, chat/, tests/, benchmark/, ingestion/)",
       ".env não rastreado — .env.example presente",
-      "credentials.json e service_account*.json no .gitignore (corrigido na auditoria 2026-07-01)",
+      "credentials.json e service_account*.json no .gitignore",
       "Nenhum arquivo untracked fora do .gitignore detectado",
-      "0 commits desde auditoria anterior (2026-07-01) — repositório estável"
+      "1 commit desde auditoria anterior (2026-08-01) — próprio commit da auditoria anterior"
     ]
   },
   "fase2_limpeza": {
     "status": "CONCLUIDA",
     "acoes_realizadas": [],
     "total_arquivos_removidos": 0,
-    "nota": "Repositório já estava completamente limpo. Auditoria anterior (2026-07-01) não deixou resíduos. Nenhuma ação necessária."
+    "nota": "Repositório já estava completamente limpo. Auditoria anterior (2026-08-01) não deixou resíduos. Nenhuma ação necessária."
   },
   "fase3_validacao": {
     "status": "CONCLUIDA",
@@ -91,6 +95,6 @@
   "resumo_executivo": {
     "resultado": "OK — SEM PROBLEMAS",
     "acao_tomada": "Nenhuma — repositório limpo e conforme",
-    "proxima_auditoria": "2026-09-01"
+    "proxima_auditoria": "2026-10-01"
   }
 }
