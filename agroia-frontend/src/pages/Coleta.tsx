@@ -126,13 +126,25 @@ export default function Coleta() {
   const [ultimaExec, setUltimaExec] = useState<UltimaExecucao | null>(null)
   const [proximaExec, setProximaExec] = useState<string | null>(null)
 
-  // Carregar stats iniciais
+  // Uma coleta em andamento (possivelmente disparada em outra máquina) precisa
+  // de sondagem rápida; o estado ocioso não.
+  const emAndamento = status?.status === 'running'
+
+  // Carregar stats iniciais (uma vez)
   useEffect(() => {
     loadStats()
     loadStatus()
     loadConfig()
     loadUltimaExecucao()
     loadProximaExec()
+  }, [])
+
+  // Sondagem adaptativa: 5s enquanto a coleta roda, 30s no ocioso.
+  // Eram 4 requisições a cada 5s sem parar — ~0,94 GB/mês com uma aba aberta,
+  // 19% da cota de banda do Render. O progresso durante a coleta vem do SSE
+  // (streamarProgresso), então aqui só precisamos detectar mudança de estado.
+  useEffect(() => {
+    const intervaloMs = emAndamento ? 5000 : 30000
     const interval = setInterval(() => {
       if (!loading) {
         loadStatus()
@@ -140,9 +152,9 @@ export default function Coleta() {
         loadUltimaExecucao()
         loadProximaExec()
       }
-    }, 5000)
+    }, intervaloMs)
     return () => clearInterval(interval)
-  }, [loading])
+  }, [loading, emAndamento])
 
   const loadUltimaExecucao = async () => {
     try {

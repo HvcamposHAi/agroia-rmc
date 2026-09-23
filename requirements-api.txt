@@ -1,0 +1,36 @@
+# AgroIA-RMC — dependências APENAS do servidor da API
+#
+# O requirements.txt principal inclui coleta (playwright), processamento de PDF
+# e indexação (sentence-transformers/torch, ~2 GB). Nada disso é importado por
+# api/main.py — instalar no servidor só torna o build lento e arrisca estourar
+# a memória do plano gratuito.
+#
+# Verificado a partir dos imports de: api/main.py, api/coleta.py,
+# chat/agent.py, chat/tools.py, chat/db.py, chat/prompts.py
+# Testado: api.main sobe normalmente com as bibliotecas pesadas ausentes.
+
+# API
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.13.3
+
+# Configuração
+python-dotenv==1.0.0
+
+# Banco de dados
+supabase==2.28.3
+
+# LLM
+anthropic>=0.20.0
+
+# Agendamento (usado por api/coleta.py)
+apscheduler==3.10.4
+
+# HTTP (usado no disparo do workflow de coleta via GitHub Actions)
+requests==2.31.0
+
+# ── Deliberadamente fora do servidor ───────────────────────────────────────
+# sentence-transformers / numpy  → busca em PDFs (RAG); roda na sua máquina
+# playwright / beautifulsoup4    → coleta; roda via GitHub Actions
+# PyPDF2 / pdfplumber / pandas   → indexação de PDFs, processo offline
+# google-api-python-client       → upload para o Drive, processo offline
