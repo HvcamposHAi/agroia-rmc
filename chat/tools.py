@@ -16,6 +16,12 @@ _cache: dict[str, tuple[str, float]] = {}
 CACHE_TTL = 3600
 
 def get_st_model():
+    """
+    Carrega o modelo de embeddings sob demanda.
+
+    Levanta ImportError onde a biblioteca não está instalada — quem chama
+    trata e responde sem RAG, em vez de quebrar.
+    """
     global _st_model
     if _st_model is None:
         from sentence_transformers import SentenceTransformer
@@ -348,73 +354,60 @@ def buscar_chunks_rag(
 ) -> list[dict]:
     """
     Busca chunks de PDFs similares à pergunta usando embeddings vetoriais (RAG).
-    Funciona sem RPC - calcula similaridade em Python via coseno.
-    Retorna chunks ordenados por relevância com scores.
+
+    A similaridade é calculada NO BANCO, pela função pgvector
+    buscar_chunks_similares (índice HNSW) — antes baixávamos todos os
+    embeddings e comparávamos em Python.
+
+    Vetorizar a pergunta ainda exige o modelo local; onde ele não estiver
+    instalado, retorna um aviso explicativo em vez de derrubar a resposta.
     """
     sb = get_supabase_client()
 
+    pergunta_sanitizada = sanitizar_string(pergunta, 500)
+
     try:
-        import numpy as np
-
-        pergunta_sanitizada = sanitizar_string(pergunta, 500)
-
-        # Gerar embedding da pergunta
         model = get_st_model()
-        query_embedding = model.encode(pergunta_sanitizada, convert_to_numpy=True).astype(np.float32)
+    except ImportError:
+        logger.warning("RAG indisponível: sentence-transformers não instalado")
+        return [{
+            "erro": "Busca em PDFs indisponível neste ambiente.",
+            "detalhe": (
+                "O servidor não tem o modelo de embeddings instalado. "
+                "As consultas a licitações, itens e fornecedores continuam "
+                "funcionando normalmente."
+            )
+        }]
 
-        # Buscar chunks do banco
-        query_select = sb.table("pdf_chunks").select(
-            "id, documento_id, nome_doc, processo, chunk_text, embedding, chunk_index"
-        )
+    try:
+        query_embedding = model.encode(pergunta_sanitizada).tolist()
 
-        if processo:
-            processo_sanitizado = sanitizar_string(processo, 100)
-            query_select = query_select.ilike("processo", f"%{processo_sanitizado}%")
+        processo_filtro = sanitizar_string(processo, 100) if processo else None
 
-        result = query_select.limit(500).execute()
+        result = sb.rpc("buscar_chunks_similares", {
+            "query_embedding": query_embedding,
+            "limite": min(limite, 10),
+            "processo_filtro": processo_filtro,
+        }).execute()
 
-        if not result.data:
-            return []
-
-        # Calcular similaridade para cada chunk
-        similaridades = []
-        for chunk in result.data:
-            if not chunk.get("embedding"):
+        saida = []
+        for c in (result.data or []):
+            sim = float(c.get("similaridade") or 0.0)
+            if sim < min_similaridade:
                 continue
+            texto = c.get("chunk_text") or ""
+            saida.append({
+                "id": c.get("id"),
+                "licitacao_id": c.get("licitacao_id"),
+                "nome_doc": c.get("nome_doc"),
+                "processo": c.get("processo"),
+                "chunk_text": texto[:200],
+                "chunk_completo": texto,
+                "chunk_index": c.get("chunk_index"),
+                "similaridade": round(sim, 3),
+            })
 
-            try:
-                # Converter embedding para array
-                emb = chunk["embedding"]
-                if isinstance(emb, str):
-                    emb = json.loads(emb)
-
-                chunk_emb = np.array(emb, dtype=np.float32)
-
-                # Similaridade coseno
-                norm_q = np.linalg.norm(query_embedding)
-                norm_c = np.linalg.norm(chunk_emb)
-
-                if norm_q > 0 and norm_c > 0:
-                    sim = float(np.dot(query_embedding, chunk_emb) / (norm_q * norm_c))
-
-                    if sim >= min_similaridade:
-                        similaridades.append({
-                            "id": chunk["id"],
-                            "documento_id": chunk["documento_id"],
-                            "nome_doc": chunk["nome_doc"],
-                            "processo": chunk["processo"],
-                            "chunk_text": chunk["chunk_text"][:200],  # Truncar para resposta
-                            "chunk_completo": chunk["chunk_text"],
-                            "chunk_index": chunk["chunk_index"],
-                            "similaridade": round(sim, 3)
-                        })
-            except Exception as e:
-                logger.debug(f"Erro processando chunk: {e}")
-                continue
-
-        # Ordenar por similaridade e pegar top-k
-        similaridades.sort(key=lambda x: x["similaridade"], reverse=True)
-        return similaridades[:min(limite, 10)]
+        return saida
 
     except Exception as e:
         logger.error(f"Erro na busca RAG: {e}", exc_info=True)
