@@ -168,10 +168,15 @@ GOOGLE_DRIVE_FOLDER_ID=<folder_id>
 ### Coleta (Atualização de Dados) — arquitetura e variáveis de ambiente
 
 Coletor: `coleta_transparencia.py` (requests + BeautifulSoup; ASP.NET UpdatePanel com
-postback assíncrono). **Estratégia de produção: GitHub Actions hospedado** (`ubuntu-latest`,
-`COLETA_MODE=github`) — **diário 06:00 BRT** + botão "Buscar Dados" (backend dispara
-`.github/workflows/coleta.yml`, input único `anos`). Não depende de PC ligado: o Portal
-da Transparência aceita IPs de datacenter. O coletor grava progresso ao vivo em
+postback assíncrono). **Estratégia de produção: GitHub Actions num runner SELF-HOSTED**
+(PC do usuário, Windows, rede BR; `COLETA_MODE=github`) — **diário 06:00 BRT** + botão
+"Buscar Dados" (backend dispara `.github/workflows/coleta.yml`, input único `anos`).
+**Runner hospedado NÃO funciona**: os portais da Prefeitura recusam IPs de datacenter
+(24/09/2026: do ubuntu-latest o Portal da Transparência conecta mas nunca responde — 4×
+read timeout 120 s; da rede BR responde HTTP 200 em <1 s). Não há navegador: o runner só
+roda Python. PC desligado às 06:00 → o job espera na fila (até 24 h) e roda quando o runner
+voltar. Autostart do runner no boot: `scripts/setup-runner-autostart.ps1` (uma vez, como
+admin). O coletor grava progresso ao vivo em
 `coleta_status` (id=1) e o resumo em `coleta_execucoes` (`novos` = licitações NOVAS).
 SQL das tabelas: `sql/coleta_status.sql`, `sql/coleta_execucoes.sql`.
 
@@ -188,8 +193,7 @@ Regras do coletor (janela padrão: ano anterior + corrente; `--anos 2019-2026` p
 - Portal fora do ar/estrutura mudou → `PortalIndisponivel` → execução `error` (nunca
   "concluída sem novidades"). Testes offline: `tests/test_coleta_transparencia.py`.
 
-O runner self-hosted (`scripts/setup-runner-autostart.ps1`) e `etapa2_itens_v9.py`
-(Playwright) são LEGADO do portal JSF desativado — não são mais usados.
+`etapa2_itens_v9.py` (Playwright) é LEGADO do portal JSF desativado — não é mais usado.
 
 Backend (Render / API):
 - `COLETA_MODE` — `github` (dispara workflow no GitHub) ou `local` (subprocess local; padrão).

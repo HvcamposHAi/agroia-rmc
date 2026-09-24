@@ -3,12 +3,15 @@ name: Coleta de Dados (AgroIA-RMC)
 # Coleta de licitações do FAAC (SMSAN/FAAC) no PORTAL DA TRANSPARÊNCIA de Curitiba
 # (coleta_transparencia.py — HTTP puro, sem navegador).
 #
-# Histórico: até jun/2026 a coleta usava o portal JSF consultalicitacao.curitiba.pr.gov.br:9090
-# (Playwright num runner self-hosted, pois o portal recusava IPs de datacenter). Esse
-# portal foi DESATIVADO pela Prefeitura (DNS NXDOMAIN, set/2026). O Portal da
-# Transparência consulta o mesmo sistema (SGP), aceita IPs de datacenter e não exige
-# navegador → roda no runner GRATUITO ubuntu-latest: não depende de nenhum PC ligado.
-# O coletor antigo (etapa2_itens_v9.py) fica só como legado/referência.
+# Roda num runner SELF-HOSTED (máquina do usuário, Windows, rede BR). Motivo: os
+# portais da Prefeitura RECUSAM IPs de datacenter — confirmado em 24/09/2026: do
+# ubuntu-latest (Azure) o Portal da Transparência aceita a conexão mas nunca responde
+# (4× read timeout de 120 s), enquanto da rede do usuário responde HTTP 200 em <1 s.
+# (O portal JSF antigo, consultalicitacao...:9090, tinha o mesmo bloqueio e foi
+# desativado pela Prefeitura em 2026.)
+#
+# Se o PC estiver desligado às 06:00, o job fica na fila (até 24 h) e roda assim que
+# o runner voltar. Para o runner subir sozinho no boot: scripts/setup-runner-autostart.ps1.
 
 on:
   workflow_dispatch:
@@ -26,16 +29,22 @@ concurrency:
 
 jobs:
   coleta:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 120
+    defaults:
+      run:
+        shell: powershell
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      # Evita UnicodeEncodeError nos print() no console Windows (cp1252).
       PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
       COLETA_ORIGEM: ${{ github.event_name == 'schedule' && 'agendada' || 'manual' }}
     steps:
       - uses: actions/checkout@v4
 
+      # Python 3.11 (wheels de lxml disponíveis); o setup-python baixa na 1ª vez.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -49,8 +58,8 @@ jobs:
         env:
           IN_ANOS: ${{ github.event.inputs.anos }}
         run: |
-          if [ -n "$IN_ANOS" ]; then
-            python coleta_transparencia.py --anos "$IN_ANOS"
-          else
-            python coleta_transparencia.py
-          fi
+          $cmd = @('coleta_transparencia.py')
+          if ($env:IN_ANOS) { $cmd += @('--anos', $env:IN_ANOS) }
+          Write-Host "Executando: python $($cmd -join ' ')"
+          python @cmd
+          exit $LASTEXITCODE
