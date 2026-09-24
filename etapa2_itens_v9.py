@@ -26,12 +26,13 @@ import time
 import json
 import signal
 import argparse
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timedelta, timezone
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 from bs4 import BeautifulSoup
 from supabase import create_client
 from enriquecer_classificacao import classificar_item, is_relevante_agro
+from classificacao_licitacao import classificar_tipo, classificar_canal, is_af
 
 load_dotenv()
 
@@ -58,12 +59,24 @@ LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"] if HEADLESS else []
 FORCAR_REPROCESSAR = False
 
 # Se True: re-entra apenas nas licitações que têm itens mas NÃO têm empenhos,
-# regrava só os empenhos (sem tocar em itens/fornecedores).
-# Ignora FORCAR_REPROCESSAR quando True.
-FORCAR_EMPENHOS = True
+# regrava só os empenhos (sem tocar em itens/fornecedores). Modo de manutenção —
+# NÃO insere licitações novas. Ligado via CLI (--somente-empenhos), nunca por padrão:
+# ficou True por engano após jun/2026 e a coleta passou a descartar processos novos.
+FORCAR_EMPENHOS = False
+
+# Janela padrão da coleta incremental (quando --dt-inicio/--dt-fim não são dados):
+#  - início: última data conhecida (menor entre MAX(dt_abertura) e MAX(coletado_em))
+#    menos JANELA_SOBREPOSICAO_DIAS — dt_abertura pode estar no futuro no momento da
+#    coleta, então partir dela pularia processos publicados nesse intervalo;
+#  - fim: hoje + JANELA_FUTURO_DIAS — o portal lista processos com abertura futura.
+JANELA_SOBREPOSICAO_DIAS = 120
+JANELA_FUTURO_DIAS = 180
 
 # Valor sentinela: pesquisa OK mas total de registros desconhecido
 TOTAL_DESCONHECIDO = -1
+
+# Origem gravada em coleta_execucoes (sobrescrita por --origem no CLI).
+ORIGEM = "manual"
 
 # ─── Controle de interrupção ──────────────────────────────────────────────────
 INTERROMPIDO = False
@@ -101,21 +114,42 @@ def parse_args():
         default="coleta_status.json",
         help="Arquivo para salvar progresso JSON."
     )
+    parser.add_argument(
+        "--somente-empenhos",
+        action="store_true",
+        help="Modo manutenção: só regrava empenhos de licitações 'Concluído' sem empenhos."
+    )
+    parser.add_argument(
+        "--origem",
+        type=str,
+        default=os.getenv("COLETA_ORIGEM") or "manual",
+        help="Origem registrada em coleta_execucoes (manual | agendada)."
+    )
     return parser.parse_args()
 
-def get_data_mais_recente() -> str:
-    """Retorna MAX(dt_abertura) como DD/MM/YYYY, ou 01/01/2019 se vazio."""
+def _max_data(coluna: str):
+    resp = (sb.table("licitacoes").select(coluna).not_.is_(coluna, "null")
+            .order(coluna, desc=True).limit(1).execute())
+    if resp.data and resp.data[0].get(coluna):
+        return date.fromisoformat(resp.data[0][coluna][:10])
+    return None
+
+def get_data_inicio_padrao() -> str:
+    """Início da janela incremental (DD/MM/YYYY): última data conhecida menos a
+    sobreposição. Reprocessar processos já gravados é barato (são pulados ou só têm
+    a situação atualizada); perder processos novos não é."""
     try:
-        resp = sb.table("licitacoes").select("dt_abertura").order("dt_abertura", desc=True).limit(1).execute()
-        if resp.data and len(resp.data) > 0:
-            dt_str = resp.data[0]["dt_abertura"]
-            if dt_str:
-                d = datetime.strptime(dt_str, "%Y-%m-%d").date()
-                return d.strftime("%d/%m/%Y")
-        return "01/01/2019"
+        datas = [d for d in (_max_data("dt_abertura"), _max_data("coletado_em")) if d]
+        if not datas:
+            return "01/01/2019"
+        inicio = min(datas) - timedelta(days=JANELA_SOBREPOSICAO_DIAS)
+        return max(inicio, date(2019, 1, 1)).strftime("%d/%m/%Y")
     except Exception as e:
-        print(f"[!] Erro ao buscar data mais recente: {e}. Usando fallback.")
+        print(f"[!] Erro ao calcular data inicial: {e}. Usando fallback 01/01/2019.")
         return "01/01/2019"
+
+def get_data_fim_padrao() -> str:
+    return (date.today() + timedelta(days=JANELA_FUTURO_DIAS)).strftime("%d/%m/%Y")
 
 def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando", status: str = "running",
                       dt_inicio: str = None, dt_fim: str = None, portal_url: str = None, orgao: str = None, regs_por_pag: int = None):
@@ -124,7 +158,12 @@ def escrever_progresso(progress_file: str, stats: dict, etapa: str = "coletando"
         "status": status,
         "etapa": etapa,
         "processados": stats.get("processados", 0),
-        "novos": stats.get("itens", 0),
+        # "novos" = licitações NOVAS inseridas (antes era espelho de itens).
+        "novos": stats.get("licitacoes_novas", 0),
+        "atualizadas": stats.get("licitacoes_atualizadas", 0),
+        "total_portal": stats.get("total_portal"),
+        "pagina": stats.get("pagina"),
+        "total_paginas": stats.get("total_paginas"),
         "pulados": stats.get("pulados", 0),
         "erros": stats.get("erros", 0),
         "itens_coletados": stats.get("itens", 0),
@@ -179,7 +218,7 @@ def registrar_erro(stats: dict, processo: str, mensagem: str, limite: int = 50):
 
 
 def registrar_execucao(stats: dict, final_status: str, dt_inicio: str = None,
-                       dt_fim: str = None, erro_resumo: str = None, origem: str = "manual"):
+                       dt_fim: str = None, erro_resumo: str = None, origem: str = None):
     """Grava um resumo da execução em coleta_execucoes (Supabase) para o histórico
     exibido na página de Coleta. Blindado: qualquer falha apenas loga — NUNCA
     interrompe a coleta nem propaga exceção."""
@@ -198,11 +237,11 @@ def registrar_execucao(stats: dict, final_status: str, dt_inicio: str = None,
             "duracao_seg":     duracao,
             "status":          final_status,
             "etapa":           "finalizado",
-            "origem":          origem,
+            "origem":          origem or ORIGEM,
             "dt_inicio":       dt_inicio,
             "dt_fim":          dt_fim,
             "processados":     stats.get("processados", 0),
-            "novos":           stats.get("itens", 0),
+            "novos":           stats.get("licitacoes_novas", 0),
             "pulados":         stats.get("pulados", 0),
             "erros":           stats.get("erros", 0),
             "itens_coletados": stats.get("itens", 0),
@@ -441,6 +480,54 @@ def gravar_apenas_empenhos(lic_id, emps):
     return n_e
 
 
+def parse_data_br(texto):
+    """DD/MM/YYYY → YYYY-MM-DD (None se inválida)."""
+    try:
+        return datetime.strptime((texto or "").strip()[:10], "%d/%m/%Y").strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+def inserir_licitacao(proc):
+    """Insere (upsert em processo,orgao) uma licitação vista na listagem do portal e
+    ainda ausente no banco. Classificação idêntica à da Etapa 1. Retorna o id ou None."""
+    objeto = proc.get("objeto", "")
+    registro = {
+        "processo":      proc["texto"],
+        "tipo_processo": classificar_tipo(proc["texto"]),
+        "orgao":         ORGAO,
+        "objeto":        objeto,
+        "empresa":       "Fundo de Abastecimento Alimentar de Curitiba",
+        "dt_abertura":   parse_data_br(proc.get("dt_abertura")),
+        "situacao":      proc.get("situacao", ""),
+        "canal":         classificar_canal(objeto),
+        "relevante_af":  is_af(objeto),
+        "coletado_em":   datetime.now(timezone.utc).isoformat(),
+    }
+    r = sb.table("licitacoes").upsert(registro, on_conflict="processo,orgao").execute()
+    if r.data:
+        return r.data[0]["id"]
+    r2 = (sb.table("licitacoes").select("id").eq("processo", proc["texto"])
+          .eq("orgao", ORGAO).limit(1).execute())
+    return r2.data[0]["id"] if r2.data else None
+
+def atualizar_licitacao(lic_id, campos):
+    """Atualiza campos de uma licitação existente. Blindado."""
+    try:
+        sb.table("licitacoes").update(campos).eq("id", lic_id).execute()
+    except Exception as e:
+        print(f"      [!] Erro ao atualizar licitacao_id={lic_id}: {e}")
+
+def extrair_totais_fornecedores(html):
+    """Contadores do cabeçalho do detalhe (retiraram edital / participantes)."""
+    texto = BeautifulSoup(html, "lxml").get_text(" ", strip=True)
+    totais = {}
+    for campo, pat in [("total_forn_retiraram_edital", r"Retiraram o Edital[:\s]+(\d+)"),
+                       ("total_forn_participantes", r"Fornecedores Participantes[:\s]+(\d+)")]:
+        m = re.search(pat, texto, re.I)
+        if m:
+            totais[campo] = int(m.group(1))
+    return totais
+
 def deletar_itens_licitacao(lic_id):
     try:
         sb.table("itens_licitacao").delete().eq("licitacao_id", lic_id).execute()
@@ -518,7 +605,9 @@ def fazer_pesquisa(page):
         except PlaywrightTimeout:
             continue
     if not orgao_ok:
-        print(f"    [!] Órgão {ORGAO} não encontrado nos selects")
+        # Sem o filtro de órgão a pesquisa traria a prefeitura inteira (ou nada):
+        # é portal fora do ar/mudado, não "nenhuma licitação nova".
+        raise PortalIndisponivel(f"Órgão {ORGAO} não encontrado no formulário do portal")
 
     # Preencher datas
     ok_ini = preencher_data(page, "form:dataInferiorInputDate", DT_INICIO)
@@ -585,6 +674,7 @@ def extrair_processos_pagina(page):
                 "texto":   proc_texto,
                 "link_id": link_id,
                 "objeto":  cols[1].get_text(strip=True) if len(cols) > 1 else "",
+                "dt_abertura": cols[2].get_text(strip=True) if len(cols) > 2 else "",
                 "situacao": cols[3].get_text(strip=True) if len(cols) > 3 else "",
             })
         break  # tabela correta encontrada
@@ -785,21 +875,39 @@ def voltar_para_lista(page):
     except:
         return False
 
+class PortalIndisponivel(RuntimeError):
+    """Portal não carregou / formulário irreconhecível — a execução deve falhar
+    (status error), nunca ser registrada como 'concluída sem novidades'."""
+
+
+def abrir_portal(page, tentativas=3):
+    """page.goto com retentativas e backoff — o portal JSF é instável."""
+    ultimo_erro = None
+    for n in range(1, tentativas + 1):
+        try:
+            page.goto(PORTAL_URL, timeout=60000)
+            page.wait_for_load_state("networkidle", timeout=60000)
+            page.wait_for_selector("select", state="visible", timeout=20000)
+            time.sleep(2)
+            return
+        except Exception as e:
+            ultimo_erro = e
+            print(f"    [!] Portal não carregou (tentativa {n}/{tentativas}): {str(e)[:150]}")
+            time.sleep(15 * n)
+    raise PortalIndisponivel(f"Portal inacessível após {tentativas} tentativas: {ultimo_erro}")
+
+
 def refazer_pesquisa_e_navegar(page, pagina_alvo):
     """
     Recarrega o portal, refaz a pesquisa e navega até a página alvo.
     Retorna True se chegou na página alvo (ou se a pesquisa tem resultados).
     """
-    page.goto(PORTAL_URL, timeout=60000)
-    page.wait_for_load_state("networkidle")
-    # Aguarda o select de órgão ficar visível antes de prosseguir
     try:
-        page.wait_for_selector("select", state="visible", timeout=15000)
-    except Exception:
-        pass
-    time.sleep(3)
-
-    total = fazer_pesquisa(page)
+        abrir_portal(page)
+        total = fazer_pesquisa(page)
+    except Exception as e:
+        print(f"    [!] Falha ao refazer pesquisa: {str(e)[:200]}")
+        return False
     if total == 0:
         return False  # portal não retornou nada
 
@@ -874,32 +982,34 @@ def carregar_licitacoes():
     return todas, ids_com_itens, indice, ids_sem_empenhos
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
-def main(dt_inicio: str = None, dt_fim: str = None):
+def _registrar_final(stats, final_status, dt_inicio, dt_fim, erro_resumo=None):
+    escrever_progresso(PROGRESS_FILE, stats, etapa="finalizado", status=final_status,
+                       dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
+                       orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
+    registrar_execucao(stats, final_status, dt_inicio=dt_inicio, dt_fim=dt_fim,
+                       erro_resumo=erro_resumo)
+
+
+def main(dt_inicio: str = None, dt_fim: str = None) -> str:
+    """Coleta incremental. Para cada processo listado no portal na janela:
+      - ausente no banco      → INSERE a licitação e coleta itens/fornecedores/empenhos;
+      - presente, sem itens   → coleta o detalhe;
+      - situação mudou        → atualiza a situação e recoleta o detalhe
+                                (participantes/empenhos surgem ao longo do processo);
+      - sem mudança           → pulado.
+    Retorna o status final ('completed' | 'cancelled' | 'error')."""
     global INTERROMPIDO
 
     print("=" * 65)
-    print("AgroIA-RMC — Coleta de Itens de Licitações (v9)")
+    print("AgroIA-RMC — Coleta de Licitações, Itens e Empenhos (v10)")
     print(f"Início: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    print(f"Janela: {dt_inicio} → {dt_fim}")
     print(f"FORCAR_REPROCESSAR: {FORCAR_REPROCESSAR}")
     print(f"FORCAR_EMPENHOS:    {FORCAR_EMPENHOS}")
     print("=" * 65)
 
-    print("\n[0] Carregando licitações do Supabase...")
-    todas, ids_com_itens, indice, ids_sem_empenhos = carregar_licitacoes()
-    pendentes = len(todas) - len(ids_com_itens)
-    print(f"    {len(todas)} licitações no banco")
-    print(f"    {len(ids_com_itens)} já têm itens")
-    print(f"    {pendentes} pendentes de coleta de itens")
-    print(f"    {len(ids_sem_empenhos)} licitações 'Concluído' sem empenhos")
-    if FORCAR_REPROCESSAR and ids_com_itens:
-        print(f"    FORCAR_REPROCESSAR=True → {len(ids_com_itens)} serão reprocessadas")
-    if FORCAR_EMPENHOS:
-        print(f"    FORCAR_EMPENHOS=True → processando apenas {len(ids_sem_empenhos)} licitações sem empenhos")
-
-    if FORCAR_EMPENHOS and not ids_sem_empenhos:
-        print("\n    Nenhuma licitação pendente de empenhos. Encerrando.")
-        return
-
+    kw = dict(dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
+              orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
     stats = {
         "processados":    0,
         "itens":          0,
@@ -908,231 +1018,249 @@ def main(dt_inicio: str = None, dt_fim: str = None):
         "pulados":        0,
         "erros":          0,
         "nao_encontrados": 0,
-        "iniciado_em":    datetime.now().isoformat(),
+        "licitacoes_novas": 0,
+        "licitacoes_atualizadas": 0,
+        "sem_itens":      0,
+        # UTC tz-aware: duracao_seg e staleness no backend dependem disso.
+        "iniciado_em":    datetime.now(timezone.utc).isoformat(),
     }
+    escrever_progresso(PROGRESS_FILE, stats, etapa="iniciando", status="running", **kw)
 
-    # Escrever status inicial
-    escrever_progresso(PROGRESS_FILE, stats, etapa="iniciando", status="running",
-                      dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
-                      orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
+    print("\n[0] Carregando licitações do Supabase...")
+    todas, ids_com_itens, indice, ids_sem_empenhos = carregar_licitacoes()
+    print(f"    {len(todas)} licitações no banco | {len(ids_com_itens)} com itens | "
+          f"{len(ids_sem_empenhos)} 'Concluído' sem empenhos")
+
+    if FORCAR_EMPENHOS and not ids_sem_empenhos:
+        print("\n    Nenhuma licitação pendente de empenhos. Encerrando.")
+        _registrar_final(stats, "completed", dt_inicio, dt_fim)
+        return "completed"
+
+    falha = None  # motivo de encerramento prematuro (coleta incompleta)
 
     with sync_playwright() as p:
         print("\n[1] Abrindo navegador...")
         browser = p.chromium.launch(headless=HEADLESS, slow_mo=SLOW_MO, args=LAUNCH_ARGS)
-        context = browser.new_context()
-        page    = context.new_page()
+        try:
+            page = browser.new_context().new_page()
 
-        print("[2] Acessando portal e fazendo pesquisa...")
-        page.goto(PORTAL_URL, timeout=60000)
-        page.wait_for_load_state("networkidle")
-        time.sleep(2)
+            print("[2] Acessando portal e fazendo pesquisa...")
+            abrir_portal(page)
+            total = fazer_pesquisa(page)
 
-        total = fazer_pesquisa(page)
-
-        if total == 0:
-            print("\n[!] PROBLEMA: Nenhum registro retornado.")
-            print("    Verifique portal, órgão e datas.")
-            browser.close()
-            return
-
-        if total == TOTAL_DESCONHECIDO:
-            total_pags = None
-            print("\n[3] Total de registros desconhecido. Paginando até esgotar...")
-        else:
-            total_pags = math.ceil(total / REGS_POR_PAG)
-            print(f"\n[3] {total} registros em {total_pags} páginas. Iniciando coleta...")
-
-        pag_atual   = 1
-        paginas_sem_processo = 0  # segurança para evitar loop infinito
-
-        while not INTERROMPIDO:
-            # Condição de parada quando total é conhecido
-            if total_pags is not None and pag_atual > total_pags:
-                break
-
-            print(f"\n--- Página {pag_atual}" +
-                  (f"/{total_pags}" if total_pags else "") + " ---")
-
-            processos = extrair_processos_pagina(page)
-            if not processos:
-                print("    [!] Nenhum processo encontrado — possivelmente perdeu estado. Refazendo...")
-                if not refazer_pesquisa_e_navegar(page, pag_atual):
-                    print("    [!] Falha ao recuperar. Encerrando.")
-                    break
-                processos = extrair_processos_pagina(page)
-
-            if not processos:
-                paginas_sem_processo += 1
-                if paginas_sem_processo >= 3:
-                    print("    [!] 3 páginas consecutivas sem processos. Encerrando.")
-                    break
-                pag_atual += 1
-                continue
+            if total == 0:
+                print("\n[=] O portal não retornou processos na janela consultada.")
+                total_pags = 0
+            elif total == TOTAL_DESCONHECIDO:
+                total_pags = None
+                print("\n[3] Total de registros desconhecido. Paginando até esgotar...")
             else:
+                total_pags = math.ceil(total / REGS_POR_PAG)
+                stats["total_portal"] = total
+                print(f"\n[3] {total} registros em {total_pags} páginas. Iniciando coleta...")
+            stats["total_paginas"] = total_pags
+
+            pag_atual = 1
+            paginas_sem_processo = 0
+
+            while not INTERROMPIDO and total_pags != 0:
+                if total_pags is not None and pag_atual > total_pags:
+                    break
+
+                print(f"\n--- Página {pag_atual}" + (f"/{total_pags}" if total_pags else "") + " ---")
+                stats["pagina"] = pag_atual
+                # Heartbeat por página: mesmo quando tudo é pulado o backend vê progresso
+                # (evita a auto-cura marcar como travada uma coleta que está andando).
+                escrever_progresso(PROGRESS_FILE, stats, etapa="coletando", status="running", **kw)
+
+                processos = extrair_processos_pagina(page)
+                if not processos:
+                    print("    [!] Nenhum processo encontrado — possivelmente perdeu estado. Refazendo...")
+                    if not refazer_pesquisa_e_navegar(page, pag_atual):
+                        falha = f"Falha ao recuperar a listagem na página {pag_atual}"
+                        break
+                    processos = extrair_processos_pagina(page)
+
+                if not processos:
+                    paginas_sem_processo += 1
+                    if paginas_sem_processo >= 3:
+                        falha = "3 páginas consecutivas sem processos"
+                        break
+                    pag_atual += 1
+                    continue
                 paginas_sem_processo = 0
 
-            print(f"    {len(processos)} processos encontrados")
+                print(f"    {len(processos)} processos encontrados")
 
-            for proc in processos:
-                if INTERROMPIDO:
-                    break
-
-                texto     = proc.get("texto", "")
-                portal_id = proc.get("portal_id", "")
-
-                # Encontra ID no banco
-                lic_id = None
-                for chave in [texto, texto.split(" - ")[0] if " - " in texto else texto]:
-                    if chave in indice:
-                        lic_id = indice[chave]
+                for proc in processos:
+                    if INTERROMPIDO:
                         break
 
-                if not lic_id:
-                    if DEBUG:
-                        print(f"    [?] Não encontrado no banco: '{texto}'")
-                    stats["nao_encontrados"] += 1
-                    continue
+                    texto = proc.get("texto", "")
+                    situacao_portal = proc.get("situacao", "")
 
-                # ── Modo FORCAR_EMPENHOS: pula quem não precisa ──────────────
-                if FORCAR_EMPENHOS:
-                    if lic_id not in ids_sem_empenhos:
-                        stats["pulados"] += 1
-                        continue
-                    print(f"    [emp] Coletando empenhos: {texto} (ID={lic_id})")
-                else:
-                    # Modo normal: pular se já tem itens e não está forçando
-                    if lic_id in ids_com_itens and not FORCAR_REPROCESSAR:
-                        print(f"    [=] Já coletado: {texto}")
-                        stats["pulados"] += 1
-                        continue
-                    print(f"    [>] Processando: {texto} (ID={lic_id})")
-                    if FORCAR_REPROCESSAR and lic_id in ids_com_itens:
-                        deletar_itens_licitacao(lic_id)
-                        ids_com_itens.discard(lic_id)
+                    lic_id = None
+                    for chave in [texto, texto.split(" - ")[0] if " - " in texto else texto]:
+                        if chave in indice:
+                            lic_id = indice[chave]
+                            break
 
-                # Abre detalhe
-                if not abrir_detalhe(page, proc):
-                    print(f"        [!] Falha ao abrir detalhe")
-                    registrar_erro(stats, texto, "Falha ao abrir detalhe da licitação")
-                    refazer_pesquisa_e_navegar(page, pag_atual)
-                    continue
-
-                # Coleta itens de todas as páginas do detalhe
-                itens, forns, emps = coletar_todas_paginas_itens(page)
-
-                if FORCAR_EMPENHOS:
-                    # Grava só empenhos
-                    n_e = gravar_apenas_empenhos(lic_id, emps)
-                    if n_e > 0:
-                        ids_sem_empenhos.discard(lic_id)
-                        stats["empenhos"]    += n_e
-                        stats["processados"] += 1
-                        print(f"        ✓ {n_e} empenhos gravados")
+                    if not lic_id:
+                        if FORCAR_EMPENHOS:
+                            stats["nao_encontrados"] += 1
+                            continue
+                        try:
+                            lic_id = inserir_licitacao(proc)
+                        except Exception as e:
+                            lic_id = None
+                            print(f"    [!] Erro ao inserir '{texto}': {e}")
+                        if not lic_id:
+                            registrar_erro(stats, texto, "Falha ao inserir licitação nova no banco")
+                            continue
+                        stats["licitacoes_novas"] += 1
+                        indice[texto] = lic_id
+                        todas[lic_id] = {"id": lic_id, "processo": texto, "situacao": situacao_portal}
+                        print(f"    [+] NOVA: {texto} (ID={lic_id}) — {proc.get('objeto', '')[:70]}")
+                    elif FORCAR_EMPENHOS:
+                        if lic_id not in ids_sem_empenhos:
+                            stats["pulados"] += 1
+                            continue
+                        print(f"    [emp] Coletando empenhos: {texto} (ID={lic_id})")
                     else:
-                        print(f"        [~] Nenhum empenho encontrado no portal")
-                        registrar_erro(stats, texto, "Nenhum empenho encontrado no portal")
-                elif itens:
-                    n_i, n_f, n_e = gravar(lic_id, itens, forns, emps)
-                    stats["itens"]        += n_i
-                    stats["fornecedores"] += n_f
-                    stats["empenhos"]     += n_e
-                    stats["processados"]  += 1
-                    ids_com_itens.add(lic_id)
-                    print(f"        ✓ {n_i} itens, {n_f} fornecedores, {n_e} empenhos")
-                else:
-                    print(f"        [!] Nenhum item encontrado no detalhe")
-                    registrar_erro(stats, texto, "Nenhum item encontrado no detalhe")
+                        sit_banco = (todas.get(lic_id) or {}).get("situacao") or ""
+                        mudou = bool(situacao_portal) and situacao_portal != sit_banco
+                        if mudou:
+                            atualizar_licitacao(lic_id, {"situacao": situacao_portal})
+                            todas.setdefault(lic_id, {})["situacao"] = situacao_portal
+                            stats["licitacoes_atualizadas"] += 1
+                        if FORCAR_REPROCESSAR:
+                            motivo = "reprocessar"
+                        elif lic_id not in ids_com_itens:
+                            motivo = "sem itens"
+                        elif mudou:
+                            motivo = f"situação {sit_banco!r} → {situacao_portal!r}"
+                        else:
+                            stats["pulados"] += 1
+                            continue
+                        print(f"    [>] {texto} (ID={lic_id}) — {motivo}")
+                        if FORCAR_REPROCESSAR and lic_id in ids_com_itens:
+                            deletar_itens_licitacao(lic_id)
+                            ids_com_itens.discard(lic_id)
 
-                # Volta para lista
-                if not voltar_para_lista(page):
-                    print("        [~] Link 'Lista Licitações' não encontrado. Refazendo pesquisa...")
-                    if not refazer_pesquisa_e_navegar(page, pag_atual):
-                        print("    [!] Falha ao recuperar. Encerrando.")
-                        INTERROMPIDO = True
-                        break
+                    # Abre detalhe
+                    if not abrir_detalhe(page, proc):
+                        print("        [!] Falha ao abrir detalhe")
+                        registrar_erro(stats, texto, "Falha ao abrir detalhe da licitação")
+                        if not refazer_pesquisa_e_navegar(page, pag_atual):
+                            falha = f"Falha ao recuperar a listagem na página {pag_atual}"
+                            break
+                        continue
 
-                # Salvar progresso a cada 10 processos
-                if stats["processados"] % 10 == 0 and stats["processados"] > 0:
-                    escrever_progresso(PROGRESS_FILE, stats, etapa="coletando", status="running",
-                                      dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
-                                      orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
+                    itens, forns, emps = coletar_todas_paginas_itens(page)
 
-                time.sleep(DELAY)
+                    if FORCAR_EMPENHOS:
+                        n_e = gravar_apenas_empenhos(lic_id, emps)
+                        stats["processados"] += 1
+                        if n_e > 0:
+                            ids_sem_empenhos.discard(lic_id)
+                            stats["empenhos"] += n_e
+                            print(f"        ✓ {n_e} empenhos gravados")
+                        else:
+                            print("        [~] Nenhum empenho no portal")
+                    else:
+                        totais = extrair_totais_fornecedores(page.content())
+                        if totais:
+                            atualizar_licitacao(lic_id, totais)
+                        stats["processados"] += 1
+                        if itens:
+                            n_i, n_f, n_e = gravar(lic_id, itens, forns, emps)
+                            stats["itens"]        += n_i
+                            stats["fornecedores"] += n_f
+                            stats["empenhos"]     += n_e
+                            ids_com_itens.add(lic_id)
+                            print(f"        ✓ {n_i} itens, {n_f} fornecedores, {n_e} empenhos")
+                        else:
+                            # Processo recém-publicado pode ainda não ter itens: fica
+                            # "sem itens" e é retentado nas próximas execuções.
+                            stats["sem_itens"] += 1
+                            print("        [~] Sem itens no portal (será retentado)")
 
-            if INTERROMPIDO:
-                break
+                    escrever_progresso(PROGRESS_FILE, stats, etapa="coletando", status="running", **kw)
 
-            # Navega para a próxima página da lista
-            # Se estamos na última página conhecida, encerra sem tentar avançar
-            if total_pags is not None and pag_atual >= total_pags:
-                print(f"\n    Página {pag_atual}/{total_pags} — última página. Coleta concluída.")
-                break
+                    if not voltar_para_lista(page):
+                        print("        [~] Aba 'Lista Licitações' não encontrada. Refazendo pesquisa...")
+                        if not refazer_pesquisa_e_navegar(page, pag_atual):
+                            falha = f"Falha ao voltar à listagem na página {pag_atual}"
+                            break
 
-            print(f"\n    Navegando para página {pag_atual + 1}...")
-            navegou = ir_para_proxima_pagina(page, pag_atual)
-            if not navegou:
-                if total_pags is None:
-                    print("    → Sem mais páginas. Coleta concluída.")
+                    time.sleep(DELAY)
+
+                if INTERROMPIDO or falha:
                     break
-                else:
+
+                if total_pags is not None and pag_atual >= total_pags:
+                    print(f"\n    Página {pag_atual}/{total_pags} — última página. Coleta concluída.")
+                    break
+
+                print(f"\n    Navegando para página {pag_atual + 1}...")
+                if not ir_para_proxima_pagina(page, pag_atual):
+                    if total_pags is None:
+                        print("    → Sem mais páginas. Coleta concluída.")
+                        break
                     print(f"    [!] Não conseguiu ir para página {pag_atual + 1}. Refazendo...")
                     if not refazer_pesquisa_e_navegar(page, pag_atual + 1):
-                        print("    [!] Falha na navegação. Encerrando.")
+                        falha = f"Falha ao navegar para a página {pag_atual + 1}/{total_pags}"
                         break
-            pag_atual += 1
+                pag_atual += 1
+        finally:
+            browser.close()
 
-        browser.close()
-
-    # Relatório final
     print("\n" + "=" * 65)
-    print("CONCLUÍDO!")
+    print("CONCLUÍDO!" if not falha else f"INCOMPLETO: {falha}")
     print("=" * 65)
-    print(f"  Processados:     {stats['processados']}")
-    if not FORCAR_EMPENHOS:
-        print(f"  Itens gravados:  {stats['itens']}")
-        print(f"  Fornecedores:    {stats['fornecedores']}")
-    print(f"  Empenhos:        {stats['empenhos']}")
-    print(f"  Pulados:         {stats['pulados']}")
-    print(f"  Não encontrados: {stats['nao_encontrados']}")
-    print(f"  Erros:           {stats['erros']}")
-    if FORCAR_EMPENHOS:
-        print(f"  Ainda sem emp.:  {len(ids_sem_empenhos)}")
+    for rotulo, chave in [("Licitações novas", "licitacoes_novas"),
+                          ("Situação atualizada", "licitacoes_atualizadas"),
+                          ("Detalhes coletados", "processados"), ("Itens gravados", "itens"),
+                          ("Fornecedores", "fornecedores"), ("Empenhos", "empenhos"),
+                          ("Sem itens (retentar)", "sem_itens"), ("Pulados", "pulados"),
+                          ("Não encontrados", "nao_encontrados"), ("Erros", "erros")]:
+        print(f"  {rotulo + ':':22s}{stats.get(chave, 0)}")
     if INTERROMPIDO:
         print("  (Interrompido — rode novamente para continuar)")
     print("=" * 65)
 
-    # Salvar status final
-    final_status = "cancelled" if INTERROMPIDO else "completed"
-    escrever_progresso(PROGRESS_FILE, stats, etapa="finalizado", status=final_status,
-                      dt_inicio=dt_inicio, dt_fim=dt_fim, portal_url=PORTAL_URL,
-                      orgao=ORGAO, regs_por_pag=REGS_POR_PAG)
-
-    # Persistir resumo da execução no histórico (Supabase) — blindado.
-    registrar_execucao(stats, final_status, dt_inicio=dt_inicio, dt_fim=dt_fim)
+    if INTERROMPIDO:
+        final_status = "cancelled"
+    elif falha:
+        final_status = "error"
+    else:
+        final_status = "completed"
+    _registrar_final(stats, final_status, dt_inicio, dt_fim,
+                     erro_resumo=(f"Coleta incompleta: {falha}" if falha else None))
+    return final_status
 
 
 if __name__ == "__main__":
     args = parse_args()
 
-    # Resolve datas
-    DT_INICIO = args.dt_inicio if args.dt_inicio else get_data_mais_recente()
-    DT_FIM = args.dt_fim if args.dt_fim else datetime.now().strftime("%d/%m/%Y")
+    DT_INICIO = args.dt_inicio if args.dt_inicio else get_data_inicio_padrao()
+    DT_FIM = args.dt_fim if args.dt_fim else get_data_fim_padrao()
     PROGRESS_FILE = args.progress_file
+    ORIGEM = args.origem
+    if args.somente_empenhos:
+        FORCAR_EMPENHOS = True
 
-    print(f"[>] Coleta iniciada")
+    print(f"[>] Coleta iniciada ({ORIGEM})")
     print(f"    Data inicial: {DT_INICIO}")
     print(f"    Data final:   {DT_FIM}")
     print(f"    Arquivo de progresso: {PROGRESS_FILE}")
 
     try:
-        main(dt_inicio=DT_INICIO, dt_fim=DT_FIM)
+        resultado = main(dt_inicio=DT_INICIO, dt_fim=DT_FIM)
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
         print(f"[!] Coleta falhou com erro fatal:\n{tb}")
-        # Marca status de erro no arquivo de progresso e no histórico.
-        # UTC tz-aware (coerência com escrever_progresso/registrar_execucao; a idade
-        # de staleness no backend depende de timestamps comparáveis).
         stats_erro = {"iniciado_em": datetime.now(timezone.utc).isoformat()}
         escrever_progresso(PROGRESS_FILE, stats_erro, etapa="falha", status="error",
                           dt_inicio=DT_INICIO, dt_fim=DT_FIM, portal_url=PORTAL_URL,
@@ -1140,3 +1268,5 @@ if __name__ == "__main__":
         registrar_execucao(stats_erro, "error", dt_inicio=DT_INICIO, dt_fim=DT_FIM,
                           erro_resumo=tb)
         raise
+    # Exit code != 0 em coleta incompleta: o run do GitHub Actions fica vermelho.
+    raise SystemExit(1 if resultado == "error" else 0)

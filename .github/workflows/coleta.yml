@@ -1,76 +1,56 @@
 name: Coleta de Dados (AgroIA-RMC)
 
-# A coleta de licitações roda num SELF-HOSTED RUNNER na máquina do usuário (Windows).
+# Coleta de licitações do FAAC (SMSAN/FAAC) no PORTAL DA TRANSPARÊNCIA de Curitiba
+# (coleta_transparencia.py — HTTP puro, sem navegador).
 #
-# Por quê self-hosted (e não ubuntu-latest como o prohort): o portal de Curitiba
-# (consultalicitacao.curitiba.pr.gov.br:9090) RESOLVE no DNS público, mas RECUSA
-# conexões dos IPs (Azure) de runners hospedados — confirmado pelo probe
-# coleta-probe.yml (run #1: curl HTTP 000 + Playwright timeout a partir de
-# ubuntu-latest). Ou seja: só dá para coletar de dentro da rede do usuário.
-# => A máquina precisa estar ligada com o runner ativo nos horários da coleta.
-#    Dica de confiabilidade: instalar o runner como SERVIÇO do Windows
-#    (repo → Settings → Actions → Runners), para subir no boot.
-#
-# Se um job não concluir (runner offline/travado), o backend auto-cura o status
-# (api/coleta.py: vira "timeout" auditado em coleta_execucoes) — sem travar a tela.
+# Histórico: até jun/2026 a coleta usava o portal JSF consultalicitacao.curitiba.pr.gov.br:9090
+# (Playwright num runner self-hosted, pois o portal recusava IPs de datacenter). Esse
+# portal foi DESATIVADO pela Prefeitura (DNS NXDOMAIN, set/2026). O Portal da
+# Transparência consulta o mesmo sistema (SGP), aceita IPs de datacenter e não exige
+# navegador → roda no runner GRATUITO ubuntu-latest: não depende de nenhum PC ligado.
+# O coletor antigo (etapa2_itens_v9.py) fica só como legado/referência.
 
 on:
   workflow_dispatch:
     inputs:
-      dt_inicio:
-        description: "Data inicial DD/MM/AAAA (vazio = a partir da última coletada)"
-        required: false
-      dt_fim:
-        description: "Data final DD/MM/AAAA (vazio = hoje)"
+      anos:
+        description: "Anos (ex.: 2026 | 2025,2026 | 2019-2026). Vazio = ano anterior + corrente"
         required: false
   schedule:
-    - cron: "0 9 * * 1"   # toda segunda 09:00 UTC = 06:00 BRT (PC precisa estar ligado)
+    - cron: "0 9 * * *"   # todos os dias 09:00 UTC = 06:00 BRT
 
-# Evita coletas sobrepostas
+# Evita coletas sobrepostas (disparo manual + agendada)
 concurrency:
   group: coleta
   cancel-in-progress: false
 
 jobs:
   coleta:
-    runs-on: self-hosted          # runner na máquina do usuário (Windows)
-    timeout-minutes: 350
-    defaults:
-      run:
-        shell: powershell
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      PLAYWRIGHT_HEADLESS: "true"
-      PLAYWRIGHT_SLOW_MO: "60"
-      # Evita UnicodeEncodeError nos print() com "→" no console Windows (cp1252).
       PYTHONUTF8: "1"
-      PYTHONIOENCODING: "utf-8"
+      COLETA_ORIGEM: ${{ github.event_name == 'schedule' && 'agendada' || 'manual' }}
     steps:
       - uses: actions/checkout@v4
 
-      # Usa Python 3.11 (tem wheels p/ lxml==4.9.3/greenlet; o 3.13 da máquina exigiria
-      # compilar com MSVC). O setup-python baixa o 3.11 no runner na 1ª vez.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # Idempotente: instala as deps nesse Python 3.11 (wheels, rápido). No Windows o
-      # Chromium do Playwright instala sem --with-deps.
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
-          python -m pip install playwright==1.40.0 beautifulsoup4==4.12.2 lxml==4.9.3 supabase==2.28.3 python-dotenv==1.0.0
-          python -m playwright install chromium
+          python -m pip install requests beautifulsoup4==4.12.2 lxml supabase==2.28.3 python-dotenv==1.0.0
 
       - name: Rodar coleta
         env:
-          IN_INI: ${{ github.event.inputs.dt_inicio }}
-          IN_FIM: ${{ github.event.inputs.dt_fim }}
+          IN_ANOS: ${{ github.event.inputs.anos }}
         run: |
-          $cmd = @('etapa2_itens_v9.py','--progress-file','coleta_status.json')
-          if ($env:IN_INI) { $cmd += @('--dt-inicio', $env:IN_INI) }
-          if ($env:IN_FIM) { $cmd += @('--dt-fim', $env:IN_FIM) }
-          Write-Host "Executando: python $($cmd -join ' ')"
-          python @cmd
-          exit $LASTEXITCODE
+          if [ -n "$IN_ANOS" ]; then
+            python coleta_transparencia.py --anos "$IN_ANOS"
+          else
+            python coleta_transparencia.py
+          fi

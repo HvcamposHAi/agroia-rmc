@@ -4,6 +4,7 @@ Gerencia subprocess, progresso em JSON, agendamento.
 """
 
 import os
+import re
 import json
 import subprocess
 import signal
@@ -30,22 +31,6 @@ def coleta_habilitada() -> bool:
 
 # ─── Funções auxiliares ──────────────────────────────────────────────────────
 
-def get_data_mais_recente() -> str:
-    """Retorna MAX(dt_abertura) como DD/MM/YYYY, ou 01/01/2019 se vazio."""
-    try:
-        sb = get_supabase_client()
-        resp = sb.table("licitacoes").select("dt_abertura").order("dt_abertura", desc=True).limit(1).execute()
-        if resp.data and len(resp.data) > 0:
-            dt_str = resp.data[0]["dt_abertura"]
-            if dt_str:
-                d = datetime.strptime(dt_str, "%Y-%m-%d").date()
-                return d.strftime("%d/%m/%Y")
-        return "01/01/2019"
-    except Exception as e:
-        logger.error(f"Erro ao buscar data mais recente: {e}")
-        return "01/01/2019"
-
-
 def _status_idle() -> dict:
     return {
         "status": "idle",
@@ -65,7 +50,7 @@ def _status_idle() -> dict:
 
 
 _TIMEOUT_MSG = ("A coleta excedeu o tempo limite sem reportar progresso "
-                "(runner offline ou job travado).")
+                "(job do GitHub Actions travado ou portal da Transparência fora do ar).")
 
 
 def _verificar_run_github(run_id: Optional[str], iniciado_em: Optional[str]) -> Optional[str]:
@@ -305,7 +290,19 @@ def get_status() -> dict:
     return _status_idle()
 
 
-def _disparar_github_actions(dt_inicio: str, dt_fim: str) -> Tuple[bool, str]:
+URL_FONTE = "https://www.transparencia.curitiba.pr.gov.br/sgp/licitacoes.aspx"
+
+# Cron do workflow coleta.yml (UTC). Mantido aqui só para exibir a próxima execução.
+COLETA_CRON_UTC = os.getenv("COLETA_CRON_UTC", "0 9 * * *")
+
+
+def _anos_padrao() -> str:
+    """Janela padrão do coletor (coleta_transparencia.py): ano anterior + corrente."""
+    ano = date.today().year
+    return f"{ano - 1},{ano}"
+
+
+def _disparar_github_actions(anos: Optional[str]) -> Tuple[bool, str]:
     """Dispara o workflow de coleta no GitHub Actions (workflow_dispatch)."""
     import requests
 
@@ -318,11 +315,8 @@ def _disparar_github_actions(dt_inicio: str, dt_fim: str) -> Tuple[bool, str]:
         return False, "Configuração ausente: defina GITHUB_REPO e GH_DISPATCH_TOKEN no servidor."
 
     url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches"
-    inputs = {}
-    if dt_inicio:
-        inputs["dt_inicio"] = dt_inicio
-    if dt_fim:
-        inputs["dt_fim"] = dt_fim
+    # O workflow só aceita o input 'anos' (inputs desconhecidos → HTTP 422).
+    inputs = {"anos": anos} if anos else {}
     try:
         r = requests.post(
             url,
@@ -343,18 +337,20 @@ def _disparar_github_actions(dt_inicio: str, dt_fim: str) -> Tuple[bool, str]:
         return False, f"GitHub recusou o disparo ({r.status_code}). Verifique token/permissões."
 
     # Status inicial imediato (o runner leva ~30-60s para subir) → UI mostra "Em andamento".
+    anos_ef = sorted(int(a) for a in re.findall(r"\d{4}", anos or _anos_padrao()))
     inicial = _status_idle()
     inicial.update({
         "status": "running",
         "etapa": "iniciando",
         "iniciado_em": datetime.now(timezone.utc).isoformat(),
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
+        "fonte": "transparencia",
         "consulta_portal": {
-            "url": os.getenv("PORTAL_URL", "http://consultalicitacao.curitiba.pr.gov.br:9090/"),
+            "url": URL_FONTE,
             "orgao": "SMSAN/FAAC",
-            "dt_inicio": dt_inicio,
-            "dt_fim": dt_fim,
-            "registros_por_pagina": 5,
+            "dt_inicio": f"01/01/{anos_ef[0]}",
+            "dt_fim": f"31/12/{anos_ef[-1]}",
+            "registros_por_pagina": 15,
         },
     })
     _upsert_status(inicial)
@@ -362,11 +358,12 @@ def _disparar_github_actions(dt_inicio: str, dt_fim: str) -> Tuple[bool, str]:
     return True, "Coleta disparada no GitHub Actions. O progresso aparecerá em instantes."
 
 
-def iniciar_coleta(dt_inicio: Optional[str] = None, dt_fim: Optional[str] = None) -> Tuple[bool, str]:
+def iniciar_coleta(anos: Optional[str] = None) -> Tuple[bool, str]:
     """
-    Inicia uma coleta de dados. Em COLETA_MODE=github dispara um workflow no GitHub
-    Actions (runner gratuito com Chromium); caso contrário roda localmente via subprocess.
-    Retorna (sucesso: bool, mensagem: str).
+    Inicia uma coleta (coleta_transparencia.py). Em COLETA_MODE=github dispara o
+    workflow coleta.yml (runner hospedado ubuntu-latest); caso contrário roda
+    localmente via subprocess. `anos`: ex. "2026" ou "2025,2026" (padrão: ano
+    anterior + corrente). Retorna (sucesso: bool, mensagem: str).
     """
     global PROCESS_PID
 
@@ -379,26 +376,18 @@ def iniciar_coleta(dt_inicio: Optional[str] = None, dt_fim: Optional[str] = None
     if status.get("status") == "running" and not _status_estagnado(status):
         return False, "Coleta já em andamento."
 
-    # Resolver datas
-    if not dt_inicio:
-        dt_inicio = get_data_mais_recente()
-    if not dt_fim:
-        dt_fim = datetime.now().strftime("%d/%m/%Y")
-
-    logger.info(f"Iniciando coleta ({coleta_modo()}): {dt_inicio} → {dt_fim}")
+    logger.info(f"Iniciando coleta ({coleta_modo()}): anos={anos or _anos_padrao()}")
 
     # ── Modo nuvem: GitHub Actions ──
     if coleta_modo() == "github":
-        return _disparar_github_actions(dt_inicio, dt_fim)
+        return _disparar_github_actions(anos)
 
     # ── Modo local: subprocess ──
     try:
-        cmd = [
-            "python", "etapa2_itens_v9.py",
-            "--dt-inicio", dt_inicio,
-            "--dt-fim", dt_fim,
-            "--progress-file", STATUS_FILE,
-        ]
+        import sys
+        cmd = [sys.executable, "coleta_transparencia.py", "--progress-file", STATUS_FILE]
+        if anos:
+            cmd += ["--anos", anos]
         # DEVNULL evita deadlock: o etapa2 imprime muito; PIPE sem drenar trava o
         # subprocess quando o buffer enche (~64KB). Progresso vai p/ Supabase/arquivo.
         process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -638,6 +627,11 @@ def proxima_execucao_iso() -> Optional[str]:
     try:
         if not coleta_habilitada():
             return None
+        if coleta_modo() == "github":
+            # No modo github quem agenda é o cron do workflow (UTC), não o APScheduler.
+            trigger = CronTrigger.from_crontab(COLETA_CRON_UTC, timezone=timezone.utc)
+            proxima = trigger.get_next_fire_time(None, datetime.now(timezone.utc))
+            return proxima.isoformat() if proxima else None
         config = get_config()
         trigger = CronTrigger(
             day_of_week=config.get("dia_semana", 0),
