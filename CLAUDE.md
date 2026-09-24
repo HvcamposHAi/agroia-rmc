@@ -205,6 +205,8 @@ Backend (Render / API):
 - `COLETA_CRON_UTC` (opcional, padrão `0 9 * * *`) — espelho do cron de `coleta.yml`, só p/ exibir a próxima execução.
 - `ALLOWED_ORIGINS` — CSV de origens do CORS; **incluir a URL do Cloudflare Pages**.
 - `API_SECRET_KEY` — validada por `verify_api_key` em `/coleta/iniciar|cancelar|config|stream`.
+- `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` (opcionais) — voz neural dos chats (`api/voz_api.py`,
+  `/voz/tts`). Sem elas (ou com falha/cota esgotada) o frontend usa a voz do navegador.
 - (modo local) `PLAYWRIGHT_HEADLESS` (`false` padrão), `PLAYWRIGHT_SLOW_MO` (80 headed / 60 headless).
 
 GitHub repo → Settings → Secrets and variables → Actions:
