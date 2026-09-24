@@ -365,6 +365,7 @@ class Banco:
         self.sb = create_client(url, key)
         self.dry = dry_run
         self._forn_cache = {}
+        self.novas = set()   # processos inseridos nesta execução
 
     def _todas(self, tabela, colunas):
         out, off = [], 0
@@ -446,6 +447,11 @@ class Banco:
         if lic_existente is None:
             r = self.sb.table("licitacoes").upsert(campos, on_conflict="processo,orgao").execute()
             lic_id = r.data[0]["id"]
+            # Registrado já aqui: se itens/empenhos falharem depois, a licitação nova
+            # continua contada e indexada (e é retentada como "sem itens").
+            self.lics[processo] = {"id": lic_id, "processo": processo,
+                                   "situacao": campos["situacao"], "url_detalhe": url_det}
+            self.novas.add(processo)
         else:
             lic_id = lic_existente["id"]
             self.sb.table("licitacoes").update(campos).eq("id", lic_id).execute()
@@ -461,7 +467,9 @@ class Banco:
                     "qt_solicitada": it["qt"], "unidade_medida": it["unidade"],
                     "valor_unitario": it["v_unit"],
                     "valor_total": it["v_total"] or it["qt"] * it["v_unit"],
-                    "cultura": cultura, "categoria": cat, "categoria_v2": cat,
+                    # "categoria" é legado (domínio restrito por CHECK; = "OUTRO" em 99,9% do corpus):
+                    # a classificação vigente é categoria_v2.
+                    "cultura": cultura, "categoria": "OUTRO", "categoria_v2": cat,
                     "relevante_agro": is_relevante_agro(cat),
                 })
             self.sb.table("itens_licitacao").upsert(registros, on_conflict="licitacao_id,seq").execute()
@@ -648,18 +656,14 @@ def coletar(anos, arquivo_status, origem, dry_run=False, limite=None):
                     st.stats["processados"] += 1
                     for k in ("itens", "fornecedores", "empenhos"):
                         st.stats[k] += c[k]
-                    if lic is None:
-                        st.stats["licitacoes_novas"] += 1
-                        if lic_id:
-                            banco.lics[chave] = {"id": lic_id, "processo": chave,
-                                                 "situacao": det["situacao"], "url_detalhe": "x"}
-                    else:
+                    if lic is not None:
                         st.stats["licitacoes_atualizadas"] += 1
                 except PortalIndisponivel:
                     raise
                 except Exception as e:
                     print(f"    [!] {chave}: {e}")
                     st.erro(chave, e)
+                st.stats["licitacoes_novas"] = len(banco.novas)
                 st.escrever()
                 time.sleep(DELAY)
             if limite and detalhes_feitos >= limite:
