@@ -8,6 +8,7 @@ from typing import Generator
 from dotenv import load_dotenv
 from chat.tools import TOOLS_SCHEMA, executar_tool
 from chat.prompts import SYSTEM_PROMPT
+from chat.i18n import msg, diretiva_idioma, com_diretiva, normalizar_idioma
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -42,15 +43,24 @@ def _registrar_log(dados: dict) -> None:
 	except Exception:
 		pass
 
+def _system_blocks(system_prompt: str, idioma: str) -> list[dict]:
+    """Prompt principal cacheado + diretiva de idioma depois do breakpoint de cache."""
+    return [
+        {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": diretiva_idioma(idioma)},
+    ]
+
 def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT,
-         tools: list = None) -> dict:
+         tools: list = None, idioma: str = "pt") -> dict:
     """
     Executa o agente de chat com loop tool_use.
     Retorna {"resposta": str, "tools_usadas": list[str]}
     Garante sempre retornar um dict com "resposta" válida.
     system_prompt permite usar um prompt focado (ex.: PRECOS_SYSTEM_PROMPT) sem duplicar o loop.
     tools permite restringir o conjunto de tools (default: TOOLS_SCHEMA = comportamento atual).
+    idioma ('pt' | 'en' | 'es') define o idioma da resposta e das mensagens de status/erro.
     """
+    idioma = normalizar_idioma(idioma)
     if historico is None:
         historico = []
     if tools is None:
@@ -58,7 +68,7 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
 
     try:
         if not pergunta or not pergunta.strip():
-            return {"resposta": "Por favor, faça uma pergunta válida.", "tools_usadas": []}
+            return {"resposta": msg("pergunta_invalida", idioma), "tools_usadas": []}
 
         # === SWITCH GLOBAL DE MOTOR ===
         # Com motor != claude, delega ao loop agêntico fiel (benchmark.agentic_loop),
@@ -70,10 +80,10 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
             if _motor != "claude":
                 provider = resolver_provider(_motor)
                 from benchmark.agentic_loop import rodar_loop
-                _res = rodar_loop(provider, pergunta, system_prompt=system_prompt, tools_schema=tools)
+                _res = rodar_loop(provider, pergunta, system_prompt=com_diretiva(system_prompt, idioma), tools_schema=tools)
                 if _res.erro:
                     logger.error(f"Motor {_motor} erro: {_res.erro}")
-                    return {"resposta": "Desculpe, houve um erro ao consultar o assistente. Tente novamente.",
+                    return {"resposta": msg("erro_assistente", idioma),
                             "tools_usadas": _res.tools_usadas}
                 return {"resposta": _res.resposta, "tools_usadas": _res.tools_usadas}
         except Exception as e:
@@ -109,7 +119,7 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
                 response = client.messages.create(
                     model="claude-haiku-4-5-20251001",
                     max_tokens=2048,
-                    system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
+                    system=_system_blocks(system_prompt, idioma),
                     tools=tools,
                     messages=messages,
                     timeout=30  # Aumentado para 30s (API pode ser lenta)
@@ -117,7 +127,7 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
             except Exception as e:
                 logger.error(f"Claude API error: {str(e)}", exc_info=True)
                 return {
-                    "resposta": "Desculpe, houve um erro ao consultar o assistente. Tente novamente.",
+                    "resposta": msg("erro_assistente", idioma),
                     "tools_usadas": tools_usadas
                 }
 
@@ -128,7 +138,7 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
                         texto = bloco.text
                 if not texto:
                     logger.warning("Claude returned empty text despite end_turn")
-                    texto = "Não consegui gerar uma resposta. Tente reformular sua pergunta."
+                    texto = msg("sem_resposta", idioma)
                 if USE_QUERY_EXPANSION:
                     _registrar_log({
                         "session_id": None,
@@ -177,26 +187,28 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
 
         logger.warning(f"Reached max iterations {max_iteracoes}")
         return {
-            "resposta": "Sua pergunta é muito complexa. Tente dividir em perguntas menores ou mais específicas.",
+            "resposta": msg("muito_complexa", idioma),
             "tools_usadas": tools_usadas
         }
 
     except Exception as e:
         logger.error(f"Unexpected error in chat(): {str(e)}", exc_info=True)
         return {
-            "resposta": "Desculpe, ocorreu um erro inesperado. Tente novamente.",
+            "resposta": msg("erro_inesperado", idioma),
             "tools_usadas": []
         }
 
 def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT,
-                tools: list = None) -> Generator[dict, None, None]:
+                tools: list = None, idioma: str = "pt") -> Generator[dict, None, None]:
     """
     Streaming version of chat. Yields SSE events:
     - {"tipo": "status", "msg": str} — Progress updates
     - {"tipo": "token", "texto": str} — LLM response tokens
     - {"tipo": "fim", "tools_usadas": list[str]} — Final event
     tools permite restringir o conjunto de tools (default: TOOLS_SCHEMA = comportamento atual).
+    idioma ('pt' | 'en' | 'es') define o idioma da resposta e das mensagens de status/erro.
     """
+    idioma = normalizar_idioma(idioma)
     if historico is None:
         historico = []
     if tools is None:
@@ -204,7 +216,7 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
 
     try:
         if not pergunta or not pergunta.strip():
-            yield {"tipo": "token", "texto": "Por favor, faça uma pergunta válida."}
+            yield {"tipo": "token", "texto": msg("pergunta_invalida", idioma)}
             yield {"tipo": "fim", "tools_usadas": []}
             return
 
@@ -216,13 +228,13 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
             from benchmark.providers.factory import ROTULOS
             _motor = get_motor_ativo()
             if _motor != "claude":
-                yield {"tipo": "status", "msg": f"🔄 Consultando {ROTULOS.get(_motor, _motor)}..."}
+                yield {"tipo": "status", "msg": msg("status_motor", idioma, motor=ROTULOS.get(_motor, _motor))}
                 provider = resolver_provider(_motor)
                 from benchmark.agentic_loop import rodar_loop
-                _res = rodar_loop(provider, pergunta, system_prompt=system_prompt, tools_schema=tools)
+                _res = rodar_loop(provider, pergunta, system_prompt=com_diretiva(system_prompt, idioma), tools_schema=tools)
                 if _res.erro:
                     logger.error(f"Motor {_motor} erro: {_res.erro}")
-                    yield {"tipo": "token", "texto": "⚠️ Desculpe, houve um erro ao consultar o assistente. Tente novamente."}
+                    yield {"tipo": "token", "texto": msg("erro_assistente", idioma)}
                 else:
                     yield {"tipo": "token", "texto": _res.resposta}
                 yield {"tipo": "fim", "tools_usadas": _res.tools_usadas}
@@ -231,7 +243,7 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
             logger.warning(f"Switch de motor (stream) falhou ({e}); usando Claude (default).")
 
         client = get_client()
-        yield {"tipo": "status", "msg": "🔍 Analisando sua pergunta..."}
+        yield {"tipo": "status", "msg": msg("status_analisando", idioma)}
 
         messages = historico + [{"role": "user", "content": pergunta}]
         tools_usadas = []
@@ -246,7 +258,7 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
                 with client.messages.stream(
                     model="claude-haiku-4-5-20251001",
                     max_tokens=2048,
-                    system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
+                    system=_system_blocks(system_prompt, idioma),
                     tools=tools,
                     messages=messages,
                     timeout=30
@@ -268,7 +280,7 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
                         return
 
                     if response.stop_reason == "tool_use":
-                        yield {"tipo": "status", "msg": "📊 Consultando o banco de dados..."}
+                        yield {"tipo": "status", "msg": msg("status_banco", idioma)}
                         messages.append({"role": "assistant", "content": response.content})
 
                         tool_results = []
@@ -294,15 +306,15 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
 
             except Exception as e:
                 logger.error(f"Claude API error: {str(e)}", exc_info=True)
-                yield {"tipo": "token", "texto": "⚠️ Desculpe, houve um erro ao consultar o assistente. Tente novamente."}
+                yield {"tipo": "token", "texto": msg("erro_assistente", idioma)}
                 yield {"tipo": "fim", "tools_usadas": tools_usadas}
                 return
 
         logger.warning(f"Reached max iterations {max_iteracoes}")
-        yield {"tipo": "token", "texto": "Sua pergunta é muito complexa. Tente dividir em perguntas menores ou mais específicas."}
+        yield {"tipo": "token", "texto": msg("muito_complexa", idioma)}
         yield {"tipo": "fim", "tools_usadas": tools_usadas}
 
     except Exception as e:
         logger.error(f"Unexpected error in chat_stream(): {str(e)}", exc_info=True)
-        yield {"tipo": "token", "texto": "Desculpe, ocorreu um erro inesperado. Tente novamente."}
+        yield {"tipo": "token", "texto": msg("erro_inesperado", idioma)}
         yield {"tipo": "fim", "tools_usadas": []}

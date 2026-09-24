@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosInstance } from 'axios'
+import { getLang } from '../i18n'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 // Sem fallback embutido: a chave vai para o bundle público em build de
@@ -21,6 +22,22 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
+// Idioma da interface vai em toda chamada: os agentes respondem nele e as
+// mensagens de status/erro do backend também. Corpos JSON recebem `idioma`
+// (ignorado por endpoints que não o usam) e a query string recebe ?idioma=.
+function comIdioma<T>(body: T): T {
+  if (body && typeof body === 'object' && !(body instanceof FormData) && !Array.isArray(body)) {
+    return { idioma: getLang(), ...(body as object) } as T
+  }
+  return body
+}
+
+apiClient.interceptors.request.use(config => {
+  config.params = { idioma: getLang(), ...(config.params ?? {}) }
+  config.data = comIdioma(config.data)
+  return config
+})
+
 export interface SSEEvent {
   tipo: 'status' | 'token' | 'fim'
   msg?: string
@@ -38,6 +55,7 @@ export interface ChatRequest {
   pergunta: string
   session_id?: string
   historico?: ChatMessage[]
+  idioma?: string
 }
 
 export interface ChatResponse {
@@ -122,13 +140,14 @@ export async function salvarConfigColeta(config: ConfigAgendamento): Promise<any
 }
 
 export async function* streamPost<T = any>(endpoint: string, body?: any): AsyncGenerator<T> {
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const sep = endpoint.includes('?') ? '&' : '?'
+  const response = await fetch(`${API_URL}${endpoint}${sep}idioma=${getLang()}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': API_KEY,
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? JSON.stringify(comIdioma(body)) : undefined,
   })
 
   if (!response.ok) {

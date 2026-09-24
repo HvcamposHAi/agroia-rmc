@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from chat.agent import chat, chat_stream
 from chat.prompts import PRECOS_SYSTEM_PROMPT, PRODUTOR_SYSTEM_PROMPT
+from chat.i18n import msg as t_msg, normalizar_idioma, diretiva_idioma
 from chat.tools import (
     get_cached, set_cache, PRODUTOR_TOOLS_SCHEMA,
     processar_planilha_ofertas, PLANILHA_COLUNAS, PLANILHA_OBRIGATORIAS, PLANILHA_MAX_LINHAS,
@@ -81,6 +82,7 @@ class ChatRequest(BaseModel):
     pergunta: str
     historico: list[dict] = []
     session_id: str | None = None
+    idioma: str = "pt"  # 'pt' | 'en' | 'es' — idioma da resposta do agente
 
 class ChatResponse(BaseModel):
     resposta: str
@@ -113,6 +115,7 @@ class AuditoriaResultado(BaseModel):
 class AuditoriaChatRequest(BaseModel):
     pergunta: str
     contexto: AuditoriaResultado
+    idioma: str = "pt"
 
 class ConsistenciaVerificacao(BaseModel):
     nome: str
@@ -169,7 +172,7 @@ def chat_endpoint(request_http: Request, request: ChatRequest, _: str = Depends(
     try:
         logger.info(f"[{session_id}] Chat request recebido (len={len(request.pergunta)})")
         historico = request.historico or carregar_historico(session_id)
-        resultado = chat(request.pergunta, historico)
+        resultado = chat(request.pergunta, historico, idioma=request.idioma)
 
         # Validar resposta
         if not resultado or not isinstance(resultado, dict):
@@ -215,7 +218,10 @@ def chat_stream_endpoint(request_http: Request, request: ChatRequest, _: str = D
             logger.info(f"[{session_id}] Stream chat request recebido (len={len(request.pergunta)})")
             historico = request.historico or carregar_historico(session_id)
 
-            cached = get_cached(request.pergunta)
+            idioma = normalizar_idioma(request.idioma)
+            # A mesma pergunta em idiomas diferentes não pode compartilhar resposta.
+            chave_cache = request.pergunta if idioma == "pt" else f"[{idioma}] {request.pergunta}"
+            cached = get_cached(chave_cache)
             if cached:
                 logger.info(f"[{session_id}] Cache hit")
                 yield f"data: {json.dumps({'tipo': 'token', 'texto': cached})}\n\n"
@@ -225,21 +231,21 @@ def chat_stream_endpoint(request_http: Request, request: ChatRequest, _: str = D
             resposta_completa = ""
             tools_usadas = []
 
-            for event in chat_stream(request.pergunta, historico):
+            for event in chat_stream(request.pergunta, historico, idioma=idioma):
                 if event.get("tipo") == "token":
                     resposta_completa += event.get("texto", "")
                 if event.get("tipo") == "fim":
                     tools_usadas = event.get("tools_usadas", [])
                 yield f"data: {json.dumps(event)}\n\n"
 
-            set_cache(request.pergunta, resposta_completa)
+            set_cache(chave_cache, resposta_completa)
             salvar_turno(session_id, "user", request.pergunta)
             salvar_turno(session_id, "assistant", resposta_completa, tools_usadas)
             logger.info(f"[{session_id}] Stream response successful ({len(tools_usadas)} tools used)")
 
         except Exception as e:
             logger.error(f"[{session_id}] Stream chat error", exc_info=True)
-            yield f"data: {json.dumps({'tipo': 'token', 'texto': '⚠️ Erro ao processar sua pergunta. Tente novamente.'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'token', 'texto': t_msg('erro_processar', request.idioma)})}\n\n"
             yield f"data: {json.dumps({'tipo': 'fim', 'tools_usadas': []})}\n\n"
 
     return StreamingResponse(
@@ -367,11 +373,12 @@ Gere no máximo 10 alertas, priorizando os mais críticos."""
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-_alertas_cache = {'data': None, 'timestamp': 0}
+_alertas_cache: dict[str, dict] = {}  # idioma → {'data', 'timestamp'}
 
 @app.post("/alertas/stream")
-def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
-    """Streaming version of alertas endpoint com cache."""
+def gerar_alertas_stream(request: Request, idioma: str = "pt", _: str = Depends(verify_api_key)):
+    """Streaming version of alertas endpoint com cache (por idioma: ?idioma=pt|en|es)."""
+    idioma = normalizar_idioma(idioma)
     from datetime import datetime, timedelta
 
     def generate():
@@ -383,13 +390,14 @@ def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
 
             # Verificar cache (válido por 30 min)
             agora = time.time()
-            if _alertas_cache['data'] and (agora - _alertas_cache['timestamp']) < 1800:
-                yield f"data: {json.dumps({'tipo': 'status', 'msg': '📦 Carregando cache...'})}\n\n"
-                yield f"data: {json.dumps({'tipo': 'resultado', 'dados': _alertas_cache['data']})}\n\n"
+            cache = _alertas_cache.get(idioma)
+            if cache and (agora - cache['timestamp']) < 1800:
+                yield f"data: {json.dumps({'tipo': 'status', 'msg': t_msg('status_cache', idioma)})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'resultado', 'dados': cache['data']})}\n\n"
                 yield f"data: {json.dumps({'tipo': 'fim'})}\n\n"
                 return
 
-            yield f"data: {json.dumps({'tipo': 'status', 'msg': '🔍 Agregando dados...'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': t_msg('status_agregando', idioma)})}\n\n"
 
             # Query otimizada: apenas últimos 3 anos, com agregação SQL
             limiar_desabastecimento = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
@@ -425,7 +433,7 @@ def gerar_alertas_stream(request: Request, _: str = Depends(verify_api_key)):
                         'ultima_compra': max(i['ultima'] for i in items)
                     })
 
-            yield f"data: {json.dumps({'tipo': 'status', 'msg': '💡 Analisando com IA...'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': t_msg('status_ia', idioma)})}\n\n"
 
             client = ant.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
@@ -442,7 +450,9 @@ Dados resumidos (apenas últimos 2-3 anos):
 Responda APENAS em JSON (sem markdown):
 {{"alertas": [{{"tipo": "ALTA_PRECO|DESABASTECIMENTO|SUPERFATURAMENTO", "severidade": "ALTA|MEDIA|BAIXA", "cultura": "", "titulo": "", "descricao": "", "recomendacao": ""}}], "resumo": ""}}
 
-Máximo 5 alertas."""
+Máximo 5 alertas.
+
+{diretiva_idioma(idioma)} Keep the JSON keys and the enum values of "tipo" and "severidade" exactly as specified; translate only titulo, descricao, recomendacao, cultura and resumo."""
 
             from chat.motor_router import completar_texto_motor
             texto = completar_texto_motor(prompt, max_tokens=2000)
@@ -465,15 +475,14 @@ Máximo 5 alertas."""
                 texto = texto[inicio:fim+1]
 
             resultado = json.loads(texto)
-            _alertas_cache['data'] = resultado
-            _alertas_cache['timestamp'] = time.time()
+            _alertas_cache[idioma] = {'data': resultado, 'timestamp': time.time()}
 
             yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultado})}\n\n"
             yield f"data: {json.dumps({'tipo': 'fim'})}\n\n"
 
         except Exception as e:
             logger.error(f"Alertas stream error: {str(e)}", exc_info=True)
-            yield f"data: {json.dumps({'tipo': 'erro', 'msg': 'Erro ao analisar alertas'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'erro', 'msg': t_msg('erro_alertas', idioma)})}\n\n"
 
     return StreamingResponse(
         generate(),
@@ -569,13 +578,14 @@ async def executar_auditoria(request: Request, _: str = Depends(verify_api_key))
         raise HTTPException(status_code=500, detail="Auditoria execution failed")
 
 @app.post("/auditoria/executar/stream")
-def executar_auditoria_stream(request: Request, _: str = Depends(verify_api_key)):
-    """Streaming version of auditoria executar."""
+def executar_auditoria_stream(request: Request, idioma: str = "pt", _: str = Depends(verify_api_key)):
+    """Streaming version of auditoria executar (?idioma=pt|en|es nas mensagens)."""
+    idioma = normalizar_idioma(idioma)
     from datetime import datetime
 
     def generate():
         try:
-            yield f"data: {json.dumps({'tipo': 'status', 'msg': '📊 Carregando dados de licitações...'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': t_msg('status_carregando_lics', idioma)})}\n\n"
             sb = get_supabase_client()
             alertas = []
 
@@ -584,7 +594,7 @@ def executar_auditoria_stream(request: Request, _: str = Depends(verify_api_key)
             empenhos = sb.from_('empenhos').select('id, item_id, nr_empenho').execute()
             licitacoes = sb.from_('licitacoes').select('id, processo, situacao').execute()
 
-            yield f"data: {json.dumps({'tipo': 'status', 'msg': '🔍 Analisando inconsistências...'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'status', 'msg': t_msg('status_inconsistencias', idioma)})}\n\n"
 
             itens_agro_data = itens_agro.data or []
             docs_data = documentos.data or []
@@ -613,7 +623,7 @@ def executar_auditoria_stream(request: Request, _: str = Depends(verify_api_key)
                     alertas.append(AuditoriaAlerta(
                         tipo='ERRO_BD',
                         severidade='CRITICO',
-                        mensagem=f"CRÍTICO: Licitação {lic['processo']} com empenho(s) mas SEM documentação",
+                        mensagem=t_msg('alerta_critico', idioma, processo=lic['processo']),
                         processo=lic['processo']
                     ))
 
@@ -622,7 +632,7 @@ def executar_auditoria_stream(request: Request, _: str = Depends(verify_api_key)
                     alertas.append(AuditoriaAlerta(
                         tipo='ERRO_BD',
                         severidade='GRAVE',
-                        mensagem=f"GRAVE: Licitação {lic['processo']} finalizada SEM documentação",
+                        mensagem=t_msg('alerta_grave', idioma, processo=lic['processo']),
                         processo=lic['processo']
                     ))
 
@@ -652,7 +662,7 @@ def executar_auditoria_stream(request: Request, _: str = Depends(verify_api_key)
 
         except Exception as e:
             logger.error(f"Auditoria stream error: {str(e)}", exc_info=True)
-            yield f"data: {json.dumps({'tipo': 'erro', 'msg': 'Erro ao executar auditoria'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'erro', 'msg': t_msg('erro_auditoria', idioma)})}\n\n"
 
     return StreamingResponse(
         generate(),
@@ -684,7 +694,9 @@ CONTEXTO DA AUDITORIA:
 PERGUNTA DO GESTOR:
 {request.pergunta}
 
-Responda em português de forma clara, direta e executiva. Se a pergunta se refere aos dados da auditoria, cite números específicos."""
+Responda de forma clara, direta e executiva. Se a pergunta se refere aos dados da auditoria, cite números específicos.
+
+{diretiva_idioma(request.idioma)}"""
 
         from chat.motor_router import completar_texto_motor
         _texto = completar_texto_motor(prompt, max_tokens=2000)
@@ -971,11 +983,12 @@ def prohort_chat_stream_endpoint(request: ChatRequest, _: str = Depends(verify_a
     def generate():
         try:
             historico = request.historico or []
-            for event in chat_stream(request.pergunta, historico, system_prompt=PRECOS_SYSTEM_PROMPT):
+            for event in chat_stream(request.pergunta, historico, system_prompt=PRECOS_SYSTEM_PROMPT,
+                                     idioma=request.idioma):
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             logger.error(f"Prohort chat error: {e}", exc_info=True)
-            yield f"data: {json.dumps({'tipo': 'token', 'texto': '⚠️ Erro ao consultar preços. Tente novamente.'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'token', 'texto': t_msg('erro_precos', request.idioma)})}\n\n"
             yield f"data: {json.dumps({'tipo': 'fim', 'tools_usadas': []})}\n\n"
 
     return StreamingResponse(
@@ -1002,7 +1015,7 @@ def produtor_chat_stream_endpoint(request_http: Request, request: ChatRequest, _
     agora = time.time()
     _produtor_rate[ip] = [t for t in _produtor_rate[ip] if agora - t < 300]
     if len(_produtor_rate[ip]) >= 20:
-        raise HTTPException(status_code=429, detail="Muitas mensagens. Aguarde alguns minutos.")
+        raise HTTPException(status_code=429, detail=t_msg("muitas_mensagens", request.idioma))
     _produtor_rate[ip].append(agora)
 
     def generate():
@@ -1012,11 +1025,12 @@ def produtor_chat_stream_endpoint(request_http: Request, request: ChatRequest, _
                 request.pergunta, historico,
                 system_prompt=PRODUTOR_SYSTEM_PROMPT,
                 tools=PRODUTOR_TOOLS_SCHEMA,
+                idioma=request.idioma,
             ):
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             logger.error(f"Produtor chat error: {e}", exc_info=True)
-            yield f"data: {json.dumps({'tipo': 'token', 'texto': '⚠️ Erro ao registrar sua oferta. Tente novamente.'})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'token', 'texto': t_msg('erro_oferta', request.idioma)})}\n\n"
             yield f"data: {json.dumps({'tipo': 'fim', 'tools_usadas': []})}\n\n"
 
     return StreamingResponse(

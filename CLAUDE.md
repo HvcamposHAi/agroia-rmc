@@ -11,7 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Período: 30/08/2019 a 08/04/2026
 - Outras 522 licitações não-agrícolas são FORA DO ESCOPO e devem ser ignoradas
 
-Data source: JSF/RichFaces portal at `http://consultalicitacao.curitiba.pr.gov.br:9090/ConsultaLicitacoes/` (requires Playwright for scraping)  
+Data source (desde set/2026): **Portal da Transparência de Curitiba** — `https://www.transparencia.curitiba.pr.gov.br/sgp/licitacoes.aspx`, órgão `FAAC` (HTTP puro, sem navegador; coletor `coleta_transparencia.py`).
+O portal JSF antigo (`consultalicitacao.curitiba.pr.gov.br:9090`, Playwright) foi **desativado pela Prefeitura** (DNS NXDOMAIN nos servidores autoritativos, verificado 23/09/2026). As seções "Phase 2/3" e "JSF/RichFaces Quirks" abaixo descrevem esse portal legado.  
 Database: Supabase (`https://rsphlvcekuomvpvjqxqm.supabase.co`)
 
 **IMPORTANTE:** Ao consultar dados, SEMPRE filtrar por `relevante_af = true` para manter escopo exclusivamente agrícola.
@@ -166,24 +167,29 @@ GOOGLE_DRIVE_FOLDER_ID=<folder_id>
 
 ### Coleta (Atualização de Dados) — arquitetura e variáveis de ambiente
 
-A coleta usa Playwright + Chromium (não roda no Render free — 512MB/sem navegador).
-**Estratégia de produção: GitHub Actions** (`COLETA_MODE=github`). O botão
-"Buscar Dados" chama o backend, que dispara o workflow `.github/workflows/coleta.yml`.
-O etapa2 grava progresso ao vivo na tabela Supabase `coleta_status` (linha id=1) e o
-resumo em `coleta_execucoes`. O backend lê `coleta_status` e transmite via SSE →
-indicador "Em andamento" funciona em qualquer máquina.
+Coletor: `coleta_transparencia.py` (requests + BeautifulSoup; ASP.NET UpdatePanel com
+postback assíncrono). **Estratégia de produção: GitHub Actions hospedado** (`ubuntu-latest`,
+`COLETA_MODE=github`) — **diário 06:00 BRT** + botão "Buscar Dados" (backend dispara
+`.github/workflows/coleta.yml`, input único `anos`). Não depende de PC ligado: o Portal
+da Transparência aceita IPs de datacenter. O coletor grava progresso ao vivo em
+`coleta_status` (id=1) e o resumo em `coleta_execucoes` (`novos` = licitações NOVAS).
 SQL das tabelas: `sql/coleta_status.sql`, `sql/coleta_execucoes.sql`.
 
-**IMPORTANTE — runner SELF-HOSTED (não hospedado):** o portal de Curitiba RESOLVE no
-DNS público mas RECUSA conexões de IPs de datacenter (GitHub-hosted/Azure, Render) —
-confirmado por probe (curl HTTP 000 + Playwright timeout de ubuntu-latest). Logo a
-coleta NÃO pode rodar em runner hospedado nem em edge/serverless (que também não rodam
-navegador). `coleta.yml` usa `runs-on: self-hosted` numa máquina em rede BR aceita.
-Isso é UM nó coletor de bastidor — o app em si é 100% nuvem (Cloudflare/Render/Supabase),
-usado de qualquer computador. Para o coletor não depender de login, rodar uma vez (como
-admin) `scripts/setup-runner-autostart.ps1` → cria Tarefa Agendada que sobe o runner no
-boot. Se o runner cair, o backend auto-cura o status travado (vira `error/timeout`
-auditado em `coleta_execucoes`), sem deixar a tela contraditória.
+Regras do coletor (janela padrão: ano anterior + corrente; `--anos 2019-2026` p/ varredura):
+- processo ausente no banco → insere licitação (classificação `classificacao_licitacao.py`,
+  idêntica à Etapa 1 — reproduz 100% de `canal`/`relevante_af`) + itens/participações/empenhos;
+- existente sem `url_detalhe` → enriquece 1 vez (empenhos COM valor, vencedores, url_detalhe);
+- situação não terminal (ex. "Parcialmente Empenhado") → reconsulta a cada execução.
+- Licitações do portal antigo (têm itens com `codigo`) **mantêm `situacao` e itens originais**:
+  o vocabulário de situação mudou ("Concluído" × "Empenhado"/"Processo Concluído").
+- `dt_abertura` = "Data Abertura Edital" do detalhe (mesma semântica do corpus).
+- Fornecedores: a base tem ~1,4 mil CNPJs duplicados (com/sem pontuação); o coletor casa
+  as duas grafias e prefere a só-dígitos (a usada nas participações).
+- Portal fora do ar/estrutura mudou → `PortalIndisponivel` → execução `error` (nunca
+  "concluída sem novidades"). Testes offline: `tests/test_coleta_transparencia.py`.
+
+O runner self-hosted (`scripts/setup-runner-autostart.ps1`) e `etapa2_itens_v9.py`
+(Playwright) são LEGADO do portal JSF desativado — não são mais usados.
 
 Backend (Render / API):
 - `COLETA_MODE` — `github` (dispara workflow no GitHub) ou `local` (subprocess local; padrão).
@@ -191,7 +197,8 @@ Backend (Render / API):
 - `GITHUB_REPO` — `owner/repo` (ex.: `HvcamposHAi/agroia-rmc`) — usado no modo github.
 - `GH_DISPATCH_TOKEN` — PAT do GitHub com escopo de Actions (`workflow`) — modo github.
 - `GITHUB_WORKFLOW_FILE` (opcional, padrão `coleta.yml`), `GITHUB_REF` (opcional, padrão `main`).
-- `COLETA_STALE_SECS` (opcional, padrão 360) — sem update do status por mais que isto ⇒ erro.
+- `COLETA_STALE_SECS` (opcional, padrão 900) — sem update do status por mais que isto ⇒ erro.
+- `COLETA_CRON_UTC` (opcional, padrão `0 9 * * *`) — espelho do cron de `coleta.yml`, só p/ exibir a próxima execução.
 - `ALLOWED_ORIGINS` — CSV de origens do CORS; **incluir a URL do Cloudflare Pages**.
 - `API_SECRET_KEY` — validada por `verify_api_key` em `/coleta/iniciar|cancelar|config|stream`.
 - (modo local) `PLAYWRIGHT_HEADLESS` (`false` padrão), `PLAYWRIGHT_SLOW_MO` (80 headed / 60 headless).
@@ -211,6 +218,28 @@ Frontend (Cloudflare Pages / Vite):
 - **Métricas de LICITAÇÃO** (715 agrícolas, cobertura %): usar `licitacoes.relevante_af=true`.
 - `relevante_af` (licitação) e `relevante_agro` (item) são granularidades **intencionalmente
   diferentes** — não misturar numa mesma comparação.
+
+### Preços de atacado — duas fontes
+
+- **PROHORT/CONAB** (`prohort_precos`, views `v_prohort_*`): ~48 produtos genéricos, 11 CEASAs
+  (PR/SP/SC/RS), SEM variedade ("TANGERINA"). Workflow `prohort.yml`.
+- **CEASA/PR por variedade** (`ceasa_pr_cotacoes`, view `v_ceasa_pr_variedades`): ~770 códigos
+  produto+variedade+embalagem ("TANGERINA PONKAN MEDIA cx 20 kg"), 5 unidades do PR, preço por
+  embalagem + R$/kg. Coletor `chat/ceasa_pr_collector.py` (POST em
+  `https://celepar7.pr.gov.br/ceasa/result_evolucao_precos.asp`, janelas de 3 dias), workflow
+  `ceasa_pr.yml`, SQL `sql/ceasa_pr_cotacoes.sql`. Painel `VariedadesCeasaPR` na página Mercado.
+
+### Multi-idioma (pt / en / es)
+
+- **Frontend:** `agroia-frontend/src/i18n/` (sem dependência externa). Cada página declara
+  `const MSG = defineMessages({ pt, en, es })` e usa `const t = useT(MSG)`; rótulos de navegação
+  em `i18n/nav.ts`. Seletor PT/EN/ES na barra (`SeletorIdioma`), salvo em `localStorage`
+  (`agroia_idioma`). Números/datas via `locale` de `useI18n()` / `fmtNum`, `fmtBRL`, `fmtData`.
+  Voz (reconhecimento + leitura) segue o idioma. Texto novo de UI **sempre** nos 3 idiomas.
+- **Agentes:** `apiClient.ts` envia `idioma` em toda chamada (corpo JSON + `?idioma=`). Backend:
+  `chat/i18n.py` — `diretiva_idioma()` vai num bloco de system SEPARADO depois do prompt cacheado
+  (não invalida o cache); `msg(chave, idioma)` para status/erros. Caches de resposta (chat,
+  alertas) são por idioma. Dados do banco (nomes de produtos, categorias) ficam em português.
 
 ## RAG (Retrieval-Augmented Generation) Schema
 

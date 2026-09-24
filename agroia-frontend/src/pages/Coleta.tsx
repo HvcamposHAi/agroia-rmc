@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { streamPost, iniciarColeta as apiIniciarColeta, cancelarColeta as apiCancelarColeta, salvarConfigColeta } from '../lib/apiClient'
 import { formatarDataHora } from '../lib/format'
+import { defineMessages, useT, useI18n } from '../i18n'
 import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -78,21 +79,290 @@ interface UltimaExecucao {
   erro_detalhes: ErroDetalhe[] | null
 }
 
-const ETAPA_LABELS: Record<string, string> = {
-  'nenhuma': '—',
-  'iniciando': '🔄 Iniciando...',
-  'coletando': '📥 Coletando dados...',
-  'finalizado': '✓ Finalizado',
-  'timeout': '⏱️ Sem resposta',
-  'falha': '⚠️ Falha',
+const MSG = defineMessages({
+  pt: {
+    etapaIniciando: '🔄 Iniciando...',
+    etapaColetando: '📥 Coletando dados...',
+    etapaFinalizado: '✓ Finalizado',
+    etapaTimeout: '⏱️ Sem resposta',
+    etapaFalha: '⚠️ Falha',
+    statusIdle: '⏸️ Parado',
+    statusRunning: '🔵 Em andamento',
+    statusCompleted: '✅ Concluído',
+    statusCancelled: '⛔ Cancelado',
+    statusError: '❌ Erro',
+    erroIniciar: 'Erro ao iniciar coleta',
+    erroConectar: 'Erro ao conectar ao servidor',
+    erroCancelar: 'Erro ao cancelar coleta',
+    configSalva: 'Configuração salva com sucesso! A coleta semanal foi atualizada.',
+    erroSalvarConfig: 'Erro ao salvar configuração',
+    agricolas: 'Agrícolas',
+    naoAgricolas: 'Não-Agrícolas',
+    proxAbrev: 'Próx. {dia} {hora}',
+    titulo: '📊 Atualização de Dados',
+    subtitulo: 'Busque novos dados agrícolas do portal com um clique ou configure atualizações automáticas.',
+    abaControle: '🎮 Controle',
+    abaAgendamento: '⏰ Agendamento',
+    lblStatus: 'STATUS',
+    lblEtapa: 'ETAPA',
+    lblProximaExec: 'PRÓXIMA EXEC.',
+    ultimaAtualizacao: '🕒 Última Atualização',
+    semExecucoes: 'Sem execuções registradas ainda. Os dados aparecerão aqui após a primeira coleta.',
+    lblData: 'DATA',
+    lblResultado: 'RESULTADO',
+    lblIntervalo: 'INTERVALO CONSULTADO',
+    lblDuracao: 'DURAÇÃO',
+    duracao: '{min}min {seg}s',
+    concluidaSemNovas: '✅ Concluída — nenhuma licitação nova no período',
+    puladaUma: ' ({n} já existente foi pulada).',
+    puladasVarias: ' ({n} já existentes foram puladas).',
+    coletaExpirou: '⏱️ A coleta expirou sem responder (job travado ou Portal da Transparência fora do ar). Tente novamente.',
+    coletaErro: '❌ A coleta terminou com erro — veja o detalhe abaixo.',
+    oQueAtualizado: 'O que foi atualizado',
+    kpiProcessados: 'PROCESSADOS',
+    kpiItens: 'ITENS',
+    kpiFornecedores: 'FORNECEDORES',
+    kpiEmpenhos: 'EMPENHOS',
+    kpiPulados: 'PULADOS',
+    kpiNovos: 'LICITAÇÕES NOVAS',
+    kpiErros: 'ERROS',
+    falhasAtualizacao: 'Falhas na atualização',
+    nenhumaFalha: '✅ Nenhuma falha registrada nesta execução.',
+    falhaUma: '❌ {n} falha registrada',
+    falhasVarias: '❌ {n} falhas registradas',
+    falhaExecucao: '❌ Falha na execução',
+    verDetalhe: 'Ver detalhe ({n})',
+    executeLocal: 'Execute a coleta na máquina local',
+    buscando: '🔄 Buscando...',
+    buscarDados: '🔍 Buscar Dados',
+    cancelar: '⛔ Cancelar',
+    avisoLocal: 'ℹ️ A coleta do portal usa um navegador e roda apenas na máquina local. Esta página exibe o status e as estatísticas mais recentes da base.',
+    progressoTitulo: '📈 Progresso em Tempo Real',
+    processando: 'Processando... {n} licitações',
+    consultaPortal: 'ℹ️ Consulta ao Portal',
+    lblUrl: 'URL:',
+    lblOrgao: 'Órgão:',
+    lblDataInicial: 'Data Inicial:',
+    lblDataFinal: 'Data Final:',
+    registrosPorPagina: 'Registros por página:',
+    agendamentoTitulo: '⏰ Configurar Agendamento Semanal',
+    agendamentoDesc: 'Configure o dia e hora para a coleta automática semanal. O sistema iniciará a coleta automaticamente neste horário.',
+    lblDiaSemana: 'Dia da Semana',
+    lblHora: 'Hora (0-23)',
+    lblMinuto: 'Minuto (0-59)',
+    agendadaPara: '✓ Coleta agendada para:',
+    diaAs: '{dia} às {hora}',
+    salvando: '💾 Salvando...',
+    salvarConfig: '💾 Salvar Configuração',
+    totalLicitacoes: 'TOTAL DE LICITAÇÕES',
+    agricolasPct: '{n} agrícolas ({pct}%)',
+    totalItens: 'TOTAL DE ITENS',
+    itensAgricolas: 'Itens agrícolas',
+    coberturaAgricola: 'COBERTURA AGRÍCOLA',
+    doTotalLicitacoes: 'Do total de licitações',
+    graficoAgroVsNao: 'Licitações: Agrícola vs Não-Agrícola',
+    top10Categorias: 'Top 10 Categorias',
+    licitacoesPorAno: 'Licitações Agrícolas por Ano',
+    serieQuantidade: 'Quantidade',
+    serieLicitacoes: 'Licitações',
+  },
+  en: {
+    etapaIniciando: '🔄 Starting...',
+    etapaColetando: '📥 Collecting data...',
+    etapaFinalizado: '✓ Finished',
+    etapaTimeout: '⏱️ No response',
+    etapaFalha: '⚠️ Failed',
+    statusIdle: '⏸️ Idle',
+    statusRunning: '🔵 Running',
+    statusCompleted: '✅ Completed',
+    statusCancelled: '⛔ Cancelled',
+    statusError: '❌ Error',
+    erroIniciar: 'Error starting data collection',
+    erroConectar: 'Error connecting to the server',
+    erroCancelar: 'Error cancelling data collection',
+    configSalva: 'Settings saved successfully! The weekly data collection has been updated.',
+    erroSalvarConfig: 'Error saving settings',
+    agricolas: 'Agricultural',
+    naoAgricolas: 'Non-agricultural',
+    proxAbrev: 'Next {dia} {hora}',
+    titulo: '📊 Data Update',
+    subtitulo: 'Fetch new agricultural data from the portal with one click or set up automatic updates.',
+    abaControle: '🎮 Control',
+    abaAgendamento: '⏰ Schedule',
+    lblStatus: 'STATUS',
+    lblEtapa: 'STAGE',
+    lblProximaExec: 'NEXT RUN',
+    ultimaAtualizacao: '🕒 Last Update',
+    semExecucoes: 'No runs recorded yet. Data will appear here after the first data collection.',
+    lblData: 'DATE',
+    lblResultado: 'RESULT',
+    lblIntervalo: 'QUERIED RANGE',
+    lblDuracao: 'DURATION',
+    duracao: '{min}min {seg}s',
+    concluidaSemNovas: '✅ Completed — no new biddings in the period',
+    puladaUma: ' ({n} already existing was skipped).',
+    puladasVarias: ' ({n} already existing were skipped).',
+    coletaExpirou: '⏱️ The data collection timed out without responding (job stuck or Transparency Portal offline). Please try again.',
+    coletaErro: '❌ The data collection ended with an error — see the details below.',
+    oQueAtualizado: 'What was updated',
+    kpiProcessados: 'PROCESSED',
+    kpiItens: 'ITEMS',
+    kpiFornecedores: 'SUPPLIERS',
+    kpiEmpenhos: 'COMMITMENTS',
+    kpiPulados: 'SKIPPED',
+    kpiNovos: 'NEW TENDERS',
+    kpiErros: 'ERRORS',
+    falhasAtualizacao: 'Update failures',
+    nenhumaFalha: '✅ No failures recorded in this run.',
+    falhaUma: '❌ {n} failure recorded',
+    falhasVarias: '❌ {n} failures recorded',
+    falhaExecucao: '❌ Run failed',
+    verDetalhe: 'View details ({n})',
+    executeLocal: 'Run the data collection on the local machine',
+    buscando: '🔄 Fetching...',
+    buscarDados: '🔍 Fetch Data',
+    cancelar: '⛔ Cancel',
+    avisoLocal: 'ℹ️ Portal data collection uses a browser and runs only on the local machine. This page shows the latest status and database statistics.',
+    progressoTitulo: '📈 Real-Time Progress',
+    processando: 'Processing... {n} biddings',
+    consultaPortal: 'ℹ️ Portal Query',
+    lblUrl: 'URL:',
+    lblOrgao: 'Agency:',
+    lblDataInicial: 'Start Date:',
+    lblDataFinal: 'End Date:',
+    registrosPorPagina: 'Records per page:',
+    agendamentoTitulo: '⏰ Configure Weekly Schedule',
+    agendamentoDesc: 'Set the day and time for the automatic weekly data collection. The system will start the data collection automatically at this time.',
+    lblDiaSemana: 'Day of the Week',
+    lblHora: 'Hour (0-23)',
+    lblMinuto: 'Minute (0-59)',
+    agendadaPara: '✓ Data collection scheduled for:',
+    diaAs: '{dia} at {hora}',
+    salvando: '💾 Saving...',
+    salvarConfig: '💾 Save Settings',
+    totalLicitacoes: 'TOTAL BIDDINGS',
+    agricolasPct: '{n} agricultural ({pct}%)',
+    totalItens: 'TOTAL ITEMS',
+    itensAgricolas: 'Agricultural items',
+    coberturaAgricola: 'AGRICULTURAL COVERAGE',
+    doTotalLicitacoes: 'Of all biddings',
+    graficoAgroVsNao: 'Biddings: Agricultural vs Non-agricultural',
+    top10Categorias: 'Top 10 Categories',
+    licitacoesPorAno: 'Agricultural Biddings per Year',
+    serieQuantidade: 'Quantity',
+    serieLicitacoes: 'Biddings',
+  },
+  es: {
+    etapaIniciando: '🔄 Iniciando...',
+    etapaColetando: '📥 Recolectando datos...',
+    etapaFinalizado: '✓ Finalizado',
+    etapaTimeout: '⏱️ Sin respuesta',
+    etapaFalha: '⚠️ Fallo',
+    statusIdle: '⏸️ Detenido',
+    statusRunning: '🔵 En curso',
+    statusCompleted: '✅ Completado',
+    statusCancelled: '⛔ Cancelado',
+    statusError: '❌ Error',
+    erroIniciar: 'Error al iniciar la recolección de datos',
+    erroConectar: 'Error al conectar con el servidor',
+    erroCancelar: 'Error al cancelar la recolección de datos',
+    configSalva: '¡Configuración guardada con éxito! La recolección de datos semanal fue actualizada.',
+    erroSalvarConfig: 'Error al guardar la configuración',
+    agricolas: 'Agrícolas',
+    naoAgricolas: 'No agrícolas',
+    proxAbrev: 'Próx. {dia} {hora}',
+    titulo: '📊 Actualización de Datos',
+    subtitulo: 'Busque nuevos datos agrícolas del portal con un clic o configure actualizaciones automáticas.',
+    abaControle: '🎮 Control',
+    abaAgendamento: '⏰ Programación',
+    lblStatus: 'ESTADO',
+    lblEtapa: 'ETAPA',
+    lblProximaExec: 'PRÓXIMA EJEC.',
+    ultimaAtualizacao: '🕒 Última Actualización',
+    semExecucoes: 'Aún no hay ejecuciones registradas. Los datos aparecerán aquí después de la primera recolección de datos.',
+    lblData: 'FECHA',
+    lblResultado: 'RESULTADO',
+    lblIntervalo: 'INTERVALO CONSULTADO',
+    lblDuracao: 'DURACIÓN',
+    duracao: '{min}min {seg}s',
+    concluidaSemNovas: '✅ Completada — ninguna licitación nueva en el período',
+    puladaUma: ' ({n} ya existente fue omitida).',
+    puladasVarias: ' ({n} ya existentes fueron omitidas).',
+    coletaExpirou: '⏱️ La recolección de datos expiró sin responder (job bloqueado o Portal de Transparencia fuera de línea). Inténtelo de nuevo.',
+    coletaErro: '❌ La recolección de datos terminó con error — vea el detalle abajo.',
+    oQueAtualizado: 'Qué se actualizó',
+    kpiProcessados: 'PROCESADOS',
+    kpiItens: 'ÍTEMS',
+    kpiFornecedores: 'PROVEEDORES',
+    kpiEmpenhos: 'COMPROMISOS',
+    kpiPulados: 'OMITIDOS',
+    kpiNovos: 'LICITACIONES NUEVAS',
+    kpiErros: 'ERRORES',
+    falhasAtualizacao: 'Fallos en la actualización',
+    nenhumaFalha: '✅ Ningún fallo registrado en esta ejecución.',
+    falhaUma: '❌ {n} fallo registrado',
+    falhasVarias: '❌ {n} fallos registrados',
+    falhaExecucao: '❌ Fallo en la ejecución',
+    verDetalhe: 'Ver detalle ({n})',
+    executeLocal: 'Ejecute la recolección de datos en la máquina local',
+    buscando: '🔄 Buscando...',
+    buscarDados: '🔍 Buscar Datos',
+    cancelar: '⛔ Cancelar',
+    avisoLocal: 'ℹ️ La recolección de datos del portal usa un navegador y se ejecuta solo en la máquina local. Esta página muestra el estado y las estadísticas más recientes de la base.',
+    progressoTitulo: '📈 Progreso en Tiempo Real',
+    processando: 'Procesando... {n} licitaciones',
+    consultaPortal: 'ℹ️ Consulta al Portal',
+    lblUrl: 'URL:',
+    lblOrgao: 'Órgano:',
+    lblDataInicial: 'Fecha Inicial:',
+    lblDataFinal: 'Fecha Final:',
+    registrosPorPagina: 'Registros por página:',
+    agendamentoTitulo: '⏰ Configurar Programación Semanal',
+    agendamentoDesc: 'Configure el día y la hora para la recolección de datos automática semanal. El sistema la iniciará automáticamente a esa hora.',
+    lblDiaSemana: 'Día de la Semana',
+    lblHora: 'Hora (0-23)',
+    lblMinuto: 'Minuto (0-59)',
+    agendadaPara: '✓ Recolección de datos programada para:',
+    diaAs: '{dia} a las {hora}',
+    salvando: '💾 Guardando...',
+    salvarConfig: '💾 Guardar Configuración',
+    totalLicitacoes: 'TOTAL DE LICITACIONES',
+    agricolasPct: '{n} agrícolas ({pct}%)',
+    totalItens: 'TOTAL DE ÍTEMS',
+    itensAgricolas: 'Ítems agrícolas',
+    coberturaAgricola: 'COBERTURA AGRÍCOLA',
+    doTotalLicitacoes: 'Del total de licitaciones',
+    graficoAgroVsNao: 'Licitaciones: Agrícola vs No agrícola',
+    top10Categorias: 'Top 10 Categorías',
+    licitacoesPorAno: 'Licitaciones Agrícolas por Año',
+    serieQuantidade: 'Cantidad',
+    serieLicitacoes: 'Licitaciones',
+  },
+})
+
+type MsgKey = keyof typeof MSG.pt
+
+const ETAPA_LABELS: Record<string, MsgKey | null> = {
+  'nenhuma': null,
+  'iniciando': 'etapaIniciando',
+  'coletando': 'etapaColetando',
+  'finalizado': 'etapaFinalizado',
+  'timeout': 'etapaTimeout',
+  'falha': 'etapaFalha',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  'idle': '⏸️ Parado',
-  'running': '🔵 Em andamento',
-  'completed': '✅ Concluído',
-  'cancelled': '⛔ Cancelado',
-  'error': '❌ Erro',
+const STATUS_LABELS: Record<string, MsgKey> = {
+  'idle': 'statusIdle',
+  'running': 'statusRunning',
+  'completed': 'statusCompleted',
+  'cancelled': 'statusCancelled',
+  'error': 'statusError',
+}
+
+// Dia 0 = segunda-feira. 1/jan/2024 foi uma segunda; nomes vêm do Intl no idioma atual.
+function nomeDiaSemana(idx: number, locale: string, formato: 'long' | 'short'): string {
+  const nome = new Date(2024, 0, 1 + idx).toLocaleDateString(locale, { weekday: formato })
+  return formato === 'long' ? nome.charAt(0).toLocaleUpperCase(locale) + nome.slice(1) : nome
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -116,6 +386,8 @@ const CATEGORIA_COLORS: Record<string, string> = {
 }
 
 export default function Coleta() {
+  const t = useT(MSG)
+  const { locale } = useI18n()
   const [status, setStatus] = useState<StatusColeta | null>(null)
   const [stats, setStats] = useState<StatsClass | null>(null)
   const [loading, setLoading] = useState(false)
@@ -203,7 +475,7 @@ export default function Coleta() {
       setStatus(data.status)
       streamarProgresso()
     } catch (e: any) {
-      setError(e.response?.data?.detail || 'Erro ao iniciar coleta')
+      setError(e.response?.data?.detail || t('erroIniciar'))
       setLoading(false)
     }
   }
@@ -225,7 +497,7 @@ export default function Coleta() {
         }
       }
     } catch (e: any) {
-      setError(e.message || 'Erro ao conectar ao servidor')
+      setError(e.message || t('erroConectar'))
       setLoading(false)
     }
   }
@@ -236,7 +508,7 @@ export default function Coleta() {
       setLoading(false)
       loadStatus()
     } catch (e: any) {
-      setError(e.response?.data?.detail || 'Erro ao cancelar coleta')
+      setError(e.response?.data?.detail || t('erroCancelar'))
     }
   }
 
@@ -254,10 +526,10 @@ export default function Coleta() {
     try {
       await salvarConfigColeta(config)
       setError('')
-      alert('Configuração salva com sucesso! A coleta semanal foi atualizada.')
+      alert(t('configSalva'))
       loadConfig()
     } catch (e: any) {
-      setError(e.response?.data?.detail || 'Erro ao salvar configuração')
+      setError(e.response?.data?.detail || t('erroSalvarConfig'))
     } finally {
       setSavingConfig(false)
     }
@@ -265,8 +537,8 @@ export default function Coleta() {
 
   // ── Preparar dados para charts ──
   const piechartData = stats ? [
-    { name: 'Agrícolas', value: stats.total_agricolas, color: '#0f766e' },
-    { name: 'Não-Agrícolas', value: stats.total_nao_agricolas, color: '#9ca3af' }
+    { name: t('agricolas'), value: stats.total_agricolas, color: '#0f766e' },
+    { name: t('naoAgricolas'), value: stats.total_nao_agricolas, color: '#9ca3af' }
   ] : []
 
   const categoriasData = stats && stats.itens_por_categoria
@@ -289,14 +561,15 @@ export default function Coleta() {
       .sort((a, b) => parseInt(a.ano) - parseInt(b.ano))
     : []
 
-  const diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
-  const diasAbrev = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom']
+  const diasSemana = [0, 1, 2, 3, 4, 5, 6].map(i => nomeDiaSemana(i, locale, 'long'))
+  const diasAbrev = [0, 1, 2, 3, 4, 5, 6].map(i => nomeDiaSemana(i, locale, 'short'))
+  const horaMinuto = `${config.hora.toString().padStart(2, '0')}:${config.minuto.toString().padStart(2, '0')}`
 
   // Rótulo da próxima execução: prioriza o ISO do backend (mesma base do
   // APScheduler); cai para um rótulo derivado do config salvo se indisponível.
   const proximaExecLabel = proximaExec
     ? formatarDataHora(proximaExec)
-    : `Próx. ${diasAbrev[config.dia_semana]} ${config.hora.toString().padStart(2, '0')}:${config.minuto.toString().padStart(2, '0')}`
+    : t('proxAbrev', { dia: diasAbrev[config.dia_semana], hora: horaMinuto })
 
   return (
     <div className="page" style={{ maxWidth: 1400 }}>
@@ -304,10 +577,10 @@ export default function Coleta() {
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
         <div style={{ marginBottom: 24 }}>
           <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
-            📊 Atualização de Dados
+            {t('titulo')}
           </h2>
           <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.6, margin: 0 }}>
-            Busque novos dados agrícolas do portal com um clique ou configure atualizações automáticas.
+            {t('subtitulo')}
           </p>
         </div>
 
@@ -327,7 +600,7 @@ export default function Coleta() {
               marginBottom: -2,
             }}
           >
-            🎮 Controle
+            {t('abaControle')}
           </button>
           <button
             onClick={() => setActiveTab('agendamento')}
@@ -344,7 +617,7 @@ export default function Coleta() {
               marginLeft: 8,
             }}
           >
-            ⏰ Agendamento
+            {t('abaAgendamento')}
           </button>
         </div>
       </div>
@@ -364,19 +637,23 @@ export default function Coleta() {
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>STATUS</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblStatus')}</p>
               <p style={{ fontSize: 16, fontWeight: 700, color: STATUS_COLORS[status?.status || 'idle'] }}>
-                {STATUS_LABELS[status?.status || 'idle']}
+                {t(STATUS_LABELS[status?.status || 'idle'] ?? 'statusIdle')}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>ETAPA</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblEtapa')}</p>
               <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)' }}>
-                {ETAPA_LABELS[status?.etapa || 'nenhuma'] || status?.etapa || '—'}
+                {(() => {
+                  const etapa = status?.etapa || 'nenhuma'
+                  const k = ETAPA_LABELS[etapa]
+                  return k ? t(k) : (k === null ? '—' : etapa)
+                })()}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>PRÓXIMA EXEC.</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblProximaExec')}</p>
               <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)' }}>
                 {proximaExecLabel}
               </p>
@@ -393,38 +670,38 @@ export default function Coleta() {
           marginBottom: 16,
         }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--texto)', marginBottom: 12 }}>
-            🕒 Última Atualização
+            {t('ultimaAtualizacao')}
           </p>
 
           {!ultimaExec ? (
             <p style={{ fontSize: 14, color: 'var(--texto-suave)', margin: 0 }}>
-              Sem execuções registradas ainda. Os dados aparecerão aqui após a primeira coleta.
+              {t('semExecucoes')}
             </p>
           ) : (
             <>
               {/* Cabeçalho: data, status, intervalo, duração */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>DATA</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblData')}</p>
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>{formatarDataHora(ultimaExec.finalizado_em)}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>RESULTADO</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblResultado')}</p>
                   <p style={{ fontSize: 15, fontWeight: 700, color: STATUS_COLORS[ultimaExec.status] || 'var(--texto)' }}>
-                    {STATUS_LABELS[ultimaExec.status] || ultimaExec.status}
+                    {STATUS_LABELS[ultimaExec.status] ? t(STATUS_LABELS[ultimaExec.status]) : ultimaExec.status}
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>INTERVALO CONSULTADO</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblIntervalo')}</p>
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>
                     {ultimaExec.dt_inicio || '—'} → {ultimaExec.dt_fim || '—'}
                   </p>
                 </div>
                 {ultimaExec.duracao_seg != null && (
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>DURAÇÃO</p>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblDuracao')}</p>
                     <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>
-                      {Math.floor(ultimaExec.duracao_seg / 60)}min {ultimaExec.duracao_seg % 60}s
+                      {t('duracao', { min: Math.floor(ultimaExec.duracao_seg / 60), seg: ultimaExec.duracao_seg % 60 })}
                     </p>
                   </div>
                 )}
@@ -438,9 +715,9 @@ export default function Coleta() {
                 && ultimaExec.erros === 0 && (
                 <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
                   <p style={{ fontSize: 13, color: '#065f46', margin: 0 }}>
-                    ✅ Concluída — nenhuma licitação nova no período
+                    {t('concluidaSemNovas')}
                     {ultimaExec.pulados > 0
-                      ? ` (${ultimaExec.pulados} já ${ultimaExec.pulados === 1 ? 'existente foi pulada' : 'existentes foram puladas'}).`
+                      ? t(ultimaExec.pulados === 1 ? 'puladaUma' : 'puladasVarias', { n: ultimaExec.pulados })
                       : '.'}
                   </p>
                 </div>
@@ -449,23 +726,24 @@ export default function Coleta() {
                 <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
                   <p style={{ fontSize: 13, color: '#9a3412', margin: 0 }}>
                     {ultimaExec.etapa === 'timeout'
-                      ? '⏱️ A coleta expirou sem responder (runner offline ou job travado). Tente novamente.'
-                      : '❌ A coleta terminou com erro — veja o detalhe abaixo.'}
+                      ? t('coletaExpirou')
+                      : t('coletaErro')}
                   </p>
                 </div>
               )}
 
               {/* O que foi atualizado */}
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8, textTransform: 'uppercase' }}>
-                O que foi atualizado
+                {t('oQueAtualizado')}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 16 }}>
                 {[
-                  { label: 'PROCESSADOS', value: ultimaExec.processados },
-                  { label: 'ITENS', value: ultimaExec.itens_coletados },
-                  { label: 'FORNECEDORES', value: ultimaExec.fornecedores },
-                  { label: 'EMPENHOS', value: ultimaExec.empenhos },
-                  { label: 'PULADOS', value: ultimaExec.pulados },
+                  { label: t('kpiNovos'), value: ultimaExec.novos },
+                  { label: t('kpiProcessados'), value: ultimaExec.processados },
+                  { label: t('kpiItens'), value: ultimaExec.itens_coletados },
+                  { label: t('kpiFornecedores'), value: ultimaExec.fornecedores },
+                  { label: t('kpiEmpenhos'), value: ultimaExec.empenhos },
+                  { label: t('kpiPulados'), value: ultimaExec.pulados },
                 ].map((kpi) => (
                   <div key={kpi.label} style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 10 }}>
                     <p style={{ fontSize: 11, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>{kpi.label}</p>
@@ -476,16 +754,16 @@ export default function Coleta() {
 
               {/* Falhas */}
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8, textTransform: 'uppercase' }}>
-                Falhas na atualização
+                {t('falhasAtualizacao')}
               </p>
               {ultimaExec.erros === 0 && !ultimaExec.erro_resumo ? (
-                <p style={{ fontSize: 14, color: '#15803d', margin: 0 }}>✅ Nenhuma falha registrada nesta execução.</p>
+                <p style={{ fontSize: 14, color: '#15803d', margin: 0 }}>{t('nenhumaFalha')}</p>
               ) : (
                 <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: 12 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: '#b91c1c', margin: 0 }}>
                     {ultimaExec.erros > 0
-                      ? `❌ ${ultimaExec.erros} ${ultimaExec.erros === 1 ? 'falha registrada' : 'falhas registradas'}`
-                      : '❌ Falha na execução'}
+                      ? t(ultimaExec.erros === 1 ? 'falhaUma' : 'falhasVarias', { n: ultimaExec.erros })
+                      : t('falhaExecucao')}
                   </p>
                   {ultimaExec.erro_resumo && (
                     <pre style={{ fontSize: 12, color: '#7f1d1d', margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', maxHeight: 160, overflow: 'auto' }}>
@@ -495,7 +773,7 @@ export default function Coleta() {
                   {ultimaExec.erro_detalhes && ultimaExec.erro_detalhes.length > 0 && (
                     <details style={{ marginTop: 8 }}>
                       <summary style={{ fontSize: 13, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>
-                        Ver detalhe ({ultimaExec.erro_detalhes.length})
+                        {t('verDetalhe', { n: ultimaExec.erro_detalhes.length })}
                       </summary>
                       <ul style={{ margin: '8px 0 0 0', paddingLeft: 18, fontSize: 13, color: '#7f1d1d', lineHeight: 1.6 }}>
                         {ultimaExec.erro_detalhes.map((d, idx) => (
@@ -515,7 +793,7 @@ export default function Coleta() {
           <button
             onClick={iniciarColeta}
             disabled={loading || !COLETA_ENABLED}
-            title={!COLETA_ENABLED ? 'Execute a coleta na máquina local' : undefined}
+            title={!COLETA_ENABLED ? t('executeLocal') : undefined}
             style={{
               background: (loading || !COLETA_ENABLED) ? 'var(--borda)' : '#0f766e',
               color: '#fff',
@@ -529,7 +807,7 @@ export default function Coleta() {
               opacity: (loading || !COLETA_ENABLED) ? 0.6 : 1
             }}
           >
-            {loading ? '🔄 Buscando...' : '🔍 Buscar Dados'}
+            {loading ? t('buscando') : t('buscarDados')}
           </button>
           {loading && (
             <button
@@ -546,7 +824,7 @@ export default function Coleta() {
                 cursor: 'pointer'
               }}
             >
-              ⛔ Cancelar
+              {t('cancelar')}
             </button>
           )}
         </div>
@@ -554,7 +832,7 @@ export default function Coleta() {
         {!COLETA_ENABLED && (
           <div style={{ marginTop: 16, padding: 12, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, color: '#1e40af' }}>
             <p style={{ fontSize: 14, margin: 0 }}>
-              ℹ️ A coleta do portal usa um navegador e roda apenas na máquina local. Esta página exibe o status e as estatísticas mais recentes da base.
+              {t('avisoLocal')}
             </p>
           </div>
         )}
@@ -571,13 +849,13 @@ export default function Coleta() {
       {loading && status && (
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--texto)', marginBottom: 16 }}>
-            📈 Progresso em Tempo Real
+            {t('progressoTitulo')}
           </h3>
 
           {/* Barra de progresso estimada */}
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
-              Processando... {status.processados} licitações
+              {t('processando', { n: status.processados })}
             </p>
             <div style={{
               background: '#e5e7eb',
@@ -605,19 +883,19 @@ export default function Coleta() {
           {/* KPIs em tempo real */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
             <div style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>PROCESSADOS</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>{t('kpiProcessados')}</p>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{status.processados}</p>
             </div>
             <div style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>NOVOS</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>{t('kpiNovos')}</p>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{status.novos}</p>
             </div>
             <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>PULADOS</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>{t('kpiPulados')}</p>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#92400e' }}>{status.pulados}</p>
             </div>
             <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#b91c1c', marginBottom: 4 }}>ERROS</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#b91c1c', marginBottom: 4 }}>{t('kpiErros')}</p>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#b91c1c' }}>{status.erros}</p>
             </div>
           </div>
@@ -626,28 +904,28 @@ export default function Coleta() {
           {status.consulta_portal && (
             <div style={{ marginTop: 20, padding: 16, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 8 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 12, textTransform: 'uppercase' }}>
-                ℹ️ Consulta ao Portal
+                {t('consultaPortal')}
               </p>
               <div className="grid-2" style={{ gap: 12, fontSize: 13, lineHeight: 1.6, color: '#374151', fontFamily: 'monospace' }}>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600 }}>URL:</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>{t('lblUrl')}</p>
                   <p style={{ margin: '4px 0 0 0', wordBreak: 'break-all', fontSize: 12 }}>{status.consulta_portal.url}</p>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600 }}>Órgão:</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>{t('lblOrgao')}</p>
                   <p style={{ margin: '4px 0 0 0' }}>{status.consulta_portal.orgao}</p>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600 }}>Data Inicial:</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>{t('lblDataInicial')}</p>
                   <p style={{ margin: '4px 0 0 0' }}>{status.consulta_portal.dt_inicio}</p>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600 }}>Data Final:</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>{t('lblDataFinal')}</p>
                   <p style={{ margin: '4px 0 0 0' }}>{status.consulta_portal.dt_fim}</p>
                 </div>
               </div>
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #d1d5db', fontSize: 12, color: '#6b7280' }}>
-                <p style={{ margin: 0 }}>Registros por página: <strong>{status.consulta_portal.registros_por_pagina}</strong></p>
+                <p style={{ margin: 0 }}>{t('registrosPorPagina')} <strong>{status.consulta_portal.registros_por_pagina}</strong></p>
               </div>
             </div>
           )}
@@ -658,18 +936,18 @@ export default function Coleta() {
       {activeTab === 'agendamento' && (
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--texto)', marginBottom: 20 }}>
-          ⏰ Configurar Agendamento Semanal
+          {t('agendamentoTitulo')}
         </h3>
 
         <p style={{ fontSize: 14, color: 'var(--texto-suave)', marginBottom: 16 }}>
-          Configure o dia e hora para a coleta automática semanal. O sistema iniciará a coleta automaticamente neste horário.
+          {t('agendamentoDesc')}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
           {/* Dia da Semana */}
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
-              Dia da Semana
+              {t('lblDiaSemana')}
             </label>
             <select
               value={config.dia_semana}
@@ -692,7 +970,7 @@ export default function Coleta() {
           {/* Hora */}
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
-              Hora (0-23)
+              {t('lblHora')}
             </label>
             <input
               type="number"
@@ -714,7 +992,7 @@ export default function Coleta() {
           {/* Minuto */}
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
-              Minuto (0-59)
+              {t('lblMinuto')}
             </label>
             <input
               type="number"
@@ -743,7 +1021,7 @@ export default function Coleta() {
           marginBottom: 24
         }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: '#0f766e', margin: 0 }}>
-            ✓ Coleta agendada para: <strong>{diasSemana[config.dia_semana]} às {config.hora.toString().padStart(2, '0')}:{config.minuto.toString().padStart(2, '0')}</strong>
+            {t('agendadaPara')} <strong>{t('diaAs', { dia: diasSemana[config.dia_semana], hora: horaMinuto })}</strong>
           </p>
         </div>
 
@@ -764,7 +1042,7 @@ export default function Coleta() {
             opacity: savingConfig ? 0.6 : 1,
           }}
         >
-          {savingConfig ? '💾 Salvando...' : '💾 Salvar Configuração'}
+          {savingConfig ? t('salvando') : t('salvarConfig')}
         </button>
 
         {error && (
@@ -779,29 +1057,29 @@ export default function Coleta() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 20, marginBottom: 24 }}>
         {/* KPIs principais */}
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>TOTAL DE LICITAÇÕES</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>{t('totalLicitacoes')}</p>
           <h3 style={{ fontSize: 28, fontWeight: 700, color: 'var(--texto)', margin: 0, marginBottom: 4 }}>
             {stats?.total_licitacoes || '—'}
           </h3>
           <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>
-            {stats ? `${stats.total_agricolas} agrícolas (${stats.cobertura_agricola_pct}%)` : '—'}
+            {stats ? t('agricolasPct', { n: stats.total_agricolas, pct: stats.cobertura_agricola_pct }) : '—'}
           </p>
         </div>
 
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>TOTAL DE ITENS</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>{t('totalItens')}</p>
           <h3 style={{ fontSize: 28, fontWeight: 700, color: 'var(--texto)', margin: 0, marginBottom: 4 }}>
             {stats?.total_itens || '—'}
           </h3>
-          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>Itens agrícolas</p>
+          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>{t('itensAgricolas')}</p>
         </div>
 
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>COBERTURA AGRÍCOLA</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>{t('coberturaAgricola')}</p>
           <h3 style={{ fontSize: 28, fontWeight: 700, color: 'var(--texto)', margin: 0, marginBottom: 4 }}>
             {stats?.cobertura_agricola_pct || '—'}%
           </h3>
-          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>Do total de licitações</p>
+          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>{t('doTotalLicitacoes')}</p>
         </div>
       </div>
 
@@ -811,7 +1089,7 @@ export default function Coleta() {
         {stats && piechartData.length > 0 && (
           <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16, margin: '0 0 16px 0' }}>
-              Licitações: Agrícola vs Não-Agrícola
+              {t('graficoAgroVsNao')}
             </h3>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -829,7 +1107,7 @@ export default function Coleta() {
         {stats && categoriasData.length > 0 && (
           <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16, margin: '0 0 16px 0' }}>
-              Top 10 Categorias
+              {t('top10Categorias')}
             </h3>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={categoriasData}>
@@ -837,7 +1115,7 @@ export default function Coleta() {
                 <XAxis dataKey="categoria" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="quantidade" radius={[8, 8, 0, 0]}>
+                <Bar dataKey="quantidade" name={t('serieQuantidade')} radius={[8, 8, 0, 0]}>
                   {categoriasData.map((entry, idx) => (
                     <Cell key={`cell-${idx}`} fill={entry.color} />
                   ))}
@@ -852,7 +1130,7 @@ export default function Coleta() {
       {stats && anosData.length > 0 && (
         <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16, margin: '0 0 16px 0' }}>
-            Licitações Agrícolas por Ano
+            {t('licitacoesPorAno')}
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={anosData}>
@@ -860,7 +1138,7 @@ export default function Coleta() {
               <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="licitacoes" fill="#0f766e" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="licitacoes" name={t('serieLicitacoes')} fill="#0f766e" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

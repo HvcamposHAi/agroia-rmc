@@ -21,6 +21,8 @@ from benchmark.providers.factory import ROTULOS
 from benchmark.providers.rest_providers import get_live_provider
 from benchmark.agentic_loop import rodar_loop
 from benchmark.precos_modelos import custo_usd
+from chat.prompts import SYSTEM_PROMPT
+from chat.i18n import com_diretiva
 
 router = APIRouter(tags=["benchmark"])
 
@@ -49,6 +51,7 @@ class MotorRequest(BaseModel):
 class CompararRequest(BaseModel):
     pergunta: str
     motores: list[str] = []
+    idioma: str = "pt"  # idioma das respostas (pt | en | es)
 
 
 def _lista_motores() -> list[dict]:
@@ -93,7 +96,8 @@ def comparar_stream(req: CompararRequest, _: str = Depends(_verify_api_key)):
         for motor in motores:
             try:
                 provider = get_live_provider(motor)
-                res = rodar_loop(provider, req.pergunta)
+                res = rodar_loop(provider, req.pergunta,
+                                 system_prompt=com_diretiva(SYSTEM_PROMPT, req.idioma))
                 ev = {
                     "tipo": "motor", "motor": motor, "rotulo": ROTULOS.get(motor, motor),
                     "resposta": res.resposta, "latencia_ms": res.latencia_total_ms,

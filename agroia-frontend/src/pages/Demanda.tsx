@@ -3,6 +3,13 @@ import { useUrlState } from '../lib/useUrlState'
 import { fetchItensAgro, type ItemAgro } from '../lib/itensAgro'
 import Dashboard from './Dashboard'
 import Consultas from './Consultas'
+import { defineMessages, useT, fmtNum } from '../i18n'
+
+const MSG = defineMessages({
+  pt: { carregando: 'Carregando demanda...', resumo: '📊 Resumo', lista: '🔍 Lista', naBase: '{n} itens na base' },
+  en: { carregando: 'Loading demand...', resumo: '📊 Summary', lista: '🔍 List', naBase: '{n} items in the database' },
+  es: { carregando: 'Cargando demanda...', resumo: '📊 Resumen', lista: '🔍 Lista', naBase: '{n} ítems en la base' },
+})
 
 /**
  * "Demanda" unifica Dashboard (Resumo) e Consultas (Lista): um único fetch de
@@ -11,6 +18,7 @@ import Consultas from './Consultas'
  * (?view=resumo|lista).
  */
 export default function Demanda() {
+  const t = useT(MSG)
   const [rows, setRows] = useState<ItemAgro[] | null>(null)
   const [view, setView] = useUrlState('view', 'resumo')
 
@@ -20,7 +28,7 @@ export default function Demanda() {
     <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
       <div style={{ textAlign: 'center' }}>
         <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
-        <p style={{ marginTop: 16, color: 'var(--texto-suave)', fontWeight: 600 }}>Carregando demanda...</p>
+        <p style={{ marginTop: 16, color: 'var(--texto-suave)', fontWeight: 600 }}>{t('carregando')}</p>
       </div>
     </div>
   )
@@ -30,14 +38,14 @@ export default function Demanda() {
       <div className="demanda-toolbar">
         <div className="seg-control">
           <button className={`seg-btn${view === 'resumo' ? ' active' : ''}`} onClick={() => setView('resumo')}>
-            📊 Resumo
+            {t('resumo')}
           </button>
           <button className={`seg-btn${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>
-            🔍 Lista
+            {t('lista')}
           </button>
         </div>
         <span style={{ fontSize: 12, color: 'var(--texto-suave)', fontWeight: 600 }}>
-          {rows.length.toLocaleString('pt-BR')} itens na base
+          {t('naBase', { n: fmtNum(rows.length) })}
         </span>
       </div>
       {view === 'lista'
