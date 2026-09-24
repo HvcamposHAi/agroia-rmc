@@ -180,7 +180,7 @@ export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, marginBottom: 20 }}>
+      <div className="grid-main-side" style={{ marginBottom: 20 }}>
         <div className="chart-card" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h3 style={{ margin: 0 }}>🏆 Top Culturas por Valor</h3>

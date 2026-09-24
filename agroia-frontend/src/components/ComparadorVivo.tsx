@@ -152,7 +152,7 @@ export default function ComparadorVivo() {
 
         {/* Cartões lado a lado */}
         {(executando || Object.keys(resultados).length > 0) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16, marginTop: 18 }}>
             {selecionados.map(m => {
               const r = resultados[m]
               return (
