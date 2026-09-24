@@ -1,4 +1,6 @@
-// Formatadores de data/hora compartilhados (pt-BR). Centralizados aqui para evitar duplicação
+import { getLocale } from '../i18n'
+
+// Formatadores de data/hora compartilhados (no locale do idioma escolhido). Centralizados aqui para evitar duplicação
 // entre páginas (ex.: Coleta e Mercado usam o mesmo "Última atualização").
 
 /** Timestamp ISO (com hora) → "8 de jun. de 2026 06:30". Vazio/ inválido → "—". */
@@ -6,7 +8,7 @@ export function formatarDataHora(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (isNaN(d.getTime())) return '—'
-  return new Intl.DateTimeFormat('pt-BR', {
+  return new Intl.DateTimeFormat(getLocale(), {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(d)
@@ -19,5 +21,5 @@ export function formatarDataCurta(iso: string | null | undefined): string {
   if (m) return `${m[3]}/${m[2]}/${m[1]}`
   const d = new Date(iso)
   if (isNaN(d.getTime())) return '—'
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(d)
+  return new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short' }).format(d)
 }

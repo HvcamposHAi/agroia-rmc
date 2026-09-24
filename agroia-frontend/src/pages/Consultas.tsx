@@ -2,9 +2,88 @@ import { useEffect, useState, useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useUrlState } from '../lib/useUrlState'
 import { fetchItensAgro, type ItemAgro as Item } from '../lib/itensAgro'
+import { defineMessages, useT, useI18n, fmtNum, fmtBRL, fmtData } from '../i18n'
+
+const MSG = defineMessages({
+  pt: {
+    carregando: 'Carregando licitações...',
+    buscarPh: 'Buscar por descrição, processo ou cultura...',
+    limparBusca: 'Limpar busca',
+    filtros: '⚙️ Filtros',
+    limpar: '✕ Limpar',
+    resultados: '{n} resultados',
+    cultura: '🌱 CULTURA',
+    canal: '🏪 CANAL',
+    ano: '📅 ANO',
+    todos: 'Todos',
+    valorMin: '💰 VALOR MÍN',
+    valorMax: '💰 VALOR MÁX',
+    ex: 'Ex: {n}',
+    ordenar: 'Ordenar:',
+    sortData: '📅 Data',
+    sortValor: '💰 Valor',
+    sortQtd: '⚖️ Qtd',
+    sortNome: '🔤 Nome',
+    nenhum: 'Nenhum item encontrado',
+    ajuste: 'Tente ajustar os filtros',
+    precoMercado: '💰 Preço de mercado',
+    documentos: '📄 Documentos',
+    quemVende: '🧺 Quem vende',
+  },
+  en: {
+    carregando: 'Loading biddings...',
+    buscarPh: 'Search by description, process or crop...',
+    limparBusca: 'Clear search',
+    filtros: '⚙️ Filters',
+    limpar: '✕ Clear',
+    resultados: '{n} results',
+    cultura: '🌱 CROP',
+    canal: '🏪 CHANNEL',
+    ano: '📅 YEAR',
+    todos: 'All',
+    valorMin: '💰 MIN VALUE',
+    valorMax: '💰 MAX VALUE',
+    ex: 'E.g.: {n}',
+    ordenar: 'Sort:',
+    sortData: '📅 Date',
+    sortValor: '💰 Value',
+    sortQtd: '⚖️ Qty',
+    sortNome: '🔤 Name',
+    nenhum: 'No items found',
+    ajuste: 'Try adjusting the filters',
+    precoMercado: '💰 Market price',
+    documentos: '📄 Documents',
+    quemVende: '🧺 Who sells',
+  },
+  es: {
+    carregando: 'Cargando licitaciones...',
+    buscarPh: 'Buscar por descripción, proceso o cultivo...',
+    limparBusca: 'Limpiar búsqueda',
+    filtros: '⚙️ Filtros',
+    limpar: '✕ Limpiar',
+    resultados: '{n} resultados',
+    cultura: '🌱 CULTIVO',
+    canal: '🏪 CANAL',
+    ano: '📅 AÑO',
+    todos: 'Todos',
+    valorMin: '💰 VALOR MÍN',
+    valorMax: '💰 VALOR MÁX',
+    ex: 'Ej.: {n}',
+    ordenar: 'Ordenar:',
+    sortData: '📅 Fecha',
+    sortValor: '💰 Valor',
+    sortQtd: '⚖️ Cant.',
+    sortNome: '🔤 Nombre',
+    nenhum: 'No se encontraron ítems',
+    ajuste: 'Intente ajustar los filtros',
+    precoMercado: '💰 Precio de mercado',
+    documentos: '📄 Documentos',
+    quemVende: '🧺 Quién vende',
+  },
+})
 
 const fmt = (v?: number) =>
-  v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) ?? '—'
+  v != null ? fmtBRL(v, { maximumFractionDigits: 0 }) : '—'
 
 const PAGE_SIZE = 20
 type SortKey = 'dt_abertura' | 'valor_total' | 'qt_solicitada' | 'descricao'
@@ -12,6 +91,8 @@ type SortDir = 'asc' | 'desc'
 
 export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
   // Quando `dataset` é fornecido (uso embutido na Demanda), reutiliza e não busca.
+  const t = useT(MSG)
+  const { locale } = useI18n()
   const [fetched, setFetched] = useState<Item[]>([])
   const items = dataset ?? fetched
   const [loading, setLoading] = useState(!dataset)
@@ -64,10 +145,10 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
     return [...f].sort((a, b) => {
       const av = a[sortKey] ?? ''
       const bv = b[sortKey] ?? ''
-      const cmp = String(av).localeCompare(String(bv), 'pt-BR', { numeric: true })
+      const cmp = String(av).localeCompare(String(bv), locale, { numeric: true })
       return sortDir === 'asc' ? cmp : -cmp
     })
-  }, [items, busca, filCultura, filCanal, filAno, valorMin, valorMax, sortKey, sortDir])
+  }, [items, busca, filCultura, filCanal, filAno, valorMin, valorMax, sortKey, sortDir, locale])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -93,7 +174,7 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
     <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
       <div style={{ textAlign: 'center' }}>
         <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
-        <p style={{ marginTop: 16, color: 'var(--texto-suave)', fontWeight: 600 }}>Carregando licitações...</p>
+        <p style={{ marginTop: 16, color: 'var(--texto-suave)', fontWeight: 600 }}>{t('carregando')}</p>
       </div>
     </div>
   )
@@ -106,51 +187,51 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
             <span style={{ fontSize: 16 }}>🔍</span>
             <input
               style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Inter', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
-              placeholder="Buscar por descrição, processo ou cultura..."
+              placeholder={t('buscarPh')}
               value={busca}
               onChange={e => { setBusca(e.target.value); setPage(1) }}
             />
-            {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
+            {busca && <button onClick={() => setBusca('')} aria-label={t('limparBusca')} title={t('limparBusca')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
           </div>
           <button onClick={() => setShowFilters(v => !v)}
             style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-            ⚙️ Filtros{hasFilters ? ` (${[busca,filCultura,filCanal,filAno,valorMin,valorMax].filter(Boolean).length})` : ''}
+            {t('filtros')}{hasFilters ? ` (${[busca,filCultura,filCanal,filAno,valorMin,valorMax].filter(Boolean).length})` : ''}
           </button>
           {hasFilters && (
             <button onClick={clearFilters}
               style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 10, padding: '9px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
-              ✕ Limpar
+              {t('limpar')}
             </button>
           )}
           <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
-            {filtered.length.toLocaleString('pt-BR')} resultados
+            {t('resultados', { n: fmtNum(filtered.length) })}
           </span>
         </div>
 
         {showFilters && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--borda)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
             {[
-              { label: '🌱 CULTURA', value: filCultura, set: setFilCultura, opts: culturas },
-              { label: '🏪 CANAL', value: filCanal, set: setFilCanal, opts: canais },
-              { label: '📅 ANO', value: filAno, set: setFilAno, opts: anos },
-            ].map(({ label, value, set, opts }) => (
-              <div key={label}>
+              { key: 'cultura', label: t('cultura'), value: filCultura, set: setFilCultura, opts: culturas },
+              { key: 'canal', label: t('canal'), value: filCanal, set: setFilCanal, opts: canais },
+              { key: 'ano', label: t('ano'), value: filAno, set: setFilAno, opts: anos },
+            ].map(({ key, label, value, set, opts }) => (
+              <div key={key}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{label}</label>
                 <select className="filter-select" style={{ width: '100%' }} value={value}
                   onChange={e => { set(e.target.value); setPage(1) }}>
-                  <option value="">Todos</option>
+                  <option value="">{t('todos')}</option>
                   {opts.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             ))}
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>💰 VALOR MÍN</label>
-              <input type="number" className="search-input" style={{ width: '100%' }} placeholder="Ex: 10000"
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('valorMin')}</label>
+              <input type="number" className="search-input" style={{ width: '100%' }} placeholder={t('ex', { n: 10000 })}
                 value={valorMin} onChange={e => { setValorMin(e.target.value); setPage(1) }} />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>💰 VALOR MÁX</label>
-              <input type="number" className="search-input" style={{ width: '100%' }} placeholder="Ex: 500000"
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('valorMax')}</label>
+              <input type="number" className="search-input" style={{ width: '100%' }} placeholder={t('ex', { n: 500000 })}
                 value={valorMax} onChange={e => { setValorMax(e.target.value); setPage(1) }} />
             </div>
           </div>
@@ -158,8 +239,8 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 12, color: 'var(--texto-suave)', fontWeight: 700 }}>Ordenar:</span>
-        {([['dt_abertura', '📅 Data'], ['valor_total', '💰 Valor'], ['qt_solicitada', '⚖️ Qtd'], ['descricao', '🔤 Nome']] as [SortKey, string][]).map(([key, label]) => (
+        <span style={{ fontSize: 12, color: 'var(--texto-suave)', fontWeight: 700 }}>{t('ordenar')}</span>
+        {([['dt_abertura', t('sortData')], ['valor_total', t('sortValor')], ['qt_solicitada', t('sortQtd')], ['descricao', t('sortNome')]] as [SortKey, string][]).map(([key, label]) => (
           <button key={key} onClick={() => toggleSort(key)}
             style={{ background: sortKey === key ? 'var(--verde-fundo)' : 'var(--branco)', border: `1px solid ${sortKey === key ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 8, padding: '5px 12px', fontFamily: 'Inter', fontSize: 12, fontWeight: 700, color: sortKey === key ? 'var(--verde)' : 'var(--texto-suave)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
             {label} {sortIcon(key)}
@@ -170,8 +251,8 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
       {pageItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--texto-suave)' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-          <p style={{ fontWeight: 700, fontSize: 16 }}>Nenhum item encontrado</p>
-          <p style={{ fontSize: 14, marginTop: 6 }}>Tente ajustar os filtros</p>
+          <p style={{ fontWeight: 700, fontSize: 16 }}>{t('nenhum')}</p>
+          <p style={{ fontSize: 14, marginTop: 6 }}>{t('ajuste')}</p>
         </div>
       ) : pageItems.map(item => (
         <div key={item.id} className="item-card">
@@ -185,23 +266,23 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
               )}
               {item.dt_abertura && (
                 <span style={{ fontSize: 11, color: 'var(--texto-suave)', marginLeft: 'auto' }}>
-                  📅 {new Date(item.dt_abertura).toLocaleDateString('pt-BR')}
+                  📅 {fmtData(item.dt_abertura)}
                 </span>
               )}
             </div>
             <div className="item-title">{item.descricao ?? '—'}</div>
             <div className="item-meta" style={{ marginTop: 6 }}>
               {item.processo && <span style={{ background: 'var(--cinza-claro)', padding: '2px 8px', borderRadius: 6, fontSize: 11 }}>📋 {item.processo}</span>}
-              {(item.qt_solicitada ?? 0) > 0 && <span>⚖️ {(item.qt_solicitada ?? 0).toLocaleString('pt-BR')} kg</span>}
+              {(item.qt_solicitada ?? 0) > 0 && <span>⚖️ {fmtNum(item.qt_solicitada ?? 0)} kg</span>}
               {(item.qt_solicitada ?? 0) > 0 && (item.valor_total ?? 0) > 0 && (
-                <span style={{ color: 'var(--verde)', fontWeight: 700 }}>≈ R$ {((item.valor_total ?? 0) / (item.qt_solicitada ?? 1)).toFixed(2)}/kg</span>
+                <span style={{ color: 'var(--verde)', fontWeight: 700 }}>≈ {fmtBRL((item.valor_total ?? 0) / (item.qt_solicitada ?? 1), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg</span>
               )}
             </div>
             {item.cultura && (
               <div className="item-links">
-                <NavLink to={`/mercado?produto=${encodeURIComponent(item.cultura)}`}>💰 Preço de mercado</NavLink>
-                {item.processo && <NavLink to={`/documentos?q=${encodeURIComponent(item.processo)}`}>📄 Documentos</NavLink>}
-                <NavLink to={`/ofertas?q=${encodeURIComponent(item.cultura)}`}>🧺 Quem vende</NavLink>
+                <NavLink to={`/mercado?produto=${encodeURIComponent(item.cultura)}`}>{t('precoMercado')}</NavLink>
+                {item.processo && <NavLink to={`/documentos?q=${encodeURIComponent(item.processo)}`}>{t('documentos')}</NavLink>}
+                <NavLink to={`/ofertas?q=${encodeURIComponent(item.cultura)}`}>{t('quemVende')}</NavLink>
               </div>
             )}
           </div>

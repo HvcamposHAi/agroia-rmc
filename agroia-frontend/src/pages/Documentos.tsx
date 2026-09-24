@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
 import { getCache, setCache } from '../lib/sessionCache'
+import { defineMessages, useI18n, useT, fmtData } from '../i18n'
 
 interface DocComLic {
   id: number
@@ -39,12 +40,89 @@ const fmtBytes = (b: number) =>
   : `${b} B`
 
 const PAGE_SIZE = 15
+
+const MSG = defineMessages({
+  pt: {
+    carregando: 'Carregando documentos...',
+    baixar: '⬇️ Baixar',
+    fechar: '✕ Fechar',
+    buscarPlaceholder: 'Buscar por nome, processo ou objeto...',
+    limparBusca: 'Limpar busca',
+    filtros: '⚙️ Filtros',
+    limpar: '✕ Limpar',
+    nDocumentos: '{n} documentos',
+    ano: '📅 ANO',
+    mes: '📆 MÊS',
+    modalidade: '🏷️ MODALIDADE',
+    situacao: '✅ SITUAÇÃO',
+    canal: '🏪 CANAL',
+    todos: 'Todos',
+    todas: 'Todas',
+    nenhum: 'Nenhum documento encontrado',
+    ajustar: 'Tente ajustar os filtros',
+    visualizar: '👁️ Visualizar',
+    primeira: 'Primeira página',
+    anterior: 'Página anterior',
+    proxima: 'Próxima página',
+    ultima: 'Última página',
+  },
+  en: {
+    carregando: 'Loading documents...',
+    baixar: '⬇️ Download',
+    fechar: '✕ Close',
+    buscarPlaceholder: 'Search by name, process or object...',
+    limparBusca: 'Clear search',
+    filtros: '⚙️ Filters',
+    limpar: '✕ Clear',
+    nDocumentos: '{n} documents',
+    ano: '📅 YEAR',
+    mes: '📆 MONTH',
+    modalidade: '🏷️ MODALITY',
+    situacao: '✅ STATUS',
+    canal: '🏪 CHANNEL',
+    todos: 'All',
+    todas: 'All',
+    nenhum: 'No documents found',
+    ajustar: 'Try adjusting the filters',
+    visualizar: '👁️ View',
+    primeira: 'First page',
+    anterior: 'Previous page',
+    proxima: 'Next page',
+    ultima: 'Last page',
+  },
+  es: {
+    carregando: 'Cargando documentos...',
+    baixar: '⬇️ Descargar',
+    fechar: '✕ Cerrar',
+    buscarPlaceholder: 'Buscar por nombre, proceso u objeto...',
+    limparBusca: 'Limpiar búsqueda',
+    filtros: '⚙️ Filtros',
+    limpar: '✕ Limpiar',
+    nDocumentos: '{n} documentos',
+    ano: '📅 AÑO',
+    mes: '📆 MES',
+    modalidade: '🏷️ MODALIDAD',
+    situacao: '✅ SITUACIÓN',
+    canal: '🏪 CANAL',
+    todos: 'Todos',
+    todas: 'Todas',
+    nenhum: 'Ningún documento encontrado',
+    ajustar: 'Intente ajustar los filtros',
+    visualizar: '👁️ Ver',
+    primeira: 'Primera página',
+    anterior: 'Página anterior',
+    proxima: 'Página siguiente',
+    ultima: 'Última página',
+  },
+})
 const CACHE_KEY = 'documentos_agro_v1'
 
 export default function Documentos() {
   const [docs, setDocs] = useState<DocComLic[]>([])
   const [loading, setLoading] = useState(true)
   const [pdfAberto, setPdfAberto] = useState<DocComLic | null>(null)
+  const { locale } = useI18n()
+  const t = useT(MSG)
 
   // Filtros (persistidos na URL)
   const [busca, setBusca] = useUrlState('q')
@@ -103,7 +181,13 @@ export default function Documentos() {
   const canais = useMemo(() =>
     [...new Set(docs.map(d => d.canal).filter(Boolean))].sort(), [docs])
 
-  const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+  const MESES = useMemo(() => {
+    const f = new Intl.DateTimeFormat(locale, { month: 'short' })
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = f.format(new Date(2020, i, 15)).replace('.', '')
+      return m.charAt(0).toUpperCase() + m.slice(1)
+    })
+  }, [locale])
 
   const filtered = useMemo(() => {
     let f = docs
@@ -145,7 +229,7 @@ export default function Documentos() {
     <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
       <div style={{ textAlign: 'center' }}>
         <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
-        <p style={{ marginTop: 16, color: 'var(--texto-suave)', fontWeight: 600 }}>Carregando documentos...</p>
+        <p style={{ marginTop: 16, color: 'var(--texto-suave)', fontWeight: 600 }}>{t('carregando')}</p>
       </div>
     </div>
   )
@@ -163,7 +247,7 @@ export default function Documentos() {
               </div>
               <div style={{ fontSize: 12, color: 'var(--texto-suave)', marginTop: 3, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {pdfAberto.processo && <span>📋 {pdfAberto.processo}</span>}
-                {pdfAberto.dt_abertura && <span>📅 {new Date(pdfAberto.dt_abertura).toLocaleDateString('pt-BR')}</span>}
+                {pdfAberto.dt_abertura && <span>📅 {fmtData(pdfAberto.dt_abertura)}</span>}
                 {pdfAberto.modalidade && <span>🏷️ {pdfAberto.modalidade}</span>}
               </div>
               {pdfAberto.objeto && (
@@ -175,11 +259,11 @@ export default function Documentos() {
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <a href={toDownloadUrl(pdfAberto.url_publica)} target="_blank" rel="noopener noreferrer"
                 style={{ background: 'var(--verde)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                ⬇️ Baixar
+                {t('baixar')}
               </a>
               <button onClick={() => setPdfAberto(null)}
                 style={{ background: 'var(--cinza-claro)', border: '1px solid var(--borda)', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: 'var(--texto)' }}>
-                ✕ Fechar
+                {t('fechar')}
               </button>
             </div>
           </div>
@@ -196,61 +280,61 @@ export default function Documentos() {
             <span>🔍</span>
             <input
               style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Inter', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
-              placeholder="Buscar por nome, processo ou objeto..."
+              placeholder={t('buscarPlaceholder')}
               value={busca}
               onChange={e => { setBusca(e.target.value); setPage(1) }}
             />
-            {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
+            {busca && <button onClick={() => setBusca('')} aria-label={t('limparBusca')} title={t('limparBusca')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
           </div>
           <button onClick={() => setShowFilters(v => !v)}
             style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            ⚙️ Filtros{hasFilters ? ` (${[filAno,filMes,filModalidade,filSituacao,filCanal].filter(Boolean).length})` : ''}
+            {t('filtros')}{hasFilters ? ` (${[filAno,filMes,filModalidade,filSituacao,filCanal].filter(Boolean).length})` : ''}
           </button>
           {hasFilters && (
             <button onClick={clearFilters}
               style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 10, padding: '9px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
-              ✕ Limpar
+              {t('limpar')}
             </button>
           )}
           <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-            {filtered.length} documentos
+            {t('nDocumentos', { n: filtered.length })}
           </span>
         </div>
 
         {showFilters && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--borda)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>📅 ANO</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('ano')}</label>
               <select className="filter-select" style={{ width: '100%' }} value={filAno} onChange={e => { setFilAno(e.target.value); setPage(1) }}>
-                <option value="">Todos</option>
+                <option value="">{t('todos')}</option>
                 {anos.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>📆 MÊS</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('mes')}</label>
               <select className="filter-select" style={{ width: '100%' }} value={filMes} onChange={e => { setFilMes(e.target.value); setPage(1) }}>
-                <option value="">Todos</option>
+                <option value="">{t('todos')}</option>
                 {MESES.map((m, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>🏷️ MODALIDADE</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('modalidade')}</label>
               <select className="filter-select" style={{ width: '100%' }} value={filModalidade} onChange={e => { setFilModalidade(e.target.value); setPage(1) }}>
-                <option value="">Todas</option>
+                <option value="">{t('todas')}</option>
                 {modalidades.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>✅ SITUAÇÃO</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('situacao')}</label>
               <select className="filter-select" style={{ width: '100%' }} value={filSituacao} onChange={e => { setFilSituacao(e.target.value); setPage(1) }}>
-                <option value="">Todas</option>
+                <option value="">{t('todas')}</option>
                 {situacoes.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>🏪 CANAL</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('canal')}</label>
               <select className="filter-select" style={{ width: '100%' }} value={filCanal} onChange={e => { setFilCanal(e.target.value); setPage(1) }}>
-                <option value="">Todos</option>
+                <option value="">{t('todos')}</option>
                 {canais.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -262,8 +346,8 @@ export default function Documentos() {
       {pageItems.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--texto-suave)' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>📂</div>
-          <p style={{ fontWeight: 700, fontSize: 16 }}>Nenhum documento encontrado</p>
-          <p style={{ fontSize: 14, marginTop: 6 }}>Tente ajustar os filtros</p>
+          <p style={{ fontWeight: 700, fontSize: 16 }}>{t('nenhum')}</p>
+          <p style={{ fontSize: 14, marginTop: 6 }}>{t('ajustar')}</p>
         </div>
       ) : pageItems.map(doc => {
         const sc = situacaoCor(doc.situacao)
@@ -283,7 +367,7 @@ export default function Documentos() {
                 )}
                 {doc.dt_abertura && (
                   <span style={{ fontSize: 11, color: 'var(--texto-suave)' }}>
-                    📅 {new Date(doc.dt_abertura).toLocaleDateString('pt-BR')}
+                    📅 {fmtData(doc.dt_abertura)}
                   </span>
                 )}
                 {doc.modalidade && (
@@ -308,7 +392,7 @@ export default function Documentos() {
                 <span style={{ fontSize: 11, color: 'var(--texto-suave)', fontWeight: 600 }}>{fmtBytes(doc.tamanho_bytes)}</span>
               )}
               <span style={{ background: 'var(--verde-fundo)', color: 'var(--verde)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--borda)', whiteSpace: 'nowrap' }}>
-                👁️ Visualizar
+                {t('visualizar')}
               </span>
             </div>
           </div>
@@ -318,15 +402,15 @@ export default function Documentos() {
       {/* ── Paginação ── */}
       {totalPages > 1 && (
         <div className="pagination">
-          <button className="page-btn" onClick={() => setPage(1)} disabled={page === 1}>«</button>
-          <button className="page-btn" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>‹</button>
+          <button className="page-btn" onClick={() => setPage(1)} disabled={page === 1} aria-label={t('primeira')} title={t('primeira')}>«</button>
+          <button className="page-btn" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} aria-label={t('anterior')} title={t('anterior')}>‹</button>
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             const start = Math.max(1, Math.min(page - 2, totalPages - 4))
             const p = start + i
             return <button key={p} className={`page-btn${page === p ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
           })}
-          <button className="page-btn" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}>›</button>
-          <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</button>
+          <button className="page-btn" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} aria-label={t('proxima')} title={t('proxima')}>›</button>
+          <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages} aria-label={t('ultima')} title={t('ultima')}>»</button>
         </div>
       )}
     </div>

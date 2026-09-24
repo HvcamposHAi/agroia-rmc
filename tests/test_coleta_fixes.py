@@ -130,10 +130,11 @@ class TestPopenDevnull:
 
         monkeypatch.setattr(coleta_mod.subprocess, "Popen", fake_popen)
 
-        # dt_inicio/dt_fim explícitos evitam ida ao Supabase (get_data_mais_recente)
-        ok, msg = coleta_mod.iniciar_coleta(dt_inicio="01/01/2026", dt_fim="07/01/2026")
+        ok, msg = coleta_mod.iniciar_coleta(anos="2026")
 
         assert ok is True  # P2: gate habilitado seguiu adiante
+        assert "coleta_transparencia.py" in capturado["cmd"]
+        assert capturado["cmd"][-2:] == ["--anos", "2026"]
         assert capturado["kwargs"].get("stdout") is coleta_mod.subprocess.DEVNULL
         assert capturado["kwargs"].get("stderr") is coleta_mod.subprocess.DEVNULL
         assert capturado["kwargs"].get("stdout") is not coleta_mod.subprocess.PIPE
@@ -216,11 +217,13 @@ class TestDispatchGithub:
         import requests
         monkeypatch.setattr(requests, "post", fake_post)
 
-        ok, msg = coleta_mod.iniciar_coleta(dt_inicio="01/01/2026", dt_fim="07/01/2026")
+        ok, msg = coleta_mod.iniciar_coleta(anos="2026")
         assert ok is True
         assert "GitHub" in msg
         assert "/actions/workflows/" in chamado["url"]
         assert chamado["json"]["ref"]  # ref enviado
+        # coleta.yml só aceita o input 'anos' (inputs desconhecidos → HTTP 422)
+        assert chamado["json"]["inputs"] == {"anos": "2026"}
 
     def test_falta_config(self, monkeypatch):
         monkeypatch.setenv("COLETA_ENABLED", "true")
@@ -228,7 +231,7 @@ class TestDispatchGithub:
         monkeypatch.delenv("GITHUB_REPO", raising=False)
         monkeypatch.delenv("GH_DISPATCH_TOKEN", raising=False)
         monkeypatch.setattr(coleta_mod, "get_status", lambda: {"status": "idle"})
-        ok, msg = coleta_mod.iniciar_coleta(dt_inicio="01/01/2026", dt_fim="07/01/2026")
+        ok, msg = coleta_mod.iniciar_coleta(anos="2026")
         assert ok is False
         assert "GITHUB_REPO" in msg or "GH_DISPATCH_TOKEN" in msg
 
