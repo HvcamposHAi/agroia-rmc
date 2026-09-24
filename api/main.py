@@ -78,6 +78,10 @@ def verify_api_key(api_key: str = Security(api_key_header)) -> str:
 from api.benchmark_api import router as benchmark_router  # noqa: E402
 app.include_router(benchmark_router)
 
+# Voz neural (Azure Speech) para ler as respostas dos chats (router isolado).
+from api.voz_api import router as voz_router  # noqa: E402
+app.include_router(voz_router)
+
 class ChatRequest(BaseModel):
     pergunta: str
     historico: list[dict] = []
