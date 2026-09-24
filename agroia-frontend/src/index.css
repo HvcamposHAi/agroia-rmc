@@ -38,6 +38,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh; /* celular: desconta a barra de endereço (senão o input do chat some) */
   overflow: hidden;
 }
 
@@ -174,6 +175,7 @@ button.topnav-item {
     width: 250px;
     max-width: 80vw;
     height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
     flex-direction: column;
     align-items: stretch;
     gap: 4px;
@@ -867,7 +869,7 @@ button.topnav-item {
 .response-table {
   margin: 16px 0;
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto; /* tabelas largas rolam dentro do balão no celular */
   box-shadow: 0 2px 8px rgba(51, 65, 85, 0.1);
 }
 
@@ -1132,4 +1134,81 @@ button.topnav-item {
   .cmdk-trigger span { display: none; }
   .role-toggle { position: static; margin-bottom: 14px; align-self: flex-start; }
   .home-hero h1 { font-size: 24px; }
+}
+
+/* ── Responsividade (tablet ≤ 1024px · celular ≤ 860/600px) ───────────────── */
+
+/* Grids de colunas fixas (principal + lateral, 2 colunas) que colapsam */
+.grid-main-side { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Em contêineres de chat (coluna flex), só a lista de mensagens encolhe —
+   abas, filtros e o input não podem ser espremidos por cima das mensagens. */
+.chat-container > :not(.chat-messages) { flex-shrink: 0; }
+.chat-messages { min-height: 0; }
+
+.hub-grid { grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); }
+.metrics-grid { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+.home-ask input { min-width: 0; }
+.msg-bubble { min-width: 0; overflow-wrap: anywhere; }
+.response-table table { min-width: 100%; }
+
+/* Tablet: o desktop fica apertado entre 860 e 1100px */
+@media (min-width: 861px) and (max-width: 1100px) {
+  .cmdk-trigger kbd { display: none; }
+  .topnav-item { padding: 8px 9px; }
+}
+
+@media (max-width: 1024px) {
+  .grid-main-side { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 860px) {
+  .page { padding: 16px; }
+  .topbar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+  .topbar h2 { font-size: 18px; }
+  .demanda-toolbar { padding: 12px 16px 0; }
+  .chat-messages { padding: 16px; }
+  .chat-input-area { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .chat-welcome { padding: 24px 8px; }
+  .chat-welcome h3 { font-size: 22px; }
+  .msg { max-width: 100%; gap: 8px; }
+  .msg-avatar { width: 30px; height: 30px; font-size: 14px; }
+  .msg-bubble { max-width: calc(100% - 38px); }
+  .chart-card { padding: 16px; }
+  .filters-bar { padding: 12px; }
+  .home-hero { padding: 20px 16px; }
+  .appbar { padding: 0 12px; gap: 10px; }
+  .appbar-nav { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  /* Markdown do assistente: tabela larga rola sozinha em vez de alargar o balão */
+  .markdown-content table { display: block; overflow-x: auto; }
+}
+
+@media (max-width: 600px) {
+  .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .brand-text { font-size: 16px; }
+  .user-avatar { display: none; }
+  .hub-header h1 { font-size: 22px; }
+  .metric-value { font-size: 24px; }
+  .home-kpis .metric-card.heroi .metric-value { font-size: 28px; }
+  .metric-card { padding: 16px; }
+  .item-card { flex-wrap: wrap; padding: 14px; gap: 10px; }
+  .item-valor { font-size: 16px; }
+  .suggestion-btn { width: 100%; }
+  .home-ask { flex-wrap: wrap; }
+  .home-ask input { flex: 1 1 0; }
+  .home-ask button { width: 100%; padding: 11px 18px; }
+  .seg-btn { padding: 7px 12px; }
+  .cmdk-overlay { padding-top: 8vh; }
+  /* ≥ 16px evita o zoom automático do iOS ao focar campos */
+  input, select, textarea,
+  .chat-input, .search-input, .filter-select, .cmdk-input, .home-ask input { font-size: 16px; }
+  /* Alvos de toque mais confortáveis */
+  .page-btn { width: 40px; height: 40px; }
+  .pagination { flex-wrap: wrap; }
+}
+
+/* Telas de toque: sem "pulo" de hover que fica preso após o toque */
+@media (hover: none) {
+  .hub-card:hover, .home-kpis .metric-card:hover { transform: none; }
 }

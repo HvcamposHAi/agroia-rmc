@@ -154,7 +154,7 @@ export default function BenchmarkMotores() {
           <p style={{ color: 'var(--texto-suave)' }}>
             Rode o benchmark completo (offline ou via GitHub Actions) para preencher:
           </p>
-          <pre style={{ background: '#f1f5f9', padding: 12, borderRadius: 8, display: 'inline-block', textAlign: 'left', fontSize: 13 }}>
+          <pre style={{ background: '#f1f5f9', padding: 12, borderRadius: 8, display: 'inline-block', textAlign: 'left', fontSize: 13, maxWidth: '100%', overflowX: 'auto' }}>
 {`python -m benchmark.benchmark_executor --motores all --reps 3
 python -m benchmark.benchmark_executor --export-frontend`}
           </pre>
@@ -242,7 +242,7 @@ python -m benchmark.benchmark_executor --export-frontend`}
       </div>
 
       {/* Gráficos: latência e AF@k */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid-2" style={{ gap: 20 }}>
         <div className="chart-card" style={{ margin: 0 }}>
           <h3>⏱️ Latência p50 vs p95 (ms)</h3>
           <ResponsiveContainer width="100%" height={260}>

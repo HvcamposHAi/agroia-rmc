@@ -122,7 +122,7 @@ export default function Produtor() {
   return (
     <div className="chat-container">
       {/* Seletor de forma de cadastro */}
-      <div style={{ display: 'flex', gap: 8, padding: '12px 16px 0', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, padding: '12px 16px 0', flexWrap: 'wrap', flexShrink: 0 }}>
         <button
           onClick={() => setAba('chat')}
           style={tabStyle(aba === 'chat')}

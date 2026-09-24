@@ -1,24 +1,34 @@
-# Imagem com Chromium + dependências do Playwright já instaladas.
-# A tag DEVE casar com playwright==1.40.0 (requirements.txt).
-FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
+# Dockerfile da API para Hugging Face Spaces.
+#
+# Esta branch (huggingface) existe SÓ para o deploy no HF Spaces — por isso
+# sobrescreve o Dockerfile de coleta (que traz Chromium) e o README.
+#
+# Imagem enxuta: instala apenas o que api/main.py importa de verdade.
+# Verificado bloqueando os imports: api.main sobe sem sentence-transformers,
+# torch, playwright, pandas, numpy, openai, google e scipy — todos são lazy.
+
+FROM python:3.11.9-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-WORKDIR /app
+# O HF Spaces roda como usuário não-root (uid 1000) e espera escrita em /home/user
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR $HOME/app
 
-# Idempotente: a imagem base já traz os browsers; no-op se já presentes.
-RUN python -m playwright install chromium
+COPY --chown=user requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
 
-COPY . .
+COPY --chown=user . .
 
-# Render injeta $PORT. WORKDIR=/app garante que
-# subprocess.Popen(["python","etapa2_itens_v9.py",...]) e os arquivos
-# relativos (coleta_status.json, coleta_config.json) resolvam.
-ENV PORT=8000
+# O HF Spaces expõe a porta 7860 (declarada em app_port no README.md)
+ENV PORT=7860
+EXPOSE 7860
+
 CMD uvicorn api.main:app --host 0.0.0.0 --port $PORT
