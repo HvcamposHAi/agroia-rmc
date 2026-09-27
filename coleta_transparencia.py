@@ -378,12 +378,17 @@ class Banco:
 
     def carregar_indice(self):
         lics = self._todas("licitacoes", "id,processo,situacao,url_detalhe")
-        itens = self._todas("itens_licitacao", "licitacao_id,codigo")
+        itens = self._todas("itens_licitacao", "licitacao_id,codigo,valor_unitario")
         self.lics = {l["processo"]: l for l in lics}
         self.com_itens = {i["licitacao_id"] for i in itens}
         # Itens gravados pelo portal antigo têm 'codigo'; os da Transparência não.
         # Itens legados nunca são regravados (seq/código de esquema diferente).
         self.itens_legado = {i["licitacao_id"] for i in itens if (i.get("codigo") or "").strip()}
+        # Licitações desta fonte com TODOS os itens a preço zero: gravadas antes da homologação.
+        # São reconsultadas mesmo em situação terminal até os preços aparecerem (a validação A1
+        # achou 43 assim, 13 já "Empenhado", com preço preenchido no portal).
+        com_preco = {i["licitacao_id"] for i in itens if float(i.get("valor_unitario") or 0) > 0}
+        self.itens_sem_preco = self.com_itens - com_preco - self.itens_legado
         print(f"    {len(self.lics)} licitações | {len(self.com_itens)} com itens")
 
     def fornecedor_id(self, doc, razao):
@@ -475,6 +480,10 @@ class Banco:
             self.sb.table("itens_licitacao").upsert(registros, on_conflict="licitacao_id,seq").execute()
             c["itens"] = len(registros)
             self.com_itens.add(lic_id)
+            if any(r["valor_unitario"] for r in registros):
+                self.itens_sem_preco.discard(lic_id)
+            else:
+                self.itens_sem_preco.add(lic_id)
 
         # Participantes + vencedores
         vencedores = {it["vencedor_doc"] for it in det["itens"] if it["vencedor_doc"]}
@@ -600,6 +609,8 @@ def precisa_detalhe(linha, lic, banco):
         return "enriquecer (1ª vez nesta fonte)"
     if lic["id"] not in banco.com_itens:
         return "sem itens"
+    if lic["id"] in getattr(banco, "itens_sem_preco", ()):
+        return "itens sem preço"
     if linha["situacao"] not in SITUACOES_TERMINAIS:
         return f"em andamento ({linha['situacao']})"
     # Registros do portal antigo usam outro vocabulário de situação — não comparar.
