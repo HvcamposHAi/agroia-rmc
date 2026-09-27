@@ -1,0 +1,180 @@
+# Metodologia da validação da tese (Parte A)
+
+Execução `{{ run_id }}`. Relatório gerado automaticamente em {{ gerado_em.brt[:16] | replace("T", " ") }} (horário de Brasília) a partir do manifesto, do pré-registro e dos arquivos de resultado da execução.
+
+## 1 Identificação da execução
+
+A Tabela {{ tab("ident") }} identifica a execução, as versões dos componentes e os hashes que permitem reproduzir a análise.
+
+**Tabela {{ tab("ident") }}: Identificação da execução**
+
+{% set m = manifesto %}
+{{ tabela([
+  ["Identificador da execução", run_id],
+  ["Início", (m.inicio or {}).get("brt", "n/d")],
+  ["Fim", (m.fim or {}).get("brt", "n/d")],
+  ["Commit do repositório", (m.git or {}).get("commit", "n/d")],
+  ["Árvore de trabalho sem alterações", "sim" if (m.git or {}).get("arvore_limpa") else "não"],
+  ["Hash agregado do snapshot (SHA-256)", snapshot.hash_agregado or "n/d"],
+  ["Pré-registro", (prereg_arquivo or "n/d") ~ " / SHA-256 " ~ (prereg_sha or "não registrado")],
+  ["Python", (m.versoes or {}).get("python", "n/d")],
+  ["Claude Code", (m.versoes or {}).get("claude_code", "n/d")],
+  ["Modelo do agente (A1 Chrome e A2)", cfg.a2.modelo_agente],
+  ["Semente de aleatorização", cfg.execucao.seed],
+], ["Item", "Valor"]) }}
+
+{{ FONTE }}
+
+{% if prereg_alterado %}
+O arquivo de pré-registro foi alterado depois do registro do hash; a diferença é tratada como desvio na seção 8.
+{% endif %}
+{% if (m.versoes or {}).get("bibliotecas") %}
+Bibliotecas: {% for k, v in m.versoes.bibliotecas.items() %}{{ k }} {{ v }}{% if not loop.last %}; {% endif %}{% endfor %}.
+{% endif %}
+
+## 2 Objetivo e hipóteses
+
+A Parte A verifica a tese de que a plataforma AgroIA-RMC e a organização de dados adotada facilitam o acesso às informações sobre licitações de alimentos do Fundo de Abastecimento Alimentar de Curitiba (FAAC), em comparação com o acesso pelas fontes públicas originais. "Facilitar o acesso" é operacionalizado pelas dimensões de eficácia, eficiência e cobertura funcional derivadas da ISO 9241-11:2018 (INTERNATIONAL ORGANIZATION FOR STANDARDIZATION, 2018). A satisfação não é medida nesta etapa, porque depende de participantes humanos e da avaliação pelo Comitê de Ética em Pesquisa.
+
+A camada A1 (fidelidade) é pré-condição: as tarefas da camada A2 só usam registros cujos campos foram confirmados na fonte. As hipóteses da camada A2, transcritas do pré-registro, são:
+
+- H1 (eficácia): a taxa de sucesso na condição AGROIA é maior que na condição PORTAL.
+- H2 (eficiência): o número de ações por tarefa bem-sucedida é menor na condição AGROIA.
+- H3 (eficiência): o tempo humano estimado (KLM) é menor na condição AGROIA.
+- H4 (cobertura): a proporção de tipos de tarefa resolvidos ao menos uma vez é maior na condição AGROIA.
+- H5 (abstenção): na tarefa T12, a condição AGROIA declara corretamente a inexistência da informação com frequência igual ou maior que a condição PORTAL.
+
+## 3 Fontes de dados
+
+A fonte pública é o Portal da Transparência de Curitiba ({{ cfg.fontes.portal_url }}), filtrado pelo órgão {{ cfg.fontes.portal_orgao }} e pelo ano do processo, nos anos {{ cfg.fontes.anos | join(", ") }}. As cotações de preço usadas nas tarefas de cruzamento com o mercado vêm da CEASA-PR ({{ cfg.fontes.ceasa_pr_url }}). A plataforma avaliada é {{ cfg.fontes.agroia_front_url }}, servida pela API {{ cfg.fontes.agroia_api_url }}.
+{% if a1 and a1.censo %}
+O censo do portal consumiu {{ a1.censo.portal_requisicoes | n }} requisições, com intervalo mínimo de {{ cfg.acesso.intervalo_min_s | n(1) }} s entre elas. Cada página lida foi guardada (HTML e captura de tela) com data e hora da captura.
+{% endif %}
+
+O snapshot da base foi congelado em {{ (snapshot.finalizado_em or {}).get("brt", "n/d") }}. A Tabela {{ tab("snap") }} apresenta a contagem de linhas por tabela.
+
+**Tabela {{ tab("snap") }}: Contagem de linhas do snapshot**
+
+{{ tabela(linhas_snapshot(snapshot), ["Tabela", "Linhas", "SHA-256 do conteúdo (16 primeiros caracteres)"]) }}
+
+{{ FONTE }}
+
+{% if snapshot.ausentes %}
+Tabelas opcionais ausentes do banco: {% for a in snapshot.ausentes %}`{{ a.tabela }}`{% if not loop.last %}, {% endif %}{% endfor %}. Filtros aplicados: {% for k, v in (snapshot.filtros or {}).items() %}`{{ k }}`: {{ v }}{% if not loop.last %}; {% endif %}{% endfor %}.
+{% endif %}
+
+## 4 Procedimento
+
+### 4.1 Camada A1: fidelidade
+
+O censo listou, por ano, todos os processos do órgão no portal (conjunto P) e comparou esse conjunto com os processos da base nos mesmos anos (conjunto B), pela chave natural "sigla número/ano". A completude é |P ∩ B| / |P| e a precisão de existência é |P ∩ B| / |B verificável|. Registros da base que vieram do portal JSF, desativado pela Prefeitura em 23/09/2026, e que não aparecem na fonte atual recebem o status `NAO_VERIFICAVEL_FONTE_DESATIVADA` e ficam fora do denominador da precisão.
+{% if a1 %}
+{% set c = a1.amostra_calculo %}
+A amostra para a comparação campo a campo foi sorteada de P ∩ B no escopo agrícola (`relevante_af = true`), estratificada por ano e modalidade, com alocação proporcional pelo método dos maiores restos. O tamanho decorre da fórmula de Cochran com correção para população finita: n₀ = z² · p(1 − p) / e² = {{ c.z | n(4) }}² · {{ c.p | n(1) }} · {{ (1 - c.p) | n(1) }} / {{ c.e | n(2) }}² = {{ c.n0 | n(2) }}; n = n₀ / (1 + (n₀ − 1)/N) = {{ c.n_exato | n(2) }}, com N = {{ c.N | n }}, arredondado para {{ c.n | n }}. {% if a1.amostra_n != c.n %}Nesta execução a amostra efetiva foi de {{ a1.amostra_n | n }} processos (limite de execução piloto ou valor configurado), e o valor calculado é reportado para referência.{% endif %}
+{% endif %}
+
+Cada processo da amostra teve duas leituras independentes da página de detalhe: (a) um extrator determinístico do DOM com Playwright, escrito do zero no pacote de validação, sem importar o coletor da plataforma; (b) o agente Claude Code com Claude in Chrome, que lê a página renderizada e devolve JSON em esquema fixo. Quando as leituras concordam, o valor é aceito como verdade da fonte; quando discordam, o campo recebe `DIVERGENCIA_EXTRACAO`, sai da taxa principal e é contado em linha própria; quando só a leitura Playwright está disponível, o campo é marcado como leitura única.
+{% if a1 and a1.chrome %}
+Nesta execução, a segunda leitura foi {{ "usada" if a1.chrome.usado else "indisponível" }}{% if a1.chrome.degradado %}, com degradação para leitura única em {{ a1.chrome.afetados | n }} processos{% endif %}.
+{% endif %}
+
+Regras de comparação: texto por igualdade após normalização (minúsculas, sem acentos, espaços colapsados), com a similaridade de Levenshtein normalizada reportada à parte; valores monetários com tolerância de R$ {{ cfg.a1.tolerancia_monetaria | n(2) }}; datas após conversão para ISO 8601; listas (itens, participantes, vencedores, empenhos) por precisão, revocação e F1 por elemento. Itens são pareados por quantidade, valor unitário e compatibilidade de prefixo da descrição, porque a carga herdada do portal JSF guarda a descrição truncada na primeira vírgula e a unidade por extenso. A soma dos valores dos itens é um campo derivado, reportado fora da taxa global.
+
+Documentos: para cada documento referenciado na base foram verificados disponibilidade (status HTTP, tipo de conteúdo, tamanho) e integridade. A base não guarda hash dos arquivos; a integridade é avaliada pelo tamanho (contra `tamanho_bytes`), pelo número de páginas e pela similaridade do texto extraído (Jaccard sobre 5-gramas de palavras) com o arquivo correspondente do portal, nos processos da amostra. O SHA-256 do download atual é registrado para execuções futuras.
+
+Agregados por ano: número de processos, número de itens, soma empenhada e dez maiores credores na base; no portal, número de processos e soma do "Valor global" da listagem, únicos totais apresentados pela fonte.
+
+### 4.2 Camada A2: facilitação do acesso
+
+A unidade experimental é a tarefa de busca de informação instanciada (modelo com parâmetros sorteados). As condições, pareadas dentro da tarefa, são PORTAL (início em {{ cfg.fontes.portal_url }}, domínios {{ (cfg.fontes.portal_dominios + cfg.fontes.ceasa_pr_dominios) | join(", ") }}) e AGROIA (início em {{ cfg.fontes.agroia_front_url }}). O agente é o mesmo nas duas condições: Claude Code com Claude in Chrome, modelo `{{ cfg.a2.modelo_agente }}`, orçamento de {{ cfg.a2.max_turns }} turnos, tempo limite de {{ cfg.a2.timeout_tarefa_s }} s, mesmo prompt-base e mesmo formato de resposta. Foram previstas {{ cfg.a2.instancias_por_modelo }} instâncias por modelo e {{ cfg.a2.repeticoes }} repetições por tarefa e condição, em ordem aleatorizada com semente e condições intercaladas. Antes de cada execução AGROIA, uma requisição de aquecimento ao backend absorve a partida a frio do servidor; essa latência é registrada à parte.
+{% if instancias.instancias %}
+Foram instanciadas {{ instancias.instancias | length }} tarefas, com {{ instancias.descartes | length }} sorteios descartados por ausência de gabarito válido{% if instancias.sem_instancia %} e {{ instancias.sem_instancia | length }} instâncias não obtidas ({{ instancias.sem_instancia | join(", ") }}){% endif %}.
+{% endif %}
+{% if a2_piloto %}
+Esta execução contém apenas o piloto da A2 (uma repetição por condição em um subconjunto de tarefas); os testes estatísticos são apresentados como verificação do instrumento, sem valor inferencial.
+{% endif %}
+
+## 5 Instrumentos
+
+O catálogo de tarefas está na Tabela {{ tab("catalogo") }}. Os gabaritos são calculados por consulta SQL (DuckDB) sobre o snapshot, com parâmetros sorteados somente entre registros verificados na A1; nenhum valor é digitado à mão.
+
+**Tabela {{ tab("catalogo") }}: Catálogo de modelos de tarefa**
+
+{{ tabela(linhas_modelos(modelos), ["Modelo", "Tipo", "Enunciado", "Pontuação"]) }}
+
+{{ FONTE }}
+
+O tempo humano estimado usa o Keystroke-Level Model (CARD; MORAN; NEWELL, 1980): clicar = M + P + B + B; digitar n caracteres = M + H + n·K + H; navegar para URL digitada = M + H + (comprimento da URL)·K + H; rolar = P + B + B; com K = 0,28 s, P = 1,1 s, B = 0,1 s, H = 0,4 s e M = 1,35 s. A leitura de página não entra no KLM; o volume de texto lido é reportado à parte. O KLM é uma estimativa de limite inferior do tempo humano de operação, não um tempo real.
+
+Os prompts integrais estão no Apêndice A.
+
+## 6 Métricas e testes estatísticos
+
+As proporções são apresentadas com intervalo de Wilson de 95% (WILSON, 1927). Para H1, o teste de McNemar exato (MCNEMAR, 1947) sobre os pares tarefa × condição, com tabela 2×2, p-valor e razão de chances condicional com IC 95%, porque o desfecho é binário e pareado. Para H2 e H3, o teste dos postos sinalizados de Wilcoxon (WILCOXON, 1945) sobre as diferenças pareadas por tarefa, porque as contagens de ações e os tempos são assimétricos; o tamanho de efeito é a correlação de postos r = Z/√N e o delta de Cliff. H4 é descritiva, pelo número pequeno de tipos. H5 usa proporções com IC de Wilson e teste exato de Fisher quando há variação. A correção de Holm (HOLM, 1979) é aplicada sobre H1, H2, H3 e H5, com α = {{ cfg.estatistica.alfa | n(2) }}. A concordância entre extratores usa proporção de concordância e κ de Cohen (COHEN, 1960).
+
+## 7 Regras de exclusão
+
+Falhas de infraestrutura (`ERRO_INFRA`, `ERRO_INFRA_CHROME`) são repetidas até duas vezes; persistindo, a tarefa sai da análise principal nas duas condições. `BLOQUEADO` e `TIMEOUT` contam como insucesso na análise principal e são excluídos na análise de sensibilidade. Nenhuma outra exclusão é permitida após a coleta.
+{% if a2 %}
+Nesta execução: {% if a2.excluidas_infra %}tarefas excluídas por infraestrutura: {{ a2.excluidas_infra | join(", ") }}{% else %}nenhuma tarefa foi excluída por infraestrutura{% endif %}.
+{% endif %}
+
+## 8 Desvios do pré-registro e do plano
+
+- O comando do agente usa `--permission-mode dontAsk` com `--allowedTools mcp__claude-in-chrome__*` e lista de ferramentas negadas, em vez de `bypassPermissions`, para restringir o agente às ferramentas de navegador; `ENABLE_TOOL_SEARCH=false` carrega as ferramentas do Chrome desde o início.
+{% if cfg.a2.chrome_perfil != "agroia-validacao" %}- O agente usou o perfil do Chrome {{ cfg.a2.chrome_perfil_descricao or cfg.a2.chrome_perfil }} em vez de um perfil dedicado sem contas. As permissões de site da extensão restringem a navegação aos domínios da comparação, mas o estado do navegador (cookies, histórico) não é o de um perfil limpo.
+{% endif %}
+- Três enunciados foram ajustados aos campos existentes na base e na fonte (T02, T04, T05), conforme o cabeçalho do catálogo.
+{% if prereg_alterado %}- O arquivo de pré-registro difere do hash registrado.
+{% endif %}
+{% if a2_piloto %}- A A2 não foi executada no dimensionamento completo nesta execução.
+{% endif %}
+{% if etapas_pedidas and etapas_concluidas | length < etapas_pedidas | length %}- Etapas pedidas e não concluídas: {{ etapas_pedidas | reject("in", etapas_concluidas) | join(", ") }}.
+{% endif %}
+
+## 9 Ameaças à validade
+
+Segundo Wohlin et al. (2012):
+
+- Validade de construto: o agente de IA é um instrumento de medição do esforço de navegação e não substitui usuários humanos; o KLM é limite inferior. O gabarito de cada tarefa está ancorado em registros verificados na fonte, o que evita contar como acerto um erro da base.
+- Validade interna: o portal pode mudar durante a coleta (cada captura tem data e hora); o servidor da plataforma tem partida a frio (mitigada por aquecimento); os modelos são estocásticos (mitigado por repetições e ordem aleatorizada); o agente não recebe o `CLAUDE.md` do projeto nem acesso a busca web.
+- Validade externa: um único órgão (FAAC) e um único município; a fonte histórica (portal JSF) foi desativada, o que limita a verificação dos anos iniciais{% if a1 %} ({{ a1.censo.global.nao_verificaveis_fonte_desativada | n }} processos não verificáveis){% endif %}.
+- Validade de conclusão: o número de tarefas limita o poder estatístico; resultados não significativos são tratados como inconclusivos.
+
+## 10 Considerações éticas
+
+O acesso automatizado ao portal público respeitou limite de taxa ({{ cfg.acesso.intervalo_min_s | n(1) }} s entre requisições), cache local e identificação do projeto acadêmico no agente de usuário. Não houve participantes humanos nesta etapa, portanto não houve submissão ao Comitê de Ética em Pesquisa; todos os dados são públicos.
+
+## Referências
+
+CARD, S. K.; MORAN, T. P.; NEWELL, A. The keystroke-level model for user performance time with interactive systems. **Communications of the ACM**, v. 23, n. 7, p. 396-410, 1980.
+
+COHEN, J. A coefficient of agreement for nominal scales. **Educational and Psychological Measurement**, v. 20, n. 1, p. 37-46, 1960.
+
+HOLM, S. A simple sequentially rejective multiple test procedure. **Scandinavian Journal of Statistics**, v. 6, n. 2, p. 65-70, 1979.
+
+INTERNATIONAL ORGANIZATION FOR STANDARDIZATION. **ISO 9241-11:2018**: Ergonomics of human-system interaction. Part 11: Usability: definitions and concepts. Geneva: ISO, 2018.
+
+MCNEMAR, Q. Note on the sampling error of the difference between correlated proportions or percentages. **Psychometrika**, v. 12, n. 2, p. 153-157, 1947.
+
+WILCOXON, F. Individual comparisons by ranking methods. **Biometrics Bulletin**, v. 1, n. 6, p. 80-83, 1945.
+
+WILSON, E. B. Probable inference, the law of succession, and statistical inference. **Journal of the American Statistical Association**, v. 22, n. 158, p. 209-212, 1927.
+
+WOHLIN, C. et al. **Experimentation in software engineering**. Berlin: Springer, 2012.
+
+## Apêndice A: prompts
+
+Condição PORTAL:
+
+```
+{{ prompt_portal }}
+```
+
+Condição AGROIA:
+
+```
+{{ prompt_agroia }}
+```
+
+Extrator Chrome da A1: ver `validacao/a1_fidelidade/extrator_chrome.py` (constante `PROMPT` e esquema `ESQUEMA`).

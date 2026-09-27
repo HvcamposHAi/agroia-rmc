@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validação AgroIA-RMC</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --verde: #1e5631; --verde2: #2e7d46; --claro: #eef5ee; --tinta: #1f1f1e; --tinta2: #5f5e5a;
+          --borda: #d9d8d2; --erro: #b3261e; --ok: #1e7b34; --fundo: #fafaf7; }
+  * { box-sizing: border-box; }
+  body { font-family: Nunito, "Segoe UI", Arial, sans-serif; margin: 0; background: var(--fundo); color: var(--tinta); }
+  header { background: var(--verde); color: #fff; padding: 14px 16px; }
+  header h1 { margin: 0; font-size: 20px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  section { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 14px 16px; }
+  h2 { margin: 0 0 10px; font-size: 16px; color: var(--verde); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--borda); padding: 6px; text-align: left; vertical-align: top; }
+  th { background: var(--claro); }
+  button { font: inherit; background: var(--verde2); color: #fff; border: 0; border-radius: 6px; padding: 7px 12px;
+           cursor: pointer; margin: 2px 4px 2px 0; }
+  button.sec { background: #fff; color: var(--verde); border: 1px solid var(--verde2); }
+  button:disabled { opacity: .5; cursor: default; }
+  .ok { color: var(--ok); font-weight: 700; } .falha { color: var(--erro); font-weight: 700; }
+  .linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 6px 0; }
+  label { font-size: 14px; color: var(--tinta2); }
+  input[type=text], input[type=number], select { font: inherit; padding: 4px 6px; border: 1px solid var(--borda);
+           border-radius: 4px; width: 150px; }
+  .barra { background: var(--claro); border-radius: 4px; height: 12px; overflow: hidden; }
+  .barra > div { background: var(--verde2); height: 100%; }
+  #log { font-family: Consolas, monospace; font-size: 12px; background: #f5f5f2; padding: 8px; height: 260px;
+         overflow-y: auto; white-space: pre-wrap; border-radius: 4px; }
+  .erro { color: var(--erro); } .aviso { color: #8a5a00; }
+  .tabela-rolavel { overflow-x: auto; }
+</style>
+</head>
+<body>
+<header><h1>Validação autônoma do AgroIA-RMC</h1></header>
+<main>
+  <section>
+    <h2>Pré-requisitos</h2>
+    <div class="tabela-rolavel"><table id="saude"><tr><td>Clique em "Verificar novamente".</td></tr></table></div>
+    <button id="btnSaude" class="sec">Verificar novamente</button> <span id="saudeInfo"></span>
+  </section>
+
+  <section>
+    <h2>Disparo</h2>
+    <div class="linha">
+      <button data-etapas="snapshot">Congelar snapshot</button>
+      <button data-etapas="a1,relatorios">Rodar A1</button>
+      <button data-etapas="a2,relatorios">Rodar A2</button>
+      <button data-etapas="b,relatorios">Rodar B</button>
+      <button data-etapas="snapshot,a1,a2,b,relatorios">Rodar tudo</button>
+    </div>
+    <div class="linha">
+      <label>Reusar snapshot (run_id) <input type="text" id="optReusar"></label>
+      <label>Instâncias A2 <input type="number" id="optInst" min="1"></label>
+      <label>k do benchmark <input type="number" id="optK" min="1"></label>
+      <label>Limite A1 <input type="number" id="optA1" min="1"></label>
+    </div>
+    <div class="linha">
+      <label><input type="checkbox" id="optA2p"> piloto A2</label>
+      <label><input type="checkbox" id="optBp"> piloto B</label>
+      <label><input type="checkbox" id="optSemChrome"> sem Chrome na A1</label>
+    </div>
+    <div class="linha">
+      <label>Retomar execução <select id="selRetomar"></select></label>
+      <button id="btnRetomar" class="sec">Retomar</button>
+    </div>
+    <div id="dispInfo"></div>
+  </section>
+
+  <section>
+    <h2>Progresso <span id="progRun"></span></h2>
+    <div id="prog"></div>
+    <div id="log"></div>
+  </section>
+
+  <section>
+    <h2>Execuções</h2>
+    <div class="tabela-rolavel"><table id="execs"></table></div>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t ?? "").replace(/[&<>]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
+let fonte = null;
+
+async function saude() {
+  $("#btnSaude").disabled = true; $("#saudeInfo").textContent = "verificando (a sonda do Chrome leva até 2 min)...";
+  try {
+    const r = await (await fetch("/api/saude")).json();
+    $("#saude").innerHTML = "<tr><th>Checagem</th><th>Estado</th><th>Mensagem</th><th>Afeta</th></tr>" +
+      r.checagens.map(c => `<tr><td>${esc(c.nome)}</td><td class="${c.ok ? "ok" : "falha"}">${c.ok ? "ok" : "falha"}</td>` +
+        `<td>${esc(c.mensagem)}</td><td>${esc(c.afeta.join(", "))}</td></tr>`).join("");
+    $("#saudeInfo").textContent = "Etapas bloqueadas: " + (r.etapas_bloqueadas.join(", ") || "nenhuma");
+  } catch (e) { $("#saudeInfo").textContent = "falha: " + e; }
+  $("#btnSaude").disabled = false;
+}
+
+function opcoes() {
+  const o = {};
+  if ($("#optReusar").value) o.reusar = $("#optReusar").value.trim();
+  if ($("#optInst").value) o.a2_instancias = +$("#optInst").value;
+  if ($("#optK").value) o.b_reps = +$("#optK").value;
+  if ($("#optA1").value) o.a1_limite = +$("#optA1").value;
+  if ($("#optA2p").checked) o.a2_piloto = true;
+  if ($("#optBp").checked) o.b_piloto = true;
+  if ($("#optSemChrome").checked) o.sem_chrome = true;
+  return o;
+}
+
+async function disparar(etapas) {
+  const r = await fetch("/api/executar", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({etapas: etapas.split(","), opcoes: opcoes()})});
+  const j = await r.json();
+  $("#dispInfo").textContent = r.ok ? `Execução ${j.run_id} iniciada.` : `Falha: ${j.detail}`;
+  if (r.ok) { acompanhar(j.run_id); setTimeout(execucoes, 1500); }
+}
+
+function acompanhar(runId) {
+  if (fonte) fonte.close();
+  $("#progRun").textContent = runId; $("#log").textContent = "";
+  fonte = new EventSource(`/api/eventos/${encodeURIComponent(runId)}`);
+  fonte.onmessage = (m) => {
+    const d = JSON.parse(m.data);
+    if (d.tipo === "evento") {
+      const div = document.createElement("div");
+      div.className = d.nivel === "erro" ? "erro" : d.nivel === "aviso" ? "aviso" : "";
+      div.textContent = `${d.ts.slice(11, 19)} [${d.etapa}] ${d.mensagem}`;
+      $("#log").appendChild(div);
+      while ($("#log").children.length > 50) $("#log").firstChild.remove();
+      $("#log").scrollTop = $("#log").scrollHeight;
+    } else if (d.tipo === "progresso") {
+      $("#prog").innerHTML = `<p>Status: <b>${esc(d.status)}</b>; etapas concluídas: ${esc((d.etapas_concluidas || []).join(", ") || "nenhuma")}</p>` +
+        Object.entries(d.progresso).map(([e, p]) => {
+          const feitas = (p.concluida || 0), total = p.total || 1;
+          return `<div class="linha"><span style="width:110px">${esc(e)}</span><div class="barra" style="flex:1">` +
+            `<div style="width:${(100 * feitas / total).toFixed(0)}%"></div></div><span>${feitas}/${total}` +
+            `${p.falhou ? `, ${p.falhou} falhas` : ""}</span></div>`;
+        }).join("");
+    }
+  };
+}
+
+async function execucoes() {
+  const lista = await (await fetch("/api/execucoes")).json();
+  $("#execs").innerHTML = "<tr><th>run_id</th><th>Criada</th><th>Etapas concluídas</th><th>Status</th><th>Relatórios</th><th>Ações</th></tr>" +
+    lista.map(e => `<tr><td><a href="#" data-acomp="${esc(e.run_id)}">${esc(e.run_id)}</a></td><td>${esc((e.criado_em || "").slice(0, 16).replace("T", " "))}</td>` +
+      `<td>${esc((e.etapas_concluidas || []).join(", "))}</td><td>${esc(e.status)}</td>` +
+      `<td>${e.relatorios.map(r => `<a target="_blank" href="/relatorios/${encodeURIComponent(e.run_id)}/${r}">${esc(r.replace(".html", ""))}</a>`).join("<br>")}` +
+      `${e.run_id ? `<br><a target="_blank" href="/relatorios/${encodeURIComponent(e.run_id)}/manifesto.json">manifesto</a>` : ""}</td>` +
+      `<td>${e.auditoria.map(a => `<a href="/relatorios/${encodeURIComponent(e.run_id)}/b/${a}">${esc(a)}</a>`).join("<br>")}` +
+      `${e.auditoria.length ? `<br><button class="sec" data-aud="${esc(e.run_id)}">Recalcular com auditoria</button>` : ""}</td></tr>`).join("");
+  $("#selRetomar").innerHTML = lista.filter(e => e.status !== "concluida")
+    .map(e => `<option>${esc(e.run_id)}</option>`).join("");
+}
+
+document.addEventListener("click", async (ev) => {
+  const t = ev.target;
+  if (t.dataset.etapas) disparar(t.dataset.etapas);
+  if (t.dataset.acomp) { ev.preventDefault(); acompanhar(t.dataset.acomp); }
+  if (t.dataset.aud) { await fetch(`/api/auditoria/${encodeURIComponent(t.dataset.aud)}`, {method: "POST"}); t.textContent = "recalculando..."; }
+});
+$("#btnSaude").onclick = saude;
+$("#btnRetomar").onclick = async () => {
+  const id = $("#selRetomar").value; if (!id) return;
+  await fetch(`/api/retomar/${encodeURIComponent(id)}`, {method: "POST"}); acompanhar(id);
+};
+execucoes(); setInterval(execucoes, 15000);
+</script>
+</body>
+</html>

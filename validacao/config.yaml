@@ -1,0 +1,139 @@
+# Configuração da validação autônoma do AgroIA-RMC.
+# Todas as variáveis de uma execução ficam aqui; o manifesto de cada execução
+# guarda uma cópia integral deste arquivo (com hash).
+
+execucao:
+  seed: 20260927
+  fuso: America/Sao_Paulo
+
+fontes:
+  # Descobertos na Fase 0 (ver validacao/docs/FONTE_PORTAL.md)
+  portal_url: "https://www.transparencia.curitiba.pr.gov.br/sgp/licitacoes.aspx"
+  portal_detalhe_url: "https://www.transparencia.curitiba.pr.gov.br/Sgp/LicitacoesDetalhes.aspx?id={id}"
+  portal_orgao: "FAAC"
+  portal_dominios: ["www.transparencia.curitiba.pr.gov.br", "mid-transparencia.curitiba.pr.gov.br"]
+  ceasa_pr_url: "https://celepar7.pr.gov.br/ceasa/cotprod_evolucao.asp"
+  ceasa_pr_dominios: ["celepar7.pr.gov.br"]
+  agroia_front_url: "https://agroia-rmc.pages.dev"
+  agroia_front_dominios: ["agroia-rmc.pages.dev"]
+  agroia_api_url: "https://agroia-rmc.onrender.com"
+  # Anos publicados pelo Portal da Transparência para o órgão FAAC.
+  anos: [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+  # O corpus da plataforma começa em 30/08/2019 (CLAUDE.md): em 2019 a completude mede o
+  # recorte da coleta, não a fidelidade. Reportado à parte; a global é dada com e sem ele.
+  inicio_corpus: "2019-08-30"
+  anos_parciais: [2019]
+
+acesso:
+  intervalo_min_s: 2.0
+  timeout_http_s: 60
+  tentativas: 4
+  user_agent: "AgroIA-RMC validacao academica (PPGCA/UEPG) contato: suporte@hai.expert"
+  playwright_headless: true
+
+snapshot:
+  # tabela -> coluna(s) de ordenação (determinismo do hash)
+  tabelas:
+    licitacoes: [id]
+    itens_licitacao: [id]
+    fornecedores: [id]
+    participacoes: [id]
+    empenhos: [id]
+    documentos_licitacao: [id]
+    pdf_chunks: [id]
+    prohort_precos: [id]
+    vw_itens_agro: [id]
+    vw_cruzamento_precos_ceasa: [ceasa, produto_norm, cultura]
+  # colunas omitidas (vetores grandes, irrelevantes para a validação)
+  omitir_colunas:
+    pdf_chunks: [embedding]
+  # tabelas opcionais: ausência no banco é registrada, não aborta
+  opcionais: [ceasa_pr_cotacoes, vw_cruzamento_precos_ceasa]
+
+a1:
+  confianca: 0.95
+  margem: 0.05
+  amostra_n: null          # null = calcular (Cochran com correção de população finita)
+  tolerancia_monetaria: 0.01
+  somente_relevante_af: true
+  limite_documentos_por_processo: 10
+  tamanho_max_download_mb: 80
+  usar_extrator_chrome: true
+  timeout_chrome_s: 600
+  # completude mínima do censo para um ano entrar como parâmetro de tarefas agregadas na A2
+  completude_min_ano_a2: 0.95
+
+a2:
+  modelo_agente: "claude-sonnet-5"
+  max_turns: 60
+  timeout_tarefa_s: 900
+  instancias_por_modelo: 2
+  repeticoes: 3
+  gravar_gif: true
+  # Diretório do perfil do Chrome (User Data\<perfil>). O plano pede um perfil dedicado
+  # "agroia-validacao"; por decisão do usuário (27/09/2026) usa-se o perfil suporte@hai.expert.
+  chrome_perfil: "Profile 27"
+  chrome_perfil_descricao: "suporte@hai.expert (perfil com conta Google, não dedicado)"
+  # pasta de downloads do perfil (GIFs exportados pela extensão são movidos daqui)
+  chrome_downloads: "~/Downloads"
+  # modo de permissão: dontAsk nega toda ferramenta fora de allowed_tools
+  permission_mode: "dontAsk"
+  allowed_tools: ["mcp__claude-in-chrome__*"]
+  disallowed_tools:
+    - "mcp__claude-in-chrome__javascript_tool"
+    - "mcp__claude-in-chrome__read_network_requests"
+    - "mcp__claude-in-chrome__read_console_messages"
+    - "mcp__claude-in-chrome__shortcuts_execute"
+    - "mcp__claude-in-chrome__shortcuts_list"
+    - "mcp__claude-in-chrome__switch_browser"
+    - "mcp__claude-in-chrome__upload_image"
+    - "WebSearch"
+    - "WebFetch"
+    - "Bash"
+    - "PowerShell"
+    - "Read"
+    - "Write"
+    - "Edit"
+    - "Glob"
+    - "Grep"
+    - "NotebookEdit"
+    - "Agent"
+    - "Task"
+    - "Skill"
+    - "TodoWrite"
+    - "ToolSearch"
+  # Não use --tools: com --tools "" o servidor do Chrome não é carregado. O executor define
+  # ENABLE_TOOL_SEARCH=false para que as ferramentas do Chrome venham carregadas desde o
+  # início (com busca sob demanda, a 1ª busca ocorre antes da conexão com a extensão).
+  tools_internas: null
+  modelos_ativos: [T01, T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12]
+  piloto_n_tarefas: 5
+  aquecimento_timeout_s: 90
+
+b:
+  motores: [claude, groq_llama, maritaca, gemini]
+  rotulos:
+    claude: "Claude Haiku 4.5"
+    groq_llama: "Llama 3.1 8B (Groq)"
+    maritaca: "Sabiá-4 (Maritaca)"
+    gemini: "Gemini 2.0 Flash"
+  repeticoes: 5
+  temperatura: 0
+  intervalo_por_motor_s: {groq_llama: 3, gemini: 5, maritaca: 3, claude: 1}
+  timeout_s: 120
+  max_backoff_tentativas: 4
+  # "requisicao": envia {motor} no corpo de /chat/stream (backend com suporte);
+  # "switch_global": troca app_config.motor_ativo via /config/motor e restaura ao fim.
+  modo_motor: "requisicao"
+  # "schema_snapshot" exige projeto Supabase com a cópia; "pausar_coleta" verifica
+  # que a base não mudou antes e depois da janela do benchmark.
+  modo_dados: "pausar_coleta"
+  auditoria_fracao: 0.20
+  tolerancia_relativa: 0.01
+  # preços por 1M tokens (USD) vigentes na data da execução; fonte registrada no relatório
+  precos_fonte: "benchmark/precos_modelos.py"
+
+estatistica:
+  alfa: 0.05
+  correcao: "holm"
+  poder: 0.80

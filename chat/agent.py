@@ -199,7 +199,8 @@ def chat(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTE
         }
 
 def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str = SYSTEM_PROMPT,
-                tools: list = None, idioma: str = "pt") -> Generator[dict, None, None]:
+                tools: list = None, idioma: str = "pt", motor: str | None = None,
+                rastreio: bool = False) -> Generator[dict, None, None]:
     """
     Streaming version of chat. Yields SSE events:
     - {"tipo": "status", "msg": str} — Progress updates
@@ -207,6 +208,9 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
     - {"tipo": "fim", "tools_usadas": list[str]} — Final event
     tools permite restringir o conjunto de tools (default: TOOLS_SCHEMA = comportamento atual).
     idioma ('pt' | 'en' | 'es') define o idioma da resposta e das mensagens de status/erro.
+    motor (opcional) sobrepõe o switch global só nesta chamada (validação/benchmark).
+    rastreio=True emite também {"tipo": "tool", "nome", "inputs", "resultado"} por chamada de
+    ferramenta e inclui "motor" no evento "fim" (usado pela validação; padrão desligado).
     """
     idioma = normalizar_idioma(idioma)
     if historico is None:
@@ -226,18 +230,27 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
         try:
             from chat.motor_router import get_motor_ativo, resolver_provider
             from benchmark.providers.factory import ROTULOS
-            _motor = get_motor_ativo()
+            from chat.motor_router import MOTORES
+            _motor = motor if motor in MOTORES else get_motor_ativo()
             if _motor != "claude":
                 yield {"tipo": "status", "msg": msg("status_motor", idioma, motor=ROTULOS.get(_motor, _motor))}
                 provider = resolver_provider(_motor)
                 from benchmark.agentic_loop import rodar_loop
                 _res = rodar_loop(provider, pergunta, system_prompt=com_diretiva(system_prompt, idioma), tools_schema=tools)
+                if rastreio:
+                    for _i, _tc in enumerate(_res.tool_calls_detalhe):
+                        _r = _res.tool_resultados[_i] if _i < len(_res.tool_resultados) else None
+                        yield {"tipo": "tool", "nome": _tc.get("nome"), "inputs": _tc.get("inputs"), "resultado": _r}
                 if _res.erro:
                     logger.error(f"Motor {_motor} erro: {_res.erro}")
                     yield {"tipo": "token", "texto": msg("erro_assistente", idioma)}
                 else:
                     yield {"tipo": "token", "texto": _res.resposta}
-                yield {"tipo": "fim", "tools_usadas": _res.tools_usadas}
+                _fim = {"tipo": "fim", "tools_usadas": _res.tools_usadas}
+                if rastreio:
+                    _fim.update({"motor": _motor, "erro": _res.erro, "tokens_entrada": _res.tokens_entrada,
+                                 "tokens_saida": _res.tokens_saida, "iteracoes": _res.iteracoes})
+                yield _fim
                 return
         except Exception as e:
             logger.warning(f"Switch de motor (stream) falhou ({e}); usando Claude (default).")
@@ -276,7 +289,12 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
                     response = stream.get_final_message()
 
                     if response.stop_reason == "end_turn":
-                        yield {"tipo": "fim", "tools_usadas": tools_usadas}
+                        _fim = {"tipo": "fim", "tools_usadas": tools_usadas}
+                        if rastreio:
+                            _fim.update({"motor": "claude",
+                                         "tokens_entrada": getattr(response.usage, "input_tokens", None),
+                                         "tokens_saida": getattr(response.usage, "output_tokens", None)})
+                        yield _fim
                         return
 
                     if response.stop_reason == "tool_use":
@@ -300,6 +318,9 @@ def chat_stream(pergunta: str, historico: list[dict] = None, system_prompt: str 
                                     "tool_use_id": bloco.id,
                                     "content": resultado_json,
                                 })
+                                if rastreio:
+                                    yield {"tipo": "tool", "nome": bloco.name, "inputs": bloco.input,
+                                           "resultado": resultado_json}
 
                         messages.append({"role": "user", "content": tool_results})
                         continue

@@ -1,0 +1,99 @@
+# Metodologia do benchmark de motores LLM (Parte B)
+
+Execução `{{ run_id }}`. Relatório gerado automaticamente em {{ gerado_em.brt[:16] | replace("T", " ") }} (horário de Brasília). A Parte B responde a uma pergunta distinta da tese avaliada na Parte A: qual motor de linguagem sustenta melhor o agente da plataforma, mantidos constantes o prompt de sistema, as ferramentas, o Query Agent e os dados.
+
+## 1 Identificação da execução
+
+**Tabela {{ tab("ident") }}: Identificação da execução**
+
+{% set m = manifesto %}
+{{ tabela([
+  ["Identificador da execução", run_id],
+  ["Commit do repositório", (m.git or {}).get("commit", "n/d")],
+  ["Hash agregado do snapshot (SHA-256)", snapshot.hash_agregado or "n/d"],
+  ["Pré-registro", (prereg_arquivo or "n/d") ~ " / SHA-256 " ~ (prereg_sha or "não registrado")],
+  ["Endpoint", cfg.fontes.agroia_api_url ~ "/chat/stream"],
+  ["Seleção do motor", cfg.b.modo_motor],
+  ["Controle da base", cfg.b.modo_dados],
+  ["Repetições por pergunta e motor", cfg.b.repeticoes],
+  ["Tempo limite por requisição (s)", cfg.b.timeout_s],
+  ["Semente", cfg.execucao.seed],
+  ["Python", (m.versoes or {}).get("python", "n/d")],
+], ["Item", "Valor"]) }}
+
+{{ FONTE }}
+
+A Tabela {{ tab("motores") }} lista os motores avaliados e a tabela de preços usada para o custo estimado.
+
+**Tabela {{ tab("motores") }}: Motores avaliados e preços de lista**
+
+{{ tabela(linhas_precos(cfg, precos), ["Motor", "Rótulo", "Entrada por 1M tokens", "Saída por 1M tokens", "Moeda", "Fonte do preço"]) }}
+
+{{ FONTE }}
+
+## 2 Princípios
+
+1. Caminho de produção: as chamadas vão para `/chat/stream`, o endpoint usado pela interface. A medição anterior de sucesso havia sido feita em `/chat`; a troca segue o princípio de medir o que o usuário usa.
+2. Paridade: mesmo prompt de sistema, mesmas ferramentas com os mesmos esquemas e mesmo Query Agent para todos os motores, porque todos passam pelo mesmo backend. Nenhum prompt foi ajustado para um motor específico; a ausência de chamadas de ferramenta por um motor é resultado, não defeito a corrigir.
+3. Cada requisição envia `sem_cache = true`, porque o cache de respostas do backend é indexado pela pergunta e não pelo motor, e `rastreio = true`, que devolve nome, argumentos e resultado de cada ferramenta.
+4. Parâmetros de geração: os do caminho de produção. A rota não expõe a temperatura e o código dos provedores não a define, portanto vale o padrão de cada provedor. O plano original previa temperatura 0; a diferença é reportada como desvio.
+5. Base fixa: {% if cfg.b.modo_dados == "pausar_coleta" %}a assinatura da base viva (contagens, maior identificador, data da última cotação) foi comparada antes e depois da janela do benchmark{% if contexto_b.base_inalterada is defined %}; resultado: base {{ "inalterada" if contexto_b.base_inalterada else "ALTERADA durante a janela" }}{% endif %}{% else %}o backend consultou uma cópia do snapshot{% endif %}.
+
+## 3 Dataset
+
+Foram usadas as {{ perguntas | length }} perguntas do pacote `benchmark/` (arquivo `perguntas_benchmark.json`): conjunto A, com {{ perguntas | selectattr("conjunto", "equalto", "A") | list | length }} perguntas respondíveis com os dados, e conjunto B, com {{ perguntas | selectattr("conjunto", "equalto", "B") | list | length }} perguntas cuja resposta correta é a abstenção (PNAE, PAA e temas fora do escopo). Os gabaritos do conjunto A foram recalculados por SQL sobre o snapshot desta execução (`b/gabarito.json`); nenhum gabarito antigo foi reaproveitado. A Tabela {{ tab("gab") }} mostra o tipo de gabarito de cada pergunta.
+
+**Tabela {{ tab("gab") }}: Perguntas e tipo de gabarito**
+
+{{ tabela(linhas_perguntas(perguntas, gab), ["Id", "Categoria", "Conjunto", "Pergunta", "Gabarito"]) }}
+
+{{ FONTE }}
+
+Perguntas sem gabarito factual (documentais ou abertas) têm como acerto principal o uso de ferramenta pertinente (AF@3 > 0), conforme o pré-registro.
+
+## 4 Protocolo
+
+Cada pergunta foi enviada {{ cfg.b.repeticoes }} vezes a cada motor, em ordem aleatorizada com semente e com os motores intercalados, para diluir variações de horário e de carga das APIs. O espaçamento mínimo entre chamadas por motor foi: {% for k, v in cfg.b.intervalo_por_motor_s.items() %}{{ k }} {{ v }} s{% if not loop.last %}; {% endif %}{% endfor %}. Respostas HTTP 429 acionaram backoff exponencial (até {{ cfg.b.max_backoff_tentativas }} tentativas). Foram registrados por chamada: texto final, chamadas de ferramenta (nome, argumentos, resultado), tokens, latência até o primeiro token, latência total e código de erro.
+
+## 5 Métricas
+
+- Acurácia factual: extração de números e entidades da resposta e comparação com o gabarito (tolerância relativa de {{ cfg.b.tolerancia_relativa | pct }}).
+- AF@k: definição do pacote `benchmark/metricas.py` (ferramenta esperada nas k primeiras chamadas e parâmetros críticos corretos).
+- Fidelidade às ferramentas: proporção dos números da resposta que aparecem nos resultados das ferramentas da mesma conversa (anos e inteiros menores que 10 excluídos); número sem origem indica possível alucinação.
+- Uso correto de ferramentas: ao menos uma ferramenta pertinente chamada com argumentos válidos pelo JSON Schema.
+- Abstenção (conjunto B) e falsa abstenção (conjunto A): classificador por regras.
+- Consistência: proporção de perguntas com o mesmo desfecho nas repetições e κ de Fleiss.
+- Latência: p50, p90 e p95 do tempo total e do tempo até o primeiro token.
+- Custo: tokens × preço de lista (Tabela {{ tab("motores") }}); o custo efetivo na camada gratuita é zero.
+- Taxonomia de erros: `ERRO_INFRA_413`, `ERRO_INFRA_429`, `SEM_FERRAMENTA`, `FERRAMENTA_ERRADA`, `ARGUMENTO_INVALIDO`, `NUMERO_SEM_ORIGEM`, `RESPOSTA_INCORRETA`, `FORMATO`, uma categoria principal por falha.
+
+## 6 Análise estatística
+
+O plano anterior previa teste t pareado com Bonferroni. Ele foi substituído porque as métricas principais são binárias e as de latência são assimétricas. A acurácia entre os motores é comparada pelo teste Q de Cochran (COCHRAN, 1950) sobre as perguntas do conjunto A, com o desfecho definido pela maioria das repetições; se significativo, segue o McNemar exato (MCNEMAR, 1947) par a par com correção de Holm (HOLM, 1979). Latência e custo são comparados pelo teste de Friedman; se significativo, Wilcoxon pareado (WILCOXON, 1945) par a par com Holm, com δ de Cliff como tamanho de efeito. A abstenção é descrita por proporções com IC de Wilson (WILSON, 1927), com baixo poder declarado.
+
+Duas análises são apresentadas lado a lado: principal (intenção de tratar), em que falhas de infraestrutura contam como erro, refletindo o uso real na camada gratuita; e sensibilidade (por protocolo), que exclui essas falhas e reflete a capacidade do modelo quando a API responde. Com n perguntas, reporta-se o menor tamanho de efeito detectável; resultado não significativo é tratado como inconclusivo, não como equivalência.
+
+## 7 Auditoria da pontuação automática
+
+Uma amostra de {{ cfg.b.auditoria_fracao | pct(0) }} das respostas, estratificada por motor e desfecho, foi gravada em `b/auditoria.csv` com colunas vazias para rotulagem humana. A execução não espera a auditoria; quando o arquivo é preenchido, `python -m validacao.b_benchmark.analise --run-id {{ run_id }} --auditoria` calcula o κ de Cohen (COHEN, 1960) entre a pontuação automática e a humana e regenera este relatório. Não se usa LLM como juiz na análise principal.
+
+## 8 Ameaças à validade
+
+- Construto: regras determinísticas de pontuação podem errar em respostas corretas redigidas de forma inesperada; a auditoria humana mede esse erro.
+- Interna: limites da camada gratuita (413, 429) e partida a frio do servidor afetam os motores de forma desigual; a análise por protocolo isola esse efeito. A temperatura padrão dos provedores introduz variação entre repetições.
+- Externa: um único domínio (compras de alimentos de um órgão municipal) e um único conjunto de ferramentas.
+- Conclusão: n = {{ perguntas | selectattr("conjunto", "equalto", "A") | list | length }} perguntas no conjunto A limita o poder; o menor efeito detectável é reportado nos resultados.
+
+## Referências
+
+COCHRAN, W. G. The comparison of percentages in matched samples. **Biometrika**, v. 37, n. 3/4, p. 256-266, 1950.
+
+COHEN, J. A coefficient of agreement for nominal scales. **Educational and Psychological Measurement**, v. 20, n. 1, p. 37-46, 1960.
+
+HOLM, S. A simple sequentially rejective multiple test procedure. **Scandinavian Journal of Statistics**, v. 6, n. 2, p. 65-70, 1979.
+
+MCNEMAR, Q. Note on the sampling error of the difference between correlated proportions or percentages. **Psychometrika**, v. 12, n. 2, p. 153-157, 1947.
+
+WILCOXON, F. Individual comparisons by ranking methods. **Biometrics Bulletin**, v. 1, n. 6, p. 80-83, 1945.
+
+WILSON, E. B. Probable inference, the law of succession, and statistical inference. **Journal of the American Statistical Association**, v. 22, n. 158, p. 209-212, 1927.

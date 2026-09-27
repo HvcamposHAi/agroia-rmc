@@ -1,0 +1,3 @@
+
+# Pré-registro com hash SHA-256: bytes preservados (sem conversão de fim de linha)
+validacao/preregistro/* -text

@@ -25,6 +25,7 @@ class ExecucaoResultado:
     resposta: str = ""
     tools_usadas: list[str] = field(default_factory=list)
     tool_calls_detalhe: list[dict] = field(default_factory=list)  # [{nome, inputs}]
+    tool_resultados: list[str] = field(default_factory=list)      # JSON de cada tool_result (rastreio)
     iteracoes: int = 0
     latencia_total_ms: int = 0
     latencia_por_iter_ms: list[int] = field(default_factory=list)
@@ -119,6 +120,7 @@ def rodar_loop(
                 if max_tool_result_chars and len(resultado_json) > max_tool_result_chars:
                     resultado_json = resultado_json[:max_tool_result_chars] + '..."[truncado]"'
                     res.tool_result_truncado = True
+                res.tool_resultados.append(resultado_json)
 
                 tool_results.append({
                     "type": "tool_result",
