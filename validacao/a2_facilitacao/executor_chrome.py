@@ -138,7 +138,8 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
             saida = dir_a2 / "logs" / f"{base}_t{tentativa}.jsonl"
             meta = cc.executar(montar_prompt(u["inst"], u["condicao"], cfg, nome_gif), cfg,
                                work / f"{base}_t{tentativa}", saida, int(cfg["a2"]["timeout_tarefa_s"]))
-            if meta["status"] not in ("ERRO_INFRA", "ERRO_INFRA_CHROME"):
+            negou = parser_log.analisar(saida).get("navegacao_negada") if meta["status"] == "OK" else 0
+            if meta["status"] not in ("ERRO_INFRA", "ERRO_INFRA_CHROME") and not negou:
                 break
             estado.evento(run_id, "a2", f"{ch}: {meta['status']} (tentativa {tentativa + 1}/3)", "aviso")
         gif = mover_gif(cfg, nome_gif, d / "evidencias" / "a2" / f"{base}.gif", t0) if cfg["a2"].get("gravar_gif") else None
@@ -149,6 +150,10 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
 def _registrar(run_id, etapa, dir_a2, u, meta, saida, aquec, gif, tentativa=0):
     met = parser_log.analisar(saida) if saida else {}
     pt = pontuacao.pontuar(u["inst"], met.get("texto_final", ""), meta["status"])
+    # Site sem permissão na extensão: o agente não chegou a medir nada (infraestrutura).
+    if met.get("navegacao_negada") and pt["desfecho"] != "CORRETO":
+        pt.update({"desfecho": "ERRO_INFRA_PERMISSAO", "sucesso": 0, "pontuacao": 0.0,
+                   "motivo": f"{met['navegacao_negada']} navegações negadas pela extensão (site sem permissão)"})
     if meta["status"] == "OK" and met.get("subtipo_resultado") == "error_max_turns" and pt["desfecho"] == "INCORRETO" \
             and pt["motivo"] == "FORMATO":
         pt["desfecho"], pt["motivo"] = "TIMEOUT", "orçamento de turnos esgotado"
@@ -160,7 +165,7 @@ def _registrar(run_id, etapa, dir_a2, u, meta, saida, aquec, gif, tentativa=0):
              "gif": gif, "log": str(saida.name) if saida else None,
              **{k: met.get(k) for k in ("n_acoes", "n_paginas", "n_documentos", "tokens_entrada", "tokens_saida",
                                         "turnos", "custo_usd", "tempo_humano_klm_s", "chars_lidos", "usou_chat",
-                                        "ferramentas_negadas")},
+                                        "ferramentas_negadas", "navegacao_negada")},
              "n_acoes_por_tipo": met.get("n_acoes_por_tipo"), "resposta": pt.get("resposta_json"),
              "fim": carimbo()}
     estado.marcar(run_id, etapa, linha["chave"], "concluida", f"{linha['desfecho']}", dados=linha, incrementar=True)

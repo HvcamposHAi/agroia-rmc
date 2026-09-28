@@ -125,6 +125,20 @@ def chk_chrome(cfg):
               f"sonda {r['status']} em {r['duracao_s']} s", ["a1_chrome", "a2"])
 
 
+def chk_permissoes_sites(cfg):
+    """A extensão precisa ter permissão nos pontos de partida das duas condições da A2."""
+    from validacao.claude_chrome import sonda_sites
+    f = cfg["fontes"]
+    urls = [f["portal_url"], f["agroia_front_url"], f["ceasa_pr_url"]]
+    r = sonda_sites(cfg, RAIZ_VALIDACAO / "execucoes" / "_sondas", urls)
+    negados = [u for u, ok in r.items() if ok is False]
+    nao_testados = [u for u, ok in r.items() if ok is None]
+    ok = not negados and not nao_testados
+    msg = "todos os sites permitidos" if ok else (
+        f"sem permissão na extensão: {negados}" if negados else f"não testados: {nao_testados}")
+    return _r("Permissões de site da extensão", ok, msg, ["a2"], extra={"resultado": r})
+
+
 def chk_env(cfg):
     carregar_env()
     faltam = [v for v in ("SUPABASE_URL", "SUPABASE_KEY") if not os.getenv(v)]
@@ -141,7 +155,7 @@ def rodar(cfg: dict | None = None, incluir_chrome: bool = True) -> dict:
     checks = [chk_env, chk_supabase, chk_portal, chk_backend, chk_backend_recursos, chk_playwright,
               chk_claude, chk_flags]
     if incluir_chrome:
-        checks.append(chk_chrome)
+        checks += [chk_chrome, chk_permissoes_sites]
     resultados = []
     for f in checks:
         try:

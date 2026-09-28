@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import type { LucideIcon } from 'lucide-react'
+import {
+  House, ChartColumn, List, TrendingUp, Tractor, MessageSquare, FileText,
+  BellRing, ShieldCheck, FlaskConical, RefreshCw, Sprout, Tag, Search,
+} from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { getCache, setCache } from '../lib/sessionCache'
 import { useT } from '../i18n'
 import { NAV_MSG } from '../i18n/nav'
 
 interface Entry {
-  icon: string
+  icon: LucideIcon
   label: string
   to: string
   group: string
@@ -15,19 +20,18 @@ interface Entry {
 type NavKey = keyof typeof NAV_MSG.pt
 
 // label = chave de NAV_MSG (traduzida na renderização).
-const STATIC_ACTIONS: { icon: string; label: NavKey; to: string }[] = [
-  { icon: '🏠', label: 'inicio', to: '/inicio' },
-  { icon: '📊', label: 'demandaResumo', to: '/demanda?view=resumo' },
-  { icon: '🔍', label: 'demandaLista', to: '/demanda?view=lista' },
-  { icon: '💰', label: 'mercadoPrecos', to: '/mercado' },
-  { icon: '🧺', label: 'ofertasProdutores', to: '/ofertas' },
-  { icon: '🧑‍🌾', label: 'produtorCadastrar', to: '/produtor' },
-  { icon: '💬', label: 'assistente', to: '/assistente' },
-  { icon: '📄', label: 'documentos', to: '/documentos' },
-  { icon: '🚨', label: 'alertas', to: '/alertas' },
-  { icon: '🔎', label: 'auditoria', to: '/auditoria' },
-  { icon: '⚡', label: 'benchmarkComparacao', to: '/benchmark' },
-  { icon: '🔄', label: 'coletaDados', to: '/coleta' },
+const STATIC_ACTIONS: { icon: LucideIcon; label: NavKey; to: string }[] = [
+  { icon: House, label: 'inicio', to: '/inicio' },
+  { icon: MessageSquare, label: 'assistente', to: '/assistente' },
+  { icon: ChartColumn, label: 'demandaResumo', to: '/demanda?view=resumo' },
+  { icon: List, label: 'demandaLista', to: '/demanda?view=lista' },
+  { icon: TrendingUp, label: 'mercadoPrecos', to: '/mercado' },
+  { icon: Tractor, label: 'produtorCadastrar', to: '/produtor' },
+  { icon: FileText, label: 'documentos', to: '/documentos' },
+  { icon: BellRing, label: 'alertas', to: '/alertas' },
+  { icon: ShieldCheck, label: 'auditoria', to: '/auditoria' },
+  { icon: RefreshCw, label: 'coleta', to: '/coleta' },
+  { icon: FlaskConical, label: 'benchmarkComparacao', to: '/benchmark' },
 ]
 
 const norm = (s: string) =>
@@ -77,11 +81,11 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const all = useMemo<Entry[]>(() => [
     ...estaticas,
     ...dados.culturas.map(c => ({
-      icon: '🌱', label: t('demandaDe', { nome: c }), group: t('grupoCulturas'),
+      icon: Sprout, label: t('demandaDe', { nome: c }), group: t('grupoCulturas'),
       to: `/demanda?view=lista&cultura=${encodeURIComponent(c)}`,
     })),
     ...dados.produtos.map(p => ({
-      icon: '🏷️', label: t('precoDe', { nome: p }), group: t('grupoProdutos'),
+      icon: Tag, label: t('precoDe', { nome: p }), group: t('grupoProdutos'),
       to: `/mercado?produto=${encodeURIComponent(p)}`,
     })),
   ], [estaticas, dados, t])
@@ -113,7 +117,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     <div className="cmdk-overlay" onClick={onClose}>
       <div className="cmdk-panel" onClick={e => e.stopPropagation()}>
         <div className="cmdk-input-row">
-          <span style={{ fontSize: 16 }}>🔎</span>
+          <Search size={17} color="var(--texto-suave)" aria-hidden />
           <input
             ref={inputRef}
             className="cmdk-input"
@@ -135,7 +139,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
               onMouseEnter={() => setSel(i)}
               onClick={() => go(e)}
             >
-              <span className="cmdk-item-icon">{e.icon}</span>
+              <span className="cmdk-item-icon"><e.icon size={17} aria-hidden /></span>
               <span className="cmdk-item-label">{e.label}</span>
               <span className="cmdk-item-group">{e.group}</span>
             </button>

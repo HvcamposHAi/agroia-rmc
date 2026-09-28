@@ -187,6 +187,34 @@ def _sem_erro_ferramenta(eventos: list[dict]) -> bool:
     return True
 
 
+def sonda_sites(cfg: dict, dir_trabalho: Path, urls: list[str], timeout_s: int = 240) -> dict:
+    """Navega em cada URL e devolve {url: True|False}: False = a extensão negou o site
+    ("Permission denied by user"), o que invalidaria as execuções daquela condição."""
+    lista = "\n".join(f"- {u}" for u in urls)
+    prompt = ("Na aba já existente do grupo do navegador (tabs_context_mcp com createIfEmpty true), navegue "
+              "com a ferramenta navigate para cada endereço abaixo, um de cada vez, sem clicar em nada. "
+              "Depois responda somente OK.\n" + lista)
+    saida = dir_trabalho / f"sonda_sites_{int(time.time())}.jsonl"
+    executar(prompt, cfg, dir_trabalho, saida, timeout_s, max_turns=4 + 2 * len(urls))
+    ev = ler_eventos(saida)
+    pedidos, res = {}, {u: None for u in urls}
+    for e in ev:
+        msg = e.get("message") if isinstance(e.get("message"), dict) else {}
+        for c in msg.get("content") or []:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use" and c.get("name", "").endswith("navigate"):
+                pedidos[c.get("id")] = (c.get("input") or {}).get("url", "")
+            elif c.get("type") == "tool_result" and c.get("tool_use_id") in pedidos:
+                alvo = pedidos[c["tool_use_id"]]
+                txt = json.dumps(c.get("content"), ensure_ascii=False).lower()
+                ok = not (c.get("is_error") and "permission" in txt)
+                for u in urls:
+                    if alvo.rstrip("/").startswith(u.rstrip("/")) or u.rstrip("/").startswith(alvo.rstrip("/")):
+                        res[u] = ok if res[u] is None else (res[u] and ok)
+    return res
+
+
 def reabrir_chrome(cfg: dict) -> None:
     """Encerra o Chrome e reabre com o perfil dedicado (Windows)."""
     perfil = cfg["a2"].get("chrome_perfil", "agroia-validacao")

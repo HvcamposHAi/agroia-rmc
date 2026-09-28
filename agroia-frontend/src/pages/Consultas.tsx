@@ -1,84 +1,89 @@
 import { useEffect, useState, useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useUrlState } from '../lib/useUrlState'
+import StatusBadge from '../components/StatusBadge'
 import { fetchItensAgro, type ItemAgro as Item } from '../lib/itensAgro'
 import { defineMessages, useT, useI18n, fmtNum, fmtBRL, fmtData } from '../i18n'
+import { Search, X, SlidersHorizontal, Calendar, ClipboardList, Scale, SearchX, TrendingUp, FileText, Store } from 'lucide-react'
 
 const MSG = defineMessages({
   pt: {
     carregando: 'Carregando licitações...',
     buscarPh: 'Buscar por descrição, processo ou cultura...',
     limparBusca: 'Limpar busca',
-    filtros: '⚙️ Filtros',
-    limpar: '✕ Limpar',
+    filtros: 'Filtros',
+    limpar: 'Limpar',
     resultados: '{n} resultados',
-    cultura: '🌱 CULTURA',
-    canal: '🏪 CANAL',
-    ano: '📅 ANO',
+    cultura: 'CULTURA',
+    canal: 'CANAL',
+    ano: 'ANO',
     todos: 'Todos',
-    valorMin: '💰 VALOR MÍN',
-    valorMax: '💰 VALOR MÁX',
+    valorMin: 'VALOR MÍN',
+    valorMax: 'VALOR MÁX',
     ex: 'Ex: {n}',
     ordenar: 'Ordenar:',
-    sortData: '📅 Data',
-    sortValor: '💰 Valor',
-    sortQtd: '⚖️ Qtd',
-    sortNome: '🔤 Nome',
+    sortData: 'Data',
+    sortValor: 'Valor',
+    sortQtd: 'Qtd',
+    sortNome: 'Nome',
     nenhum: 'Nenhum item encontrado',
     ajuste: 'Tente ajustar os filtros',
-    precoMercado: '💰 Preço de mercado',
-    documentos: '📄 Documentos',
-    quemVende: '🧺 Quem vende',
+    precoMercado: 'Preço de mercado',
+    documentos: 'Documentos',
+    quemVende: 'Quem vende',
+    perguntaQuemVende: 'Quem tem {c} disponível para vender?',
   },
   en: {
     carregando: 'Loading biddings...',
     buscarPh: 'Search by description, process or crop...',
     limparBusca: 'Clear search',
-    filtros: '⚙️ Filters',
-    limpar: '✕ Clear',
+    filtros: 'Filters',
+    limpar: 'Clear',
     resultados: '{n} results',
-    cultura: '🌱 CROP',
-    canal: '🏪 CHANNEL',
-    ano: '📅 YEAR',
+    cultura: 'CROP',
+    canal: 'CHANNEL',
+    ano: 'YEAR',
     todos: 'All',
-    valorMin: '💰 MIN VALUE',
-    valorMax: '💰 MAX VALUE',
+    valorMin: 'MIN VALUE',
+    valorMax: 'MAX VALUE',
     ex: 'E.g.: {n}',
     ordenar: 'Sort:',
-    sortData: '📅 Date',
-    sortValor: '💰 Value',
-    sortQtd: '⚖️ Qty',
-    sortNome: '🔤 Name',
+    sortData: 'Date',
+    sortValor: 'Value',
+    sortQtd: 'Qty',
+    sortNome: 'Name',
     nenhum: 'No items found',
     ajuste: 'Try adjusting the filters',
-    precoMercado: '💰 Market price',
-    documentos: '📄 Documents',
-    quemVende: '🧺 Who sells',
+    precoMercado: 'Market price',
+    documentos: 'Documents',
+    quemVende: 'Who sells',
+    perguntaQuemVende: 'Who has {c} available for sale?',
   },
   es: {
     carregando: 'Cargando licitaciones...',
     buscarPh: 'Buscar por descripción, proceso o cultivo...',
     limparBusca: 'Limpiar búsqueda',
-    filtros: '⚙️ Filtros',
-    limpar: '✕ Limpiar',
+    filtros: 'Filtros',
+    limpar: 'Limpiar',
     resultados: '{n} resultados',
-    cultura: '🌱 CULTIVO',
-    canal: '🏪 CANAL',
-    ano: '📅 AÑO',
+    cultura: 'CULTIVO',
+    canal: 'CANAL',
+    ano: 'AÑO',
     todos: 'Todos',
-    valorMin: '💰 VALOR MÍN',
-    valorMax: '💰 VALOR MÁX',
+    valorMin: 'VALOR MÍN',
+    valorMax: 'VALOR MÁX',
     ex: 'Ej.: {n}',
     ordenar: 'Ordenar:',
-    sortData: '📅 Fecha',
-    sortValor: '💰 Valor',
-    sortQtd: '⚖️ Cant.',
-    sortNome: '🔤 Nombre',
+    sortData: 'Fecha',
+    sortValor: 'Valor',
+    sortQtd: 'Cant.',
+    sortNome: 'Nombre',
     nenhum: 'No se encontraron ítems',
     ajuste: 'Intente ajustar los filtros',
-    precoMercado: '💰 Precio de mercado',
-    documentos: '📄 Documentos',
-    quemVende: '🧺 Quién vende',
+    precoMercado: 'Precio de mercado',
+    documentos: 'Documentos',
+    quemVende: 'Quién vende',
+    perguntaQuemVende: '¿Quién tiene {c} disponible para vender?',
   },
 })
 
@@ -184,23 +189,23 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
       <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '16px 20px', marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '8px 14px' }}>
-            <span style={{ fontSize: 16 }}>🔍</span>
+            <Search size={16} color="var(--texto-suave)" aria-hidden />
             <input
               style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Inter', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
+              aria-label={t('buscarPh')}
               placeholder={t('buscarPh')}
               value={busca}
               onChange={e => { setBusca(e.target.value); setPage(1) }}
             />
-            {busca && <button onClick={() => setBusca('')} aria-label={t('limparBusca')} title={t('limparBusca')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
+            {busca && <button onClick={() => setBusca('')} aria-label={t('limparBusca')} title={t('limparBusca')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', display: 'flex' }}><X size={16} aria-hidden /></button>}
           </div>
           <button onClick={() => setShowFilters(v => !v)}
             style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-            {t('filtros')}{hasFilters ? ` (${[busca,filCultura,filCanal,filAno,valorMin,valorMax].filter(Boolean).length})` : ''}
+            <SlidersHorizontal size={15} aria-hidden /> {t('filtros')}{hasFilters ? ` (${[busca,filCultura,filCanal,filAno,valorMin,valorMax].filter(Boolean).length})` : ''}
           </button>
           {hasFilters && (
-            <button onClick={clearFilters}
-              style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 10, padding: '9px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
-              {t('limpar')}
+            <button onClick={clearFilters} className="btn btn-sutil btn-sm">
+              <X size={14} aria-hidden /> {t('limpar')}
             </button>
           )}
           <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
@@ -249,10 +254,10 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
       </div>
 
       {pageItems.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--texto-suave)' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-          <p style={{ fontWeight: 700, fontSize: 16 }}>{t('nenhum')}</p>
-          <p style={{ fontSize: 14, marginTop: 6 }}>{t('ajuste')}</p>
+        <div className="empty-state">
+          <SearchX size={44} aria-hidden />
+          <strong>{t('nenhum')}</strong>
+          <p>{t('ajuste')}</p>
         </div>
       ) : pageItems.map(item => (
         <div key={item.id} className="item-card">
@@ -260,29 +265,27 @@ export default function Consultas({ dataset }: { dataset?: Item[] } = {}) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
               {item.cultura && <span className="item-cultura-badge">{item.cultura}</span>}
               {item.canal && (
-                <span style={{ background: 'var(--ceu-claro)', color: 'var(--ceu)', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 7, border: '1px solid #b3d9f5', whiteSpace: 'nowrap' }}>
-                  {item.canal}
-                </span>
+                <StatusBadge tom="info">{item.canal}</StatusBadge>
               )}
               {item.dt_abertura && (
-                <span style={{ fontSize: 11, color: 'var(--texto-suave)', marginLeft: 'auto' }}>
-                  📅 {fmtData(item.dt_abertura)}
+                <span style={{ fontSize: 11, color: 'var(--texto-suave)', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Calendar size={12} aria-hidden /> {fmtData(item.dt_abertura)}
                 </span>
               )}
             </div>
             <div className="item-title">{item.descricao ?? '—'}</div>
             <div className="item-meta" style={{ marginTop: 6 }}>
-              {item.processo && <span style={{ background: 'var(--cinza-claro)', padding: '2px 8px', borderRadius: 6, fontSize: 11 }}>📋 {item.processo}</span>}
-              {(item.qt_solicitada ?? 0) > 0 && <span>⚖️ {fmtNum(item.qt_solicitada ?? 0)} kg</span>}
+              {item.processo && <span style={{ background: 'var(--cinza-claro)', padding: '2px 8px', borderRadius: 6, fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}><ClipboardList size={12} aria-hidden /> {item.processo}</span>}
+              {(item.qt_solicitada ?? 0) > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Scale size={12} aria-hidden /> {fmtNum(item.qt_solicitada ?? 0)} kg</span>}
               {(item.qt_solicitada ?? 0) > 0 && (item.valor_total ?? 0) > 0 && (
                 <span style={{ color: 'var(--verde)', fontWeight: 700 }}>≈ {fmtBRL((item.valor_total ?? 0) / (item.qt_solicitada ?? 1), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg</span>
               )}
             </div>
             {item.cultura && (
               <div className="item-links">
-                <NavLink to={`/mercado?produto=${encodeURIComponent(item.cultura)}`}>{t('precoMercado')}</NavLink>
-                {item.processo && <NavLink to={`/documentos?q=${encodeURIComponent(item.processo)}`}>{t('documentos')}</NavLink>}
-                <NavLink to={`/ofertas?q=${encodeURIComponent(item.cultura)}`}>{t('quemVende')}</NavLink>
+                <NavLink to={`/mercado?produto=${encodeURIComponent(item.cultura)}`}><TrendingUp size={12} aria-hidden /> {t('precoMercado')}</NavLink>
+                {item.processo && <NavLink to={`/documentos?q=${encodeURIComponent(item.processo)}`}><FileText size={12} aria-hidden /> {t('documentos')}</NavLink>}
+                <NavLink to={`/assistente?q=${encodeURIComponent(t('perguntaQuemVende', { c: item.cultura.toLowerCase() }))}`}><Store size={12} aria-hidden /> {t('quemVende')}</NavLink>
               </div>
             )}
           </div>

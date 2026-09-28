@@ -2,43 +2,50 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell,
 } from 'recharts'
+import { Ban, CircleAlert, CircleCheck, CircleX, Coins, FlaskConical, Repeat, Target, Zap } from 'lucide-react'
 import ComparadorVivo from '../components/ComparadorVivo'
+import StatusBadge from '../components/StatusBadge'
+import type { Tom } from '../lib/tons'
+import PageHeader from '../components/PageHeader'
 import { defineMessages, useT, fmtDataHora } from '../i18n'
 
 const MSG = defineMessages({
   pt: {
-    titulo: '⚡ Benchmark de Motores LLM',
+    eyebrow: 'Gestão',
+    titulo: 'Laboratório de IA',
+    subtitulo: 'Compare os motores de linguagem (LLM) dos assistentes em latência, custo, acerto de ferramenta e consistência.',
+    fonte: 'Fonte: benchmark de motores LLM com o conjunto de perguntas de teste do AgroIA-RMC (execuções offline / GitHub Actions)',
     carregando: 'Carregando resultados agregados…',
     semDados: 'Dashboard agregado ainda sem dados.',
     rodeBenchmark: 'Rode o benchmark completo (offline ou via GitHub Actions) para preencher:',
-    resultadosAgregados: '📈 Resultados agregados',
+    resultadosAgregados: 'Resultados agregados',
     resumoRun: '{reps} repetições × {n} perguntas · gerado em {data} · dados coletados offline',
     menorLatencia: 'Menor latência (p50)',
     menorCusto: 'Menor custo / 1k',
     maiorAf1: 'Maior AF@1',
     acertoFerramenta: '{pct}% acerto de ferramenta',
     maiorConsistencia: 'Maior consistência',
-    comparacaoMotor: '📋 Comparação por motor',
+    comparacaoMotor: 'Comparação por motor',
     colMotor: 'Motor',
     colCusto: 'Custo/1k (US$)',
     colConsist: 'Consist.',
     colErro: 'Erro',
     baseline: ' (baseline)',
     notaSignif: 'Superescritos {sup} = melhora estatisticamente significativa (teste t pareado + Bonferroni, α=0,05) sobre o motor de índice correspondente. Baseline em negrito.',
-    graficoLatencia: '⏱️ Latência p50 vs p95 (ms)',
-    graficoAcuracia: '🎯 Acurácia de Ferramenta (AF@k)',
-    graficoCusto: '💵 Custo por 1k consultas (US$)',
+    graficoLatencia: 'Latência p50 vs p95 (ms)',
+    graficoAcuracia: 'Acurácia de Ferramenta (AF@k)',
+    graficoCusto: 'Custo por 1k consultas (US$)',
     custo1k: 'Custo/1k',
-    graficoDominio: '🧭 Intra-domínio (A) vs Extra-domínio (B) — AF@1',
+    graficoDominio: 'Intra-domínio (A) vs Extra-domínio (B) — AF@1',
     conjuntoA: 'Conjunto A (intra)',
     conjuntoB: 'Conjunto B (extra)',
-    porCategoria: '📊 AF@1 por categoria de pergunta',
+    porCategoria: 'AF@1 por categoria de pergunta',
     todasCategorias: 'Todas as categorias',
     cat_preco: 'Preço',
     cat_licitacao: 'Licitação',
     cat_edital: 'Edital',
     cat_geral: 'Geral',
-    exemplos: '🔬 Exemplos qualitativos (perguntas onde os motores divergem)',
+    exemplos: 'Exemplos qualitativos (perguntas onde os motores divergem)',
     todasClassif: 'Todas as classificações',
     cl_CORRETO: 'Correto',
     cl_PARCIAL: 'Parcial',
@@ -51,38 +58,41 @@ const MSG = defineMessages({
     colResposta: 'Resposta',
   },
   en: {
-    titulo: '⚡ LLM Engine Benchmark',
+    eyebrow: 'Management',
+    titulo: 'AI Lab',
+    subtitulo: 'Compare the language models (LLMs) behind the assistants on latency, cost, tool accuracy and consistency.',
+    fonte: 'Source: LLM engine benchmark on the AgroIA-RMC test question set (offline runs / GitHub Actions)',
     carregando: 'Loading aggregated results…',
     semDados: 'Aggregated dashboard has no data yet.',
     rodeBenchmark: 'Run the full benchmark (offline or via GitHub Actions) to populate it:',
-    resultadosAgregados: '📈 Aggregated results',
+    resultadosAgregados: 'Aggregated results',
     resumoRun: '{reps} repetitions × {n} questions · generated on {data} · data collected offline',
     menorLatencia: 'Lowest latency (p50)',
     menorCusto: 'Lowest cost / 1k',
     maiorAf1: 'Highest AF@1',
     acertoFerramenta: '{pct}% tool accuracy',
     maiorConsistencia: 'Highest consistency',
-    comparacaoMotor: '📋 Comparison by engine',
+    comparacaoMotor: 'Comparison by engine',
     colMotor: 'Engine',
     colCusto: 'Cost/1k (USD)',
     colConsist: 'Consist.',
     colErro: 'Error',
     baseline: ' (baseline)',
     notaSignif: 'Superscripts {sup} = statistically significant improvement (paired t-test + Bonferroni, α=0.05) over the engine with the corresponding index. Baseline in bold.',
-    graficoLatencia: '⏱️ Latency p50 vs p95 (ms)',
-    graficoAcuracia: '🎯 Tool Accuracy (AF@k)',
-    graficoCusto: '💵 Cost per 1k queries (USD)',
+    graficoLatencia: 'Latency p50 vs p95 (ms)',
+    graficoAcuracia: 'Tool Accuracy (AF@k)',
+    graficoCusto: 'Cost per 1k queries (USD)',
     custo1k: 'Cost/1k',
-    graficoDominio: '🧭 In-domain (A) vs Out-of-domain (B) — AF@1',
+    graficoDominio: 'In-domain (A) vs Out-of-domain (B) — AF@1',
     conjuntoA: 'Set A (in-domain)',
     conjuntoB: 'Set B (out-of-domain)',
-    porCategoria: '📊 AF@1 by question category',
+    porCategoria: 'AF@1 by question category',
     todasCategorias: 'All categories',
     cat_preco: 'Price',
     cat_licitacao: 'Procurement',
     cat_edital: 'Tender notice',
     cat_geral: 'General',
-    exemplos: '🔬 Qualitative examples (questions where engines diverge)',
+    exemplos: 'Qualitative examples (questions where engines diverge)',
     todasClassif: 'All classifications',
     cl_CORRETO: 'Correct',
     cl_PARCIAL: 'Partial',
@@ -95,38 +105,41 @@ const MSG = defineMessages({
     colResposta: 'Answer',
   },
   es: {
-    titulo: '⚡ Benchmark de Motores LLM',
+    eyebrow: 'Gestión',
+    titulo: 'Laboratorio de IA',
+    subtitulo: 'Compare los modelos de lenguaje (LLM) de los asistentes en latencia, costo, acierto de herramienta y consistencia.',
+    fonte: 'Fuente: benchmark de motores LLM con el conjunto de preguntas de prueba de AgroIA-RMC (ejecuciones offline / GitHub Actions)',
     carregando: 'Cargando resultados agregados…',
     semDados: 'El panel agregado aún no tiene datos.',
     rodeBenchmark: 'Ejecute el benchmark completo (offline o vía GitHub Actions) para llenarlo:',
-    resultadosAgregados: '📈 Resultados agregados',
+    resultadosAgregados: 'Resultados agregados',
     resumoRun: '{reps} repeticiones × {n} preguntas · generado el {data} · datos recopilados offline',
     menorLatencia: 'Menor latencia (p50)',
     menorCusto: 'Menor costo / 1k',
     maiorAf1: 'Mayor AF@1',
     acertoFerramenta: '{pct}% de acierto de herramienta',
     maiorConsistencia: 'Mayor consistencia',
-    comparacaoMotor: '📋 Comparación por motor',
+    comparacaoMotor: 'Comparación por motor',
     colMotor: 'Motor',
     colCusto: 'Costo/1k (USD)',
     colConsist: 'Consist.',
     colErro: 'Error',
     baseline: ' (baseline)',
     notaSignif: 'Superíndices {sup} = mejora estadísticamente significativa (prueba t pareada + Bonferroni, α=0,05) sobre el motor del índice correspondiente. Baseline en negrita.',
-    graficoLatencia: '⏱️ Latencia p50 vs p95 (ms)',
-    graficoAcuracia: '🎯 Precisión de Herramienta (AF@k)',
-    graficoCusto: '💵 Costo por 1k consultas (USD)',
+    graficoLatencia: 'Latencia p50 vs p95 (ms)',
+    graficoAcuracia: 'Precisión de Herramienta (AF@k)',
+    graficoCusto: 'Costo por 1k consultas (USD)',
     custo1k: 'Costo/1k',
-    graficoDominio: '🧭 Intra-dominio (A) vs Extra-dominio (B) — AF@1',
+    graficoDominio: 'Intra-dominio (A) vs Extra-dominio (B) — AF@1',
     conjuntoA: 'Conjunto A (intra)',
     conjuntoB: 'Conjunto B (extra)',
-    porCategoria: '📊 AF@1 por categoría de pregunta',
+    porCategoria: 'AF@1 por categoría de pregunta',
     todasCategorias: 'Todas las categorías',
     cat_preco: 'Precio',
     cat_licitacao: 'Licitación',
     cat_edital: 'Pliego',
     cat_geral: 'General',
-    exemplos: '🔬 Ejemplos cualitativos (preguntas donde los motores divergen)',
+    exemplos: 'Ejemplos cualitativos (preguntas donde los motores divergen)',
     todasClassif: 'Todas las clasificaciones',
     cl_CORRETO: 'Correcto',
     cl_PARCIAL: 'Parcial',
@@ -195,20 +208,26 @@ interface Resultados {
   exemplos_qualitativos: Exemplo[]
 }
 
-// Cores por motor (paleta do projeto — index.css).
+// Cores por motor: paleta categórica Okabe-Ito (segura p/ daltonismo — index.css).
 const COR_MOTOR: Record<string, string> = {
-  claude: '#334155',      // slate (--verde)
-  gemini: '#1e3a5f',      // navy (--ceu)
-  groq_llama: '#0f766e',  // teal (--teal)
-  maritaca: '#b45309',    // amber (--amarelo)
+  claude: 'var(--cat-1)',
+  gemini: 'var(--cat-2)',
+  groq_llama: 'var(--cat-3)',
+  maritaca: 'var(--cat-4)',
 }
-const COR_PADRAO = '#64748b'
+const COR_PADRAO = 'var(--cinza)'
 
-const CLASSIF_CFG: Record<string, { bg: string; cor: string; borda: string }> = {
-  CORRETO: { bg: '#e6f2f1', cor: '#0f766e', borda: '#9fcdc8' },
-  PARCIAL: { bg: '#fff7ed', cor: '#c2410c', borda: '#fdba74' },
-  INCORRETO: { bg: '#fef2f2', cor: '#b91c1c', borda: '#fca5a5' },
-  RECUSA: { bg: '#eef2f7', cor: '#475569', borda: '#cbd5e1' },
+// Eixos/grade/tooltip padronizados dos gráficos.
+const TICK = { fontSize: 10, fill: 'var(--chart-eixo)' }
+const GRADE = 'var(--chart-grade)'
+const TOOLTIP_STYLE = { fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }
+
+// Classificação: texto + ícone (não depende só da cor — WCAG 1.4.1).
+const CLASSIF_CFG: Record<string, { tom: Tom; Icon: typeof CircleCheck }> = {
+  CORRETO: { tom: 'ok', Icon: CircleCheck },
+  PARCIAL: { tom: 'aviso', Icon: CircleAlert },
+  INCORRETO: { tom: 'erro', Icon: CircleX },
+  RECUSA: { tom: 'neutro', Icon: Ban },
 }
 
 const corDe = (m: string) => COR_MOTOR[m] ?? COR_PADRAO
@@ -282,23 +301,29 @@ export default function BenchmarkMotores() {
 
   return (
     <div className="page">
-      <h2 style={{ margin: 0 }}>{t('titulo')}</h2>
+      <PageHeader
+        eyebrow={t('eyebrow')}
+        title={t('titulo')}
+        subtitle={t('subtitulo')}
+        source={t('fonte')}
+      />
 
       {/* Switch global de motor + comparador ao vivo (sempre visível) */}
       <ComparadorVivo />
 
       {/* Dashboard agregado (corridas offline / GitHub Actions) */}
       {carregando ? (
-        <div className="chart-card" style={{ textAlign: 'center', color: 'var(--texto-suave)' }}>
-          {t('carregando')}
+        <div className="chart-card" role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--texto-suave)' }}>
+          <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> {t('carregando')}
         </div>
       ) : (erro || !dados) ? (
-        <div className="chart-card" style={{ textAlign: 'center', padding: 40 }}>
-          <p style={{ fontSize: 16, marginBottom: 8 }}>{t('semDados')}</p>
-          <p style={{ color: 'var(--texto-suave)' }}>
+        <div className="chart-card empty-state">
+          <FlaskConical size={32} aria-hidden />
+          <strong>{t('semDados')}</strong>
+          <p style={{ color: 'var(--texto-suave)', margin: '0 0 12px' }}>
             {t('rodeBenchmark')}
           </p>
-          <pre style={{ background: '#f1f5f9', padding: 12, borderRadius: 8, display: 'inline-block', textAlign: 'left', fontSize: 13, maxWidth: '100%', overflowX: 'auto' }}>
+          <pre style={{ background: 'var(--cinza-claro)', border: '1px solid var(--borda)', color: 'var(--texto)', padding: 12, borderRadius: 8, display: 'inline-block', textAlign: 'left', fontSize: 13, maxWidth: '100%', overflowX: 'auto' }}>
 {`python -m benchmark.benchmark_executor --motores all --reps 3
 python -m benchmark.benchmark_executor --export-frontend`}
           </pre>
@@ -316,25 +341,25 @@ python -m benchmark.benchmark_executor --export-frontend`}
       {melhores && (
         <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginTop: 16 }}>
           <div className="metric-card verde">
-            <span className="metric-icon">⚡</span>
+            <span className="metric-icon"><Zap size={18} aria-hidden /></span>
             <div className="metric-label">{t('menorLatencia')}</div>
             <div className="metric-value" style={{ fontSize: 20 }}>{melhores.latencia.rotulo}</div>
             <div className="metric-sub">{melhores.latencia.latencia_p50_ms} ms</div>
           </div>
           <div className="metric-card amarelo">
-            <span className="metric-icon">💵</span>
+            <span className="metric-icon"><Coins size={18} aria-hidden /></span>
             <div className="metric-label">{t('menorCusto')}</div>
             <div className="metric-value" style={{ fontSize: 20 }}>{melhores.custo.rotulo}</div>
             <div className="metric-sub">US$ {melhores.custo.custo_usd_1k.toFixed(4)}</div>
           </div>
           <div className="metric-card ceu">
-            <span className="metric-icon">🎯</span>
+            <span className="metric-icon"><Target size={18} aria-hidden /></span>
             <div className="metric-label">{t('maiorAf1')}</div>
             <div className="metric-value" style={{ fontSize: 20 }}>{melhores.af1.rotulo}</div>
             <div className="metric-sub">{t('acertoFerramenta', { pct: melhores.af1.af1_pct })}</div>
           </div>
           <div className="metric-card terra">
-            <span className="metric-icon">🔁</span>
+            <span className="metric-icon"><Repeat size={18} aria-hidden /></span>
             <div className="metric-label">{t('maiorConsistencia')}</div>
             <div className="metric-value" style={{ fontSize: 20 }}>{melhores.consistencia?.rotulo ?? '—'}</div>
             <div className="metric-sub">{melhores.consistencia?.consistencia != null ? melhores.consistencia.consistencia.toFixed(2) : '—'}</div>
@@ -391,13 +416,13 @@ python -m benchmark.benchmark_executor --export-frontend`}
           <h3>{t('graficoLatencia')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={motores} margin={{ top: 4, right: 8, left: 8, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-              <XAxis dataKey="rotulo" tick={{ fontSize: 10, fill: '#64748b' }} angle={-20} textAnchor="end" interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: '#64748b' }} />
-              <Tooltip contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRADE} />
+              <XAxis dataKey="rotulo" tick={TICK} angle={-20} textAnchor="end" interval={0} />
+              <YAxis tick={TICK} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
-              <Bar dataKey="latencia_p50_ms" name="p50" fill="#334155" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="latencia_p95_ms" name="p95" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="latencia_p50_ms" name="p50" fill="var(--cat-1)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="latencia_p95_ms" name="p95" fill="var(--cat-2)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -406,14 +431,14 @@ python -m benchmark.benchmark_executor --export-frontend`}
           <h3>{t('graficoAcuracia')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={motores} margin={{ top: 4, right: 8, left: 8, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-              <XAxis dataKey="rotulo" tick={{ fontSize: 10, fill: '#64748b' }} angle={-20} textAnchor="end" interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: '#64748b' }} domain={[0, 100]} />
-              <Tooltip contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }} formatter={(v) => [`${v}%`, '']} />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRADE} />
+              <XAxis dataKey="rotulo" tick={TICK} angle={-20} textAnchor="end" interval={0} />
+              <YAxis tick={TICK} domain={[0, 100]} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}%`, '']} />
               <Legend formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
-              <Bar dataKey="af1_pct" name="AF@1" fill="#0f766e" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="af2_pct" name="AF@2" fill="#5eaaa2" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="af3_pct" name="AF@3" fill="#a7cfca" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="af1_pct" name="AF@1" fill="var(--cat-1)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="af2_pct" name="AF@2" fill="var(--cat-2)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="af3_pct" name="AF@3" fill="var(--cat-3)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -422,10 +447,10 @@ python -m benchmark.benchmark_executor --export-frontend`}
           <h3>{t('graficoCusto')}</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={motores} margin={{ top: 4, right: 8, left: 8, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-              <XAxis dataKey="rotulo" tick={{ fontSize: 10, fill: '#64748b' }} angle={-20} textAnchor="end" interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: '#64748b' }} />
-              <Tooltip contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }} formatter={(v) => [`US$ ${Number(v).toFixed(4)}`, t('custo1k')]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRADE} />
+              <XAxis dataKey="rotulo" tick={TICK} angle={-20} textAnchor="end" interval={0} />
+              <YAxis tick={TICK} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`US$ ${Number(v).toFixed(4)}`, t('custo1k')]} />
               <Bar dataKey="custo_usd_1k" radius={[4, 4, 0, 0]}>
                 {motores.map(m => <Cell key={m.motor} fill={corDe(m.motor)} />)}
               </Bar>
@@ -437,13 +462,13 @@ python -m benchmark.benchmark_executor --export-frontend`}
           <h3>{t('graficoDominio')}</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={motores} margin={{ top: 4, right: 8, left: 8, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-              <XAxis dataKey="rotulo" tick={{ fontSize: 10, fill: '#64748b' }} angle={-20} textAnchor="end" interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: '#64748b' }} domain={[0, 100]} />
-              <Tooltip contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }} formatter={(v) => [`${v}%`, '']} />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRADE} />
+              <XAxis dataKey="rotulo" tick={TICK} angle={-20} textAnchor="end" interval={0} />
+              <YAxis tick={TICK} domain={[0, 100]} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}%`, '']} />
               <Legend formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
-              <Bar dataKey="af1_conjunto_A" name={t('conjuntoA')} fill="#1e3a5f" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="af1_conjunto_B" name={t('conjuntoB')} fill="#b45309" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="af1_conjunto_A" name={t('conjuntoA')} fill="var(--cat-1)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="af1_conjunto_B" name={t('conjuntoB')} fill="var(--cat-2)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -460,10 +485,10 @@ python -m benchmark.benchmark_executor --export-frontend`}
         </div>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={categoriaData} margin={{ top: 12, right: 8, left: 8, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-            <XAxis dataKey="categoriaRotulo" tick={{ fontSize: 11, fill: '#64748b' }} />
-            <YAxis tick={{ fontSize: 10, fill: '#64748b' }} domain={[0, 100]} />
-            <Tooltip contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }} formatter={(v) => [`${v}%`, '']} />
+            <CartesianGrid strokeDasharray="3 3" stroke={GRADE} />
+            <XAxis dataKey="categoriaRotulo" tick={{ ...TICK, fontSize: 11 }} />
+            <YAxis tick={TICK} domain={[0, 100]} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}%`, '']} />
             <Legend formatter={(v) => <span style={{ fontSize: 11 }}>{motores.find(m => m.motor === v)?.rotulo ?? v}</span>} />
             {motores.map(m => (
               <Bar key={m.motor} dataKey={m.motor} name={m.motor} fill={corDe(m.motor)} radius={[4, 4, 0, 0]} />
@@ -509,9 +534,7 @@ python -m benchmark.benchmark_executor --export-frontend`}
                         {Object.keys(e.parametros || {}).length ? JSON.stringify(e.parametros) : '—'}
                       </td>
                       <td style={{ padding: '8px 10px' }}>
-                        <span style={{ background: cfg.bg, color: cfg.cor, border: `1px solid ${cfg.borda}`, borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
-                          {rotuloClassif(e.classificacao)}
-                        </span>
+                        <StatusBadge tom={cfg.tom} icon={cfg.Icon}>{rotuloClassif(e.classificacao)}</StatusBadge>
                       </td>
                       <td style={{ padding: '8px 10px', maxWidth: 260, color: 'var(--texto-suave)' }}>{e.trecho}</td>
                     </tr>
