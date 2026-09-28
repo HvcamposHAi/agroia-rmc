@@ -1,0 +1,250 @@
+# Resultados da validação da tese (Parte A)
+
+Execução `{{ run_id }}`; snapshot `{{ (snapshot.hash_agregado or "n/d")[:16] }}`; pré-registro `{{ (prereg_sha or "n/d")[:16] }}`. Relatório gerado automaticamente; todos os números vêm dos arquivos da execução.
+{% if etapas_pedidas and etapas_concluidas | length < etapas_pedidas | length %}
+
+Etapas não concluídas nesta execução: {{ etapas_pedidas | reject("in", etapas_concluidas) | join(", ") }}. As seções correspondentes aparecem vazias ou parciais.
+{% endif %}
+
+## 1 Resumo numérico
+
+{% if a1 %}
+- Censo: {{ a1.censo.global.P | n }} processos do órgão no portal e {{ a1.censo.global.P_inter_B | n }} na interseção com a base; completude de {{ a1.censo.global.completude | pct }}{% if a1.censo.anos_parciais %} ({{ a1.censo.global_sem_parciais.completude | pct }} sem {{ a1.censo.anos_parciais | join(", ") }}, ano parcial do corpus){% endif %} e precisão de existência de {{ a1.censo.global.precisao_existencia | pct }}; {{ a1.censo.global.faltantes_na_base | n }} processos do portal ausentes da base; {{ a1.censo.global.nao_verificaveis_fonte_desativada | n }} registros não verificáveis (fonte desativada).
+- Correspondência campo a campo (amostra de {{ a1.amostra_lida | n }} processos): {{ a1.global | ic }}.
+- Documentos da base disponíveis: {{ a1.documentos.base_disponiveis | n }} de {{ a1.documentos.base_total | n }}; cobertura do RAG: {{ a1.documentos.rag_cobertura | pct }}.
+{% else %}
+- A camada A1 não foi executada.
+{% endif %}
+{% if a2 and a2.hipoteses %}
+{% for hid in ["H1", "H2", "H3", "H4", "H5"] if hid in a2.hipoteses %}
+- {{ hid }}: {{ a2.hipoteses[hid].decisao | default("inconclusiva") }}.
+{% endfor %}
+{% else %}
+- A camada A2 não foi executada.
+{% endif %}
+
+## 2 Camada A1: fidelidade
+
+{% if a1 %}
+### 2.1 Censo de processos
+
+A Tabela {{ tab("censo") }} apresenta o censo por ano; a Figura {{ fig("completude") }} mostra a completude e a precisão de existência.
+
+**Tabela {{ tab("censo") }}: Censo de processos por ano (portal × base)**
+
+{{ tabela(linhas_censo(a1.censo), ["Ano", "Portal (P)", "P ∩ B", "Faltantes na base", "Ausentes no portal", "Não verificáveis", "Completude", "Precisão"]) }}
+
+{{ FONTE }}
+
+{% if figs.completude %}
+**Figura {{ fig("completude") }}: Completude e precisão de existência por ano**
+
+![Figura {{ fig("completude") }}](figuras/{{ figs.completude }})
+
+{{ FONTE }}
+{% endif %}
+
+{% if a1.censo.anos_parciais %}
+O corpus da plataforma começa em {{ a1.censo.inicio_corpus }}; {{ "o ano" if a1.censo.anos_parciais | length == 1 else "os anos" }} {{ a1.censo.anos_parciais | join(", ") }} {{ "é parcial" if a1.censo.anos_parciais | length == 1 else "são parciais" }} por definição do escopo de coleta, e a completude nele mede esse recorte, não a fidelidade. Sem {{ "esse ano" if a1.censo.anos_parciais | length == 1 else "esses anos" }}, a completude é de {{ a1.censo.global_sem_parciais.completude | pct }} ({{ a1.censo.global_sem_parciais.P_inter_B | n }} de {{ a1.censo.global_sem_parciais.P | n }}) e a precisão de existência de {{ a1.censo.global_sem_parciais.precisao_existencia | pct }}.
+
+{% endif %}
+No escopo agrícola, a precisão de existência foi de {{ a1.censo.escopo_af.precisao_existencia | pct }} ({{ a1.censo.escopo_af.P_inter_B | n }} de {{ a1.censo.escopo_af.B_verificaveis | n }} registros verificáveis). A completude nesse recorte não é definível, porque o portal não classifica o objeto das compras.
+{% if a1.censo.erros_ano %}
+Anos cuja listagem falhou: {% for a, e in a1.censo.erros_ano.items() %}{{ a }} ({{ e[:80] }}){% if not loop.last %}; {% endif %}{% endfor %}.
+{% endif %}
+
+### 2.2 Correspondência campo a campo
+
+A Tabela {{ tab("campos") }} apresenta a taxa de correspondência por campo, com intervalo de Wilson de 95%, e a Figura {{ fig("campos") }} a representa graficamente. A taxa global exclui o campo derivado e os campos com divergência entre extratores.
+
+**Tabela {{ tab("campos") }}: Correspondência por campo entre a fonte e a base**
+
+{{ tabela(linhas_campos(a1.por_campo), ["Campo", "Correspondência (IC 95%)", "Fonte atual", "JSF enriquecido", "JSF legado", "Divergência entre extratores", "F1 médio", "Levenshtein médio"]) }}
+
+{{ FONTE }}
+
+{% if figs.campos %}
+**Figura {{ fig("campos") }}: Correspondência por campo, com intervalo de Wilson de 95%**
+
+![Figura {{ fig("campos") }}](figuras/{{ figs.campos }})
+
+{{ FONTE }}
+{% endif %}
+
+Origem do registro na base: "fonte atual" = criado pelo coletor do Portal da Transparência; "JSF enriquecido" = carga do portal JSF desativado que o coletor atual completou com empenhos, vencedores e endereço do detalhe, mantendo por regra os itens e a situação originais (o vocabulário de situação dos dois portais difere) e sem gravar modalidade nem nº do edital; "JSF legado" = carga do portal JSF sem enriquecimento.
+
+Taxa global: {{ a1.global | ic }}. Por origem do registro: {% for o, v in (a1.global_por_origem or {}).items() %}{{ o | rot }} {{ v | ic }}{% if not loop.last %}; {% endif %}{% endfor %}.
+{% if a1.concordancia_extratores is not none %}
+Concordância entre os extratores Playwright e Chrome: {{ a1.concordancia_extratores | pct }} de {{ a1.concordancia_n | n }} campos comparados; κ de Cohen: {% for c, k in a1.kappa_categoricos.items() %}{{ c }} = {{ k | n(3) }}{% if not loop.last %}; {% endif %}{% endfor %}. Campos com `DIVERGENCIA_EXTRACAO`: {{ a1.divergencia_extracao_total | n }}.
+{% else %}
+A segunda leitura (Claude in Chrome) não estava disponível nesta execução; todos os campos têm leitura única.
+{% endif %}
+
+### 2.3 Documentos
+
+A Tabela {{ tab("docs") }} resume disponibilidade, integridade e cobertura dos documentos.
+
+**Tabela {{ tab("docs") }}: Documentos da base e do portal**
+
+{% set dd = a1.documentos %}
+{{ tabela([
+  ["Documentos referenciados na base", dd.base_total | n],
+  ["Disponíveis para download", dd.base_disponiveis | n],
+  ["Tamanho igual ao registrado na base", (dd.base_tamanho_confere | n) ~ " de " ~ (dd.base_tamanho_verificavel | n) ~ " verificáveis"],
+  ["Com trechos indexados no RAG", (dd.rag_docs_com_chunks | n) ~ " (" ~ (dd.rag_cobertura | pct) ~ ")"],
+  ["Documentos do portal nos processos da amostra", dd.amostra_portal_docs | n],
+  ["Documentos do portal disponíveis", dd.amostra_portal_disponiveis | n],
+  ["Documentos do portal com correspondente na base", dd.amostra_portal_com_par_base | n],
+  ["Documentos da base na amostra com correspondente no portal", (dd.amostra_base_com_par_portal | n) ~ " de " ~ (dd.amostra_base_docs | n)],
+  ["Mediana do Jaccard de 5-gramas nos pares", dd.amostra_jaccard_mediana | n(3)],
+  ["Pares com SHA-256 idêntico", dd.amostra_mesmo_sha | n],
+  ["Pares com o mesmo número de páginas", dd.amostra_mesmas_paginas | n],
+], ["Indicador", "Valor"]) }}
+
+{{ FONTE }}
+
+### 2.4 Agregados por ano
+
+A Tabela {{ tab("agr") }} compara os agregados anuais. {{ a1.agregados.nota }}
+
+**Tabela {{ tab("agr") }}: Agregados por ano**
+
+{{ tabela(linhas_agregados(a1.agregados), ["Ano", "Processos na base", "Processos no portal", "Diferença relativa", "Itens na base", "Empenhado na base (R$)", "Valor global da listagem do portal (R$)"]) }}
+
+{{ FONTE }}
+{% else %}
+A camada A1 não foi executada nesta execução.
+{% endif %}
+
+## 3 Camada A2: facilitação do acesso
+
+{% if a2 and a2.n_execucoes %}
+{% if a2_piloto %}
+Os resultados abaixo são do piloto (uma repetição por condição em um subconjunto de tarefas) e servem para verificar o instrumento; não sustentam conclusão inferencial.
+
+{% endif %}
+Foram realizadas {{ a2.n_execucoes | n }} execuções do agente sobre {{ a2.tarefas | n }} tarefas. A Tabela {{ tab("tarefas") }} apresenta o desempenho por tarefa e condição.
+
+**Tabela {{ tab("tarefas") }}: Desempenho por tarefa e condição**
+
+{{ tabela(linhas_tarefas(run_id, a2_piloto), ["Tarefa", "Tipo", "Condição", "Sucessos/execuções", "Ações (mediana)", "KLM em s (mediana)", "Tempo em s (mediana)", "Páginas (mediana)", "Desfechos"]) }}
+
+{{ FONTE }}
+
+Taxa de sucesso por execução: {% for c, v in a2.sucesso_por_condicao.items() %}{{ c }} {{ v | ic }}{% if not loop.last %}; {% endif %}{% endfor %}. Consistência intracondição (mesmo desfecho nas repetições): {% for c, v in a2.consistencia_intracondicao.items() %}{{ c }} {{ v | pct }}{% if not loop.last %}; {% endif %}{% endfor %}.
+{% if a2.usou_chat is not none %}
+Na condição AGROIA, {{ a2.usou_chat | pct }} das execuções passaram pela página do assistente (Chat).
+{% endif %}
+{% if a2.aquecimento_s_mediana is not none %}
+A mediana da latência de aquecimento do backend foi de {{ a2.aquecimento_s_mediana | n(1) }} s, excluída do tempo das tarefas.
+{% endif %}
+
+{% if figs.sucesso_tipo %}
+A Figura {{ fig("sucesso_tipo") }} apresenta a taxa de sucesso por tipo de tarefa.
+
+**Figura {{ fig("sucesso_tipo") }}: Taxa de sucesso por tipo de tarefa e condição**
+
+![Figura {{ fig("sucesso_tipo") }}](figuras/{{ figs.sucesso_tipo }})
+
+{{ FONTE }}
+{% endif %}
+
+{% set h = a2.hipoteses %}
+### 3.1 H1: eficácia
+
+{% if h.H1 %}
+A Tabela {{ tab("mcnemar") }} apresenta os pares tarefa × condição (sucesso por maioria das repetições).
+
+**Tabela {{ tab("mcnemar") }}: Tabela 2×2 de sucesso por tarefa (AGROIA × PORTAL)**
+
+{{ tabela([["AGROIA sucesso", h.H1.tabela.n11, h.H1.tabela.n10], ["AGROIA insucesso", h.H1.tabela.n01, h.H1.tabela.n00]], ["", "PORTAL sucesso", "PORTAL insucesso"]) }}
+
+{{ FONTE }}
+
+McNemar exato: {{ h.H1.discordantes }} pares discordantes (b = {{ h.H1.b }}, c = {{ h.H1.c }}), {{ h.H1.p_valor | pv }}, p ajustado por Holm {{ (h.H1.p_holm | pv)[2:] if h.H1.p_holm is not none else "n/d" }}; razão de chances condicional {{ h.H1.or | n(2) }} (IC 95%: {{ h.H1.or_li | n(2) }} a {{ h.H1.or_ls | n(2) }}); proporção de tarefas com sucesso: AGROIA {{ h.H1.prop_agroia | pct }}, PORTAL {{ h.H1.prop_portal | pct }}. Decisão: **{{ h.H1.decisao }}**.
+{% if a2.H1_sensibilidade_por_protocolo %}
+Sensibilidade por protocolo (sem `BLOQUEADO` e `TIMEOUT`): {{ a2.H1_sensibilidade_por_protocolo.p_valor | pv }} (b = {{ a2.H1_sensibilidade_por_protocolo.b }}, c = {{ a2.H1_sensibilidade_por_protocolo.c }}).
+{% endif %}
+{% else %}
+Sem pares suficientes para o teste.
+{% endif %}
+
+### 3.2 H2 e H3: eficiência
+
+{% for hid, nome in [("H2", "ações de navegação"), ("H3", "tempo humano estimado (KLM, s)")] %}
+{% if h[hid] %}
+{{ hid }} ({{ nome }}), tarefas com sucesso nas duas condições: n = {{ h[hid].n_nao_nulos }} pares não nulos; mediana AGROIA {{ h[hid].mediana_agroia | n(1) }}, PORTAL {{ h[hid].mediana_portal | n(1) }}; Wilcoxon W = {{ h[hid].W | n(1) }}, {{ h[hid].p_valor | pv }}, p ajustado por Holm {{ (h[hid].p_holm | pv)[2:] if h[hid].p_holm is not none else "n/d" }}; r = {{ h[hid].r | n(3) }}; δ de Cliff = {{ h[hid].cliff | n(3) }} ({{ h[hid].cliff_magnitude or "n/d" }}). Sensibilidade com todas as tarefas (falha = orçamento máximo {{ h[hid].sensibilidade.teto | n(1) }}): {{ h[hid].sensibilidade.p_valor | pv }}, δ de Cliff = {{ h[hid].sensibilidade.cliff | n(3) }}. Decisão: **{{ h[hid].decisao }}**.
+
+{% else %}
+{{ hid }}: sem dados suficientes.
+
+{% endif %}
+{% endfor %}
+{% if figs.acoes %}
+A Figura {{ fig("acoes") }} e a Figura {{ fig("klm") }} mostram as distribuições por condição.
+
+**Figura {{ fig("acoes") }}: Ações de navegação por execução, por condição**
+
+![Figura {{ fig("acoes") }}](figuras/{{ figs.acoes }})
+
+{{ FONTE }}
+
+**Figura {{ fig("klm") }}: Tempo humano estimado (KLM) por execução, por condição**
+
+![Figura {{ fig("klm") }}](figuras/{{ figs.klm }})
+
+{{ FONTE }}
+{% endif %}
+
+### 3.3 H4: cobertura funcional
+
+A Tabela {{ tab("h4") }} indica, por tipo de tarefa, se houve ao menos uma execução bem-sucedida em cada condição.
+
+**Tabela {{ tab("h4") }}: Tipos de tarefa resolvidos ao menos uma vez**
+
+{{ tabela(linhas_h4(h.H4), ["Tipo", "AGROIA", "PORTAL"]) }}
+
+{{ FONTE }}
+
+Proporção de tipos resolvidos: {% for c, v in h.H4.proporcao_tipos.items() %}{{ c }} {{ v | pct }}{% if not loop.last %}; {% endif %}{% endfor %}. Decisão (descritiva): **{{ h.H4.decisao }}**.
+
+### 3.4 H5: abstenção
+
+{% if h.H5 %}
+Declaração correta de inexistência na tarefa T12: {% for c, v in h.H5.por_condicao.items() %}{{ c }} {{ v | ic }}{% if not loop.last %}; {% endif %}{% endfor %}.{% if h.H5.fisher %} Fisher exato: {{ h.H5.fisher.p_valor | pv }}.{% endif %} Decisão: **{{ h.H5.decisao | default("inconclusiva") }}**.
+{% else %}
+A tarefa T12 não foi executada nesta execução.
+{% endif %}
+
+### 3.5 Desfechos
+
+**Tabela {{ tab("desf") }}: Desfechos por condição**
+
+{{ tabela(linhas_desfechos(a2.desfechos), ["Condição", "Desfecho", "Execuções"]) }}
+
+{{ FONTE }}
+{% else %}
+A camada A2 não foi executada nesta execução.
+{% endif %}
+
+## Apêndice A: divergências da A1
+
+{% if campos is not none %}
+{{ tabela(linhas_divergencias(campos), ["Processo", "Origem", "Campo", "Status", "Fonte", "Base"]) }}
+
+Evidências (HTML e capturas de tela) em `execucoes/{{ run_id }}/evidencias/a1/`.
+{% else %}
+Sem dados.
+{% endif %}
+
+## Apêndice B: execuções excluídas e falhas de infraestrutura
+
+{% if execucoes is not none %}
+{{ tabela(linhas_falhas(execucoes), ["Execução", "Desfecho", "Tentativas", "Motivo"]) }}
+{% else %}
+Sem dados.
+{% endif %}
+
+## Apêndice C: tarefas instanciadas
+
+{{ tabela(linhas_instancias(instancias), ["Tarefa", "Enunciado", "Gabarito"]) }}

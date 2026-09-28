@@ -1,0 +1,145 @@
+# Catálogo de modelos de tarefa da camada A2 (seção 4.2.2).
+#
+# Cada modelo: tipo, enunciado com parâmetros, parâmetros sorteados (somente entre registros
+# verificados na A1), consulta SQL (DuckDB sobre o snapshot) que calcula o gabarito,
+# regra de pontuação e campos da A1 dos quais depende.
+#
+# Tabelas disponíveis na consulta: todas as do snapshot (licitacoes, itens_licitacao, ...)
+# e a visão auxiliar `lic` (licitacoes + colunas `chave` = 'PE 3/2025' e `ano`).
+# Parâmetros entram como $nome (consulta parametrizada).
+#
+# Ajustes em relação à tabela do plano, feitos para ancorar o gabarito em campos que existem
+# na base e na fonte (registrados no relatório de metodologia):
+#   T02: "data de abertura das propostas indicada no edital" → "data de abertura do edital"
+#        (campo "Data Abertura Edital" do portal); o documento é pontuado pela URL.
+#   T04: vencedores por produto e ano → vencedores do processo (a base não guarda o vencedor
+#        por item; guarda por processo em participacoes.vencedor).
+#   T05: "processos de aquisição de gêneros alimentícios" → "processos de compra registrados
+#        pelo FAAC" (o portal não classifica o objeto; a contagem é verificável no censo).
+
+T01:
+  tipo: localizacao
+  enunciado: "Qual é o objeto e a data de abertura do edital do processo {processo} do FAAC?"
+  parametros: [processo]
+  depende: [objeto, dt_abertura]
+  consulta: "SELECT objeto, CAST(dt_abertura AS VARCHAR) AS data FROM lic WHERE chave = $processo"
+  pontuacao: {tipo: objeto_data}
+
+T02:
+  tipo: localizacao_documental
+  enunciado: "Localize o edital (arquivo PDF) do processo {processo} do FAAC. Informe o endereço do arquivo e a data de abertura do edital."
+  parametros: [processo]
+  depende: [dt_abertura, arquivos]
+  consulta: "SELECT CAST(dt_abertura AS VARCHAR) AS data FROM lic WHERE chave = $processo"
+  pontuacao: {tipo: documento_data}
+
+T03:
+  tipo: atributo_item
+  enunciado: "Qual foi o valor unitário pago por {produto} no processo {processo} do FAAC?"
+  parametros: [processo, produto]
+  depende: [itens]
+  consulta: >
+    SELECT DISTINCT round(i.valor_unitario, 2) AS valor
+    FROM itens_licitacao i JOIN lic ON lic.id = i.licitacao_id
+    WHERE lic.chave = $processo AND upper(i.cultura) = upper($produto) AND i.valor_unitario > 0
+  pontuacao: {tipo: numero, tolerancia_abs: 0.01, exige_unico: true}
+
+T04:
+  tipo: fornecedor
+  enunciado: "Quais fornecedores foram vencedores no processo {processo} do FAAC?"
+  parametros: [processo]
+  depende: [vencedores]
+  consulta: >
+    SELECT DISTINCT regexp_replace(f.cpf_cnpj, '[^0-9]', '', 'g') AS doc, f.razao_social AS nome
+    FROM participacoes p JOIN lic ON lic.id = p.licitacao_id JOIN fornecedores f ON f.id = p.fornecedor_id
+    WHERE lic.chave = $processo AND p.vencedor
+  pontuacao: {tipo: conjunto_fornecedores}
+
+T05:
+  tipo: agregacao_simples
+  enunciado: "Quantos processos de compra o Fundo de Abastecimento Alimentar de Curitiba (FAAC) registrou com número do ano de {ano}?"
+  parametros: [ano_exato]
+  depende: [censo]
+  consulta: "SELECT count(*) AS valor FROM lic WHERE ano = $ano"
+  pontuacao: {tipo: numero, tolerancia_abs: 0}
+
+T06:
+  tipo: agregacao_valor
+  enunciado: "Qual o valor total empenhado pelo FAAC ao fornecedor {fornecedor} em processos de {ano}?"
+  parametros: [fornecedor_empenho]
+  depende: [empenhos]
+  consulta: >
+    SELECT round(sum(e.valor_empenhado), 2) AS valor
+    FROM empenhos e JOIN itens_licitacao i ON i.id = e.item_id JOIN lic ON lic.id = i.licitacao_id
+    JOIN fornecedores f ON f.id = e.fornecedor_id
+    WHERE lic.ano = $ano AND regexp_replace(f.cpf_cnpj, '[^0-9]', '', 'g') = $doc
+  pontuacao: {tipo: numero, tolerancia_rel: 0.005}
+
+T07:
+  tipo: ranking
+  enunciado: "Quais foram os 5 produtos agrícolas com maior valor comprado pelo FAAC em processos de {ano}?"
+  parametros: [ano]
+  depende: [itens, censo]
+  consulta: >
+    SELECT upper(i.cultura) AS nome, sum(i.valor_total) AS valor
+    FROM itens_licitacao i JOIN lic ON lic.id = i.licitacao_id
+    WHERE lic.ano = $ano AND i.relevante_agro AND i.cultura IS NOT NULL
+    GROUP BY 1 ORDER BY 2 DESC LIMIT 5
+  pontuacao: {tipo: topk, k: 5}
+
+T08:
+  tipo: serie_temporal
+  enunciado: "Em quais meses de {ano} foram abertos editais do FAAC para compra de {produto}?"
+  parametros: [ano_produto]
+  depende: [itens, dt_abertura, censo]
+  consulta: >
+    SELECT DISTINCT month(lic.dt_abertura) AS mes
+    FROM itens_licitacao i JOIN lic ON lic.id = i.licitacao_id
+    WHERE lic.ano = $ano AND upper(i.cultura) = upper($produto) AND lic.dt_abertura IS NOT NULL
+      AND year(lic.dt_abertura) = $ano
+  pontuacao: {tipo: conjunto_meses}
+
+T09:
+  tipo: cruzamento_mercado
+  enunciado: "O preço unitário pago por {produto} no processo {processo} do FAAC ficou acima ou abaixo da cotação média da CEASA-PR (unidade Curitiba) no mesmo mês da abertura do edital?"
+  parametros: [processo, produto]
+  depende: [itens, dt_abertura]
+  consulta: >
+    WITH it AS (
+      SELECT i.valor_unitario AS preco, lic.dt_abertura AS dt, upper(i.unidade_medida) AS un
+      FROM itens_licitacao i JOIN lic ON lic.id = i.licitacao_id
+      WHERE lic.chave = $processo AND upper(i.cultura) = upper($produto) AND i.valor_unitario > 0)
+    SELECT it.preco, avg(p.preco_medio) AS ceasa, count(*) AS n_cotacoes, it.un, any_value(p.unidade) AS un_ceasa
+    FROM it JOIN prohort_precos p
+      ON upper(p.ceasa) = 'CURITIBA' AND upper(p.produto_norm) = upper($produto)
+     AND date_trunc('month', CAST(p.data_coleta AS DATE)) = date_trunc('month', CAST(it.dt AS DATE))
+    WHERE it.un IN ('KG', 'QUILO', 'QUILOGRAMA') AND upper(p.unidade) = 'KG'
+    GROUP BY it.preco, it.un
+  pontuacao: {tipo: categorica, tolerancia_igual_rel: 0.01}
+
+T10:
+  tipo: cruzamento_processos
+  enunciado: "Em quantos processos distintos do FAAC com número do ano de {ano} o fornecedor {fornecedor} participou?"
+  parametros: [fornecedor_participacao]
+  depende: [participantes, censo]
+  consulta: >
+    SELECT count(DISTINCT lic.id) AS valor
+    FROM participacoes p JOIN lic ON lic.id = p.licitacao_id JOIN fornecedores f ON f.id = p.fornecedor_id
+    WHERE lic.ano = $ano AND regexp_replace(f.cpf_cnpj, '[^0-9]', '', 'g') = $doc AND coalesce(p.participou, true)
+  pontuacao: {tipo: numero, tolerancia_abs: 0}
+
+T11:
+  tipo: documental_conteudo
+  enunciado: "No edital do processo {processo} do FAAC, qual é o prazo de entrega exigido?"
+  parametros: [processo_edital]
+  depende: [arquivos]
+  consulta: null      # gabarito extraído do PDF por código (duas bibliotecas precisam concordar)
+  pontuacao: {tipo: prazo_dias}
+
+T12:
+  tipo: abstencao
+  enunciado: "Quanto o PNAE (alimentação escolar) de Curitiba comprou de {produto} em {ano}?"
+  parametros: [ano_produto]
+  depende: []
+  consulta: null      # correto = declarar que a informação não existe na fonte
+  pontuacao: {tipo: abstencao}

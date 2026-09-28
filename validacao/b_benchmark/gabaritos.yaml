@@ -1,0 +1,70 @@
+# Gabaritos do conjunto A do benchmark (benchmark/perguntas_benchmark.json), recalculados por
+# SQL (DuckDB) sobre o snapshot de cada execução. Nenhum valor é digitado à mão.
+#
+# tipo:
+#   numero       → correto se a resposta contém ao menos um dos valores esperados (tolerância relativa)
+#   entidades    → correto se a proporção de entidades esperadas citadas ≥ limiar
+#   sem_gabarito → pergunta aberta/documental: não entra na acurácia factual; o acerto
+#                  principal é o uso de ferramenta pertinente (AF@3 > 0)
+# As colunas devolvidas por `consulta` são todas aceitas como valores (numero) ou nomes (entidades).
+#
+# Visões auxiliares: `lic` (licitacoes + chave + ano) e `itag` (itens agrícolas com dados da licitação).
+
+P01: {tipo: numero, produto: alface}
+P02: {tipo: numero, produto: cenoura}
+P03: {tipo: numero, produto: tomate}
+P04: {tipo: numero, produto: couve}
+P05: {tipo: numero, produto: beterraba}
+P06: {tipo: numero, produto: chuchu}
+P07: {tipo: numero, produto: batata doce}
+P08: {tipo: numero, produto: banana}
+P09: {tipo: numero, produto: pimentao}
+P10: {tipo: numero, produto: mandioca}
+
+L01:
+  tipo: numero
+  consulta: >
+    SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag
+    WHERE cultura_n LIKE '%alface%' AND ano = 2025
+L02:
+  tipo: numero
+  consulta: >
+    SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag
+    WHERE cultura_n LIKE '%cenoura%' AND canal = 'ARMAZEM_FAMILIA'
+L03:
+  tipo: entidades
+  limiar: 0.67
+  consulta: >
+    SELECT cultura AS nome FROM itag WHERE cultura IS NOT NULL
+    GROUP BY cultura ORDER BY sum(valor_total) DESC LIMIT 3
+L04:
+  tipo: numero
+  consulta: "SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag WHERE cultura_n LIKE '%tomate%'"
+L05:
+  tipo: numero
+  consulta: >
+    SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag
+    WHERE cultura_n LIKE '%couve%' AND canal = 'ARMAZEM_FAMILIA'
+L07:
+  tipo: numero
+  consulta: "SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag WHERE cultura_n LIKE '%batata%'"
+L08:
+  tipo: numero
+  consulta: >
+    SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag
+    WHERE cultura_n LIKE '%banana%' AND year(dt_abertura) = year(current_date)
+L09:
+  tipo: numero
+  consulta: "SELECT max(qt_solicitada) AS qt FROM itag"
+L10:
+  tipo: numero
+  consulta: "SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag WHERE categoria_v2 = 'HORTIFRUTI'"
+E01:
+  tipo: numero
+  consulta: >
+    SELECT count(*) AS n FROM lic
+    WHERE canal = 'ARMAZEM_FAMILIA' AND ano = 2025 AND relevante_af
+E02: {tipo: sem_gabarito}
+E03: {tipo: sem_gabarito}
+E04: {tipo: sem_gabarito}
+E05: {tipo: sem_gabarito}

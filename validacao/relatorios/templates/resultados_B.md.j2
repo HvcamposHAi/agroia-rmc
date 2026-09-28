@@ -1,0 +1,104 @@
+# Resultados do benchmark de motores LLM (Parte B)
+
+Execução `{{ run_id }}`; snapshot `{{ (snapshot.hash_agregado or "n/d")[:16] }}`. Relatório gerado automaticamente; todos os números vêm dos arquivos da execução.
+
+{% if b and b.n_chamadas %}
+{% if b_piloto %}
+Os resultados abaixo são do piloto (subconjunto de perguntas e repetições) e servem para verificar o instrumento; não sustentam conclusão inferencial.
+
+{% endif %}
+{% set R = b.rotulos %}
+Foram realizadas {{ b.n_chamadas | n }} chamadas. {% if contexto_b.base_inalterada is defined %}A base viva permaneceu {{ "inalterada" if contexto_b.base_inalterada else "ALTERADA" }} durante a janela do benchmark.{% endif %}
+
+## 1 Acurácia
+
+A Tabela {{ tab("acc") }} apresenta a acurácia por motor no conjunto A (maioria das repetições), nas análises principal e por protocolo; a Figura {{ fig("acc") }} mostra a análise principal.
+
+**Tabela {{ tab("acc") }}: Acurácia por motor no conjunto A**
+
+{{ tabela(linhas_acuracia(b), ["Motor", "Principal (IC 95%)", "Por protocolo (IC 95%)", "AF@1", "AF@3", "Uso correto de ferramenta"]) }}
+
+{{ FONTE }}
+
+{% if figs.acuracia %}
+**Figura {{ fig("acc") }}: Acurácia por motor (análise principal), com intervalo de Wilson de 95%**
+
+![Figura {{ fig("acc") }}](figuras/{{ figs.acuracia }})
+
+{{ FONTE }}
+{% endif %}
+
+{% for rotulo, ac in [("principal", b.acuracia_principal), ("por protocolo", b.acuracia_sensibilidade)] %}
+{% if ac.cochran %}
+Análise {{ rotulo }}: Q de Cochran = {{ ac.cochran.q | n(3) }}, gl = {{ ac.cochran.gl }}, {{ ac.cochran.p_valor | pv }} (n = {{ ac.n_perguntas }} perguntas). {% if ac.post_hoc_aplicavel %}Comparações par a par (McNemar exato, Holm): {% for par, v in ac.pares.items() %}{{ par.split("|") | map("rotulo_motor", R) | join(" × ") }}: b = {{ v.b }}, c = {{ v.c }}, p ajustado {{ (v.p_holm | pv)[2:] }}{% if not loop.last %}; {% endif %}{% endfor %}.{% else %}Sem significância no teste omnibus; as comparações par a par não são interpretadas.{% endif %}
+
+{% endif %}
+{% endfor %}
+Poder: com n = {{ b.poder.n }} perguntas, são necessários ao menos {{ b.poder.minimo_discordantes_sig }} pares discordantes, todos no mesmo sentido, para significância no McNemar exato; o menor efeito detectável com poder de {{ cfg.estatistica.poder | pct(0) }} é de {{ b.poder.mde_psi_0_3 | pct }} (discordância de 30%) e {{ b.poder.mde_psi_0_5 | pct }} (discordância de 50%). Resultados não significativos são inconclusivos.
+
+{% if figs.categoria %}
+**Figura {{ fig("cat") }}: Acerto por categoria de pergunta e motor**
+
+![Figura {{ fig("cat") }}](figuras/{{ figs.categoria }})
+
+{{ FONTE }}
+{% endif %}
+
+## 2 Fidelidade, abstenção e consistência
+
+**Tabela {{ tab("fid") }}: Fidelidade às ferramentas, abstenção e consistência**
+
+{{ tabela(linhas_fidelidade(b), ["Motor", "Fidelidade às ferramentas", "Abstenção correta, conjunto B (IC 95%)", "Falsa abstenção, conjunto A", "Mesmo desfecho nas repetições", "κ de Fleiss"]) }}
+
+{{ FONTE }}
+
+## 3 Latência e custo
+
+**Tabela {{ tab("lat") }}: Latência e custo por motor (chamadas sem falha de infraestrutura)**
+
+{{ tabela(linhas_latencia(b), ["Motor", "Latência p50 (s)", "p90 (s)", "p95 (s)", "1º token p50 (s)", "Custo médio por pergunta (US$)", "Custo total (US$)"]) }}
+
+{{ FONTE }}
+
+{% for nome, bloco in [("latência total", b.latencia), ("custo", b.custo)] %}
+{% if bloco.friedman %}
+Friedman ({{ nome }}): χ² = {{ bloco.friedman.chi2 | n(3) }}, {{ bloco.friedman.p_valor | pv }} (n = {{ bloco.friedman.n }}). {% if bloco.post_hoc_aplicavel %}Wilcoxon par a par (Holm): {% for par, v in bloco.pares.items() %}{{ par.split("|") | map("rotulo_motor", R) | join(" × ") }}: p ajustado {{ (v.p_holm | pv)[2:] }}, δ de Cliff = {{ v.cliff | n(3) }}{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
+
+{% endif %}
+{% endfor %}
+{% if figs.latencia %}
+**Figura {{ fig("lat") }}: Distribuição da latência total por motor**
+
+![Figura {{ fig("lat") }}](figuras/{{ figs.latencia }})
+
+{{ FONTE }}
+{% endif %}
+
+## 4 Erros
+
+A Tabela {{ tab("erros") }} apresenta a taxonomia de falhas por motor{% if figs.erros %}, representada na Figura {{ fig("erros") }}{% endif %}.
+
+**Tabela {{ tab("erros") }}: Falhas por categoria e motor**
+
+{{ tabela(linhas_erros(b), ["Motor", "Categoria", "Chamadas"]) }}
+
+{{ FONTE }}
+
+{% if figs.erros %}
+**Figura {{ fig("erros") }}: Matriz de falhas por motor**
+
+![Figura {{ fig("erros") }}](figuras/{{ figs.erros }})
+
+{{ FONTE }}
+{% endif %}
+
+## 5 Auditoria humana
+
+{% if b.auditoria %}
+Foram rotuladas {{ b.auditoria.n_rotuladas }} de {{ b.auditoria.n_total }} respostas da amostra de auditoria. Concordância entre pontuação automática e humana: {{ b.auditoria.concordancia | pct }}; κ de Cohen = {{ b.auditoria.kappa | n(3) }}.
+{% else %}
+A amostra de auditoria foi gravada em `b/auditoria{{ "_piloto" if b_piloto else "" }}.csv` e ainda não foi rotulada.
+{% endif %}
+{% else %}
+A Parte B não foi executada nesta execução.
+{% endif %}

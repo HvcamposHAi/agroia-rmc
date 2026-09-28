@@ -106,8 +106,9 @@ class TestDetalhe:
 
 class TestDecisao:
     class _Banco:
-        def __init__(self, com_itens=(), legado=()):
+        def __init__(self, com_itens=(), legado=(), sem_preco=()):
             self.com_itens, self.itens_legado = set(com_itens), set(legado)
+            self.itens_sem_preco = set(sem_preco)
 
     def _linha(self, sit="Empenhado"):
         return {"situacao": sit}
@@ -135,6 +136,11 @@ class TestDecisao:
     def test_sem_mudanca_pula(self):
         lic = {"id": 3, "situacao": "Empenhado", "url_detalhe": "https://x"}
         assert C.precisa_detalhe(self._linha("Empenhado"), lic, self._Banco({3})) is None
+
+    def test_itens_sem_preco_reconsulta_mesmo_terminal(self):
+        # Itens gravados antes da homologação (valor 0): reconsulta até os preços aparecerem.
+        lic = {"id": 4, "situacao": "Empenhado", "url_detalhe": "https://x"}
+        assert C.precisa_detalhe(self._linha("Empenhado"), lic, self._Banco({4}, sem_preco={4})) == "itens sem preço"
 
 
 class TestAnos:

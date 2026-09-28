@@ -87,6 +87,10 @@ class ChatRequest(BaseModel):
     historico: list[dict] = []
     session_id: str | None = None
     idioma: str = "pt"  # 'pt' | 'en' | 'es' — idioma da resposta do agente
+    # Opcionais, usados pela validação autônoma (validacao/b_benchmark). Padrão = comportamento atual.
+    motor: str | None = None   # sobrepõe o switch global só nesta requisição (/chat/stream)
+    sem_cache: bool = False    # ignora e não grava o cache de respostas
+    rastreio: bool = False     # emite eventos "tool" (nome, inputs, resultado) e o motor no "fim"
 
 class ChatResponse(BaseModel):
     resposta: str
@@ -225,7 +229,7 @@ def chat_stream_endpoint(request_http: Request, request: ChatRequest, _: str = D
             idioma = normalizar_idioma(request.idioma)
             # A mesma pergunta em idiomas diferentes não pode compartilhar resposta.
             chave_cache = request.pergunta if idioma == "pt" else f"[{idioma}] {request.pergunta}"
-            cached = get_cached(chave_cache)
+            cached = None if request.sem_cache else get_cached(chave_cache)
             if cached:
                 logger.info(f"[{session_id}] Cache hit")
                 yield f"data: {json.dumps({'tipo': 'token', 'texto': cached})}\n\n"
@@ -235,14 +239,16 @@ def chat_stream_endpoint(request_http: Request, request: ChatRequest, _: str = D
             resposta_completa = ""
             tools_usadas = []
 
-            for event in chat_stream(request.pergunta, historico, idioma=idioma):
+            for event in chat_stream(request.pergunta, historico, idioma=idioma,
+                                     motor=request.motor, rastreio=request.rastreio):
                 if event.get("tipo") == "token":
                     resposta_completa += event.get("texto", "")
                 if event.get("tipo") == "fim":
                     tools_usadas = event.get("tools_usadas", [])
                 yield f"data: {json.dumps(event)}\n\n"
 
-            set_cache(chave_cache, resposta_completa)
+            if not request.sem_cache:
+                set_cache(chave_cache, resposta_completa)
             salvar_turno(session_id, "user", request.pergunta)
             salvar_turno(session_id, "assistant", resposta_completa, tools_usadas)
             logger.info(f"[{session_id}] Stream response successful ({len(tools_usadas)} tools used)")

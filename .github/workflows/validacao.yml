@@ -1,0 +1,88 @@
+name: Validação autônoma (AgroIA-RMC)
+
+# Validação da tese (Parte A) e benchmark de motores (Parte B): validacao/run_all.py.
+#
+# Roda no runner SELF-HOSTED (PC do usuário, rede BR): os portais da Prefeitura recusam IPs de
+# datacenter. A camada com Claude in Chrome exige o runner em SESSÃO INTERATIVA do usuário
+# logado (run.cmd no logon), não como serviço do Windows; ver validacao/README.md.
+# Mesmo grupo de concorrência da coleta: validação e coleta nunca rodam ao mesmo tempo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      etapas:
+        description: "Etapas (snapshot,a1,a2,b,relatorios)"
+        required: false
+        default: "snapshot,a1,a2,b,relatorios"
+      reusar:
+        description: "run_id cujo snapshot será reutilizado (vazio = novo snapshot)"
+        required: false
+      extras:
+        description: "Opções extras do run_all (ex.: --a2-piloto --b-piloto --a1-limite 10)"
+        required: false
+  schedule:
+    - cron: "0 4 * * 0"   # domingo 04:00 UTC = 01:00 BRT (fora da coleta das 06:00 BRT)
+
+concurrency:
+  group: coleta
+  cancel-in-progress: false
+
+jobs:
+  validacao:
+    runs-on: self-hosted
+    timeout-minutes: 2880
+    defaults:
+      run:
+        shell: powershell
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      API_SECRET_KEY: ${{ secrets.API_SECRET_KEY }}
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_validacao.txt
+
+      - name: Playwright Chromium (somente se ausente)
+        run: |
+          python -c "from playwright.sync_api import sync_playwright as s; p=s().start(); b=p.chromium.launch(); b.close(); p.stop()"
+          if ($LASTEXITCODE -ne 0) { python -m playwright install chromium }
+
+      - name: Rodar validação
+        env:
+          IN_ETAPAS: ${{ github.event.inputs.etapas || 'snapshot,a1,a2,b,relatorios' }}
+          IN_REUSAR: ${{ github.event.inputs.reusar }}
+          IN_EXTRAS: ${{ github.event.inputs.extras }}
+        run: |
+          $cmd = @('-m', 'validacao.run_all', '--etapas', $env:IN_ETAPAS)
+          if ($env:IN_REUSAR) { $cmd += @('--reusar', $env:IN_REUSAR) }
+          if ($env:IN_EXTRAS) { $cmd += ($env:IN_EXTRAS -split '\s+' | Where-Object { $_ }) }
+          Write-Host "Executando: python $($cmd -join ' ')"
+          python @cmd | Tee-Object -FilePath validacao_saida.txt
+          $run = (Get-Content validacao_saida.txt | Select-Object -Last 1).Trim()
+          "RUN_ID=$run" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Anexar relatórios
+        if: always() && env.RUN_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: validacao-${{ env.RUN_ID }}
+          path: |
+            validacao/execucoes/${{ env.RUN_ID }}/relatorios/
+            validacao/execucoes/${{ env.RUN_ID }}/manifesto.json
+            validacao/execucoes/${{ env.RUN_ID }}/a1/*.csv
+            validacao/execucoes/${{ env.RUN_ID }}/a1/*.json
+            validacao/execucoes/${{ env.RUN_ID }}/a2/*.csv
+            validacao/execucoes/${{ env.RUN_ID }}/a2/*.json
+            validacao/execucoes/${{ env.RUN_ID }}/b/*.csv
+            validacao/execucoes/${{ env.RUN_ID }}/b/*.json
+          if-no-files-found: warn

@@ -1,0 +1,24 @@
+# Validação autônoma (validacao/). Python 3.11+.
+requests
+beautifulsoup4
+lxml
+supabase==2.28.3
+python-dotenv
+pyyaml
+pandas
+pyarrow
+duckdb
+scipy
+statsmodels
+numpy
+matplotlib
+jinja2
+markdown
+jsonschema
+pymupdf
+pypdf
+playwright
+fastapi
+uvicorn
+anthropic
+pytest
