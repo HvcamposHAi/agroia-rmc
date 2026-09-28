@@ -11,40 +11,46 @@ test.describe('Home — redesign do dashboard', () => {
     await page.goto('/')
   })
 
-  test('renderiza hero, busca e os 3 grupos de serviço', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /O que você precisa hoje/ })).toBeVisible()
-    await expect(page.getByPlaceholder(/Pergunte ou busque/)).toBeVisible()
+  test('renderiza hero, busca, aviso de IA e os grupos de serviço (Prefeitura)', async ({ page }) => {
+    await expect(page.getByRole('heading', { level: 1, name: /Agricultura familiar e compras públicas/ })).toBeVisible()
+    await expect(page.getByPlaceholder(/Pergunte em linguagem natural/)).toBeVisible()
+    await expect(page.getByText(/Respostas geradas por IA/).first()).toBeVisible()
 
-    for (const titulo of ['Consultar & Analisar', 'Agir', 'Operar & Monitorar']) {
-      await expect(page.getByText(titulo, { exact: true })).toBeVisible()
+    for (const titulo of ['Analisar a demanda', 'Gestão e qualidade', 'Sobre os dados e a IA']) {
+      await expect(page.getByRole('heading', { name: titulo })).toBeVisible()
     }
   })
 
-  test('mostra 4 KPIs e contagem de cards por grupo (4 / 2 / 3)', async ({ page }) => {
+  test('mostra 4 KPIs e contagem de cards por grupo (5 / 3)', async ({ page }) => {
     await expect(page.locator('.home-kpis .metric-card')).toHaveCount(4)
     await expect(page.locator('.home-kpis .metric-card.heroi')).toHaveCount(2)
 
     const grids = page.locator('.hub-group .hub-grid')
-    await expect(grids.nth(0).locator('.hub-card')).toHaveCount(4)
-    await expect(grids.nth(1).locator('.hub-card')).toHaveCount(2)
-    await expect(grids.nth(2).locator('.hub-card')).toHaveCount(3)
+    await expect(grids.nth(0).locator('.hub-card')).toHaveCount(5)
+    await expect(grids.nth(1).locator('.hub-card')).toHaveCount(3)
     await expect(page.locator('.hub-card.destaque')).toHaveCount(1)
   })
 
   test('navegação dos cards e da busca', async ({ page }) => {
-    await page.getByRole('link', { name: /Assistente/ }).first().click()
+    await page.locator('.hub-card', { hasText: 'Assistente' }).first().click()
     await expect(page).toHaveURL(/\/assistente/)
     await page.goto('/')
 
-    await page.getByPlaceholder(/Pergunte ou busque/).fill('preço do tomate')
+    await page.getByPlaceholder(/Pergunte em linguagem natural/).fill('preço do tomate')
     await page.getByRole('button', { name: /Perguntar/ }).click()
     await expect(page).toHaveURL(/\/assistente\?q=/)
   })
 
-  test('toggle Gestor/Produtor troca os chips', async ({ page }) => {
-    await expect(page.getByRole('link', { name: /Demanda 2024/ })).toBeVisible()
-    await page.getByRole('button', { name: /Produtor/ }).click()
+  test('perfil Prefeitura/Cooperativas troca atalhos e serviços', async ({ page }) => {
+    await expect(page.getByRole('link', { name: /Demanda de 2025/ })).toBeVisible()
+    await page.getByRole('button', { name: /Cooperativas e produtores/ }).click()
     await expect(page.getByRole('link', { name: /Cadastrar minha produção/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Vender para a prefeitura' })).toBeVisible()
+  })
+
+  test('rota antiga /ofertas leva ao Assistente', async ({ page }) => {
+    await page.goto('/ofertas')
+    await expect(page).toHaveURL(/\/assistente/)
   })
 
   test('responsivo: 375px sem overflow horizontal', async ({ page }) => {

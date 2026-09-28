@@ -3,6 +3,12 @@ import { supabase } from '../lib/supabaseClient'
 import { useUrlState } from '../lib/useUrlState'
 import { getCache, setCache } from '../lib/sessionCache'
 import { defineMessages, useI18n, useT, fmtData } from '../i18n'
+import {
+  FileText, ClipboardList, Calendar, Tag, Download, X, Search, SlidersHorizontal, FolderOpen, Eye,
+} from 'lucide-react'
+import StatusBadge from '../components/StatusBadge'
+import type { Tom } from '../lib/tons'
+import PageHeader from '../components/PageHeader'
 
 interface DocComLic {
   id: number
@@ -43,72 +49,81 @@ const PAGE_SIZE = 15
 
 const MSG = defineMessages({
   pt: {
+    titulo: 'Documentos das licitações',
+    subtitulo: 'Editais, termos de referência e anexos das licitações de agricultura familiar. Clique em um documento para visualizar ou baixar.',
+    fonte: 'Fonte: Portal da Transparência de Curitiba — editais SMSAN/FAAC',
     carregando: 'Carregando documentos...',
-    baixar: '⬇️ Baixar',
-    fechar: '✕ Fechar',
+    baixar: 'Baixar',
+    fechar: 'Fechar',
     buscarPlaceholder: 'Buscar por nome, processo ou objeto...',
     limparBusca: 'Limpar busca',
-    filtros: '⚙️ Filtros',
-    limpar: '✕ Limpar',
+    filtros: 'Filtros',
+    limpar: 'Limpar',
     nDocumentos: '{n} documentos',
-    ano: '📅 ANO',
-    mes: '📆 MÊS',
-    modalidade: '🏷️ MODALIDADE',
-    situacao: '✅ SITUAÇÃO',
-    canal: '🏪 CANAL',
+    ano: 'ANO',
+    mes: 'MÊS',
+    modalidade: 'MODALIDADE',
+    situacao: 'SITUAÇÃO',
+    canal: 'CANAL',
     todos: 'Todos',
     todas: 'Todas',
     nenhum: 'Nenhum documento encontrado',
     ajustar: 'Tente ajustar os filtros',
-    visualizar: '👁️ Visualizar',
+    visualizar: 'Visualizar',
     primeira: 'Primeira página',
     anterior: 'Página anterior',
     proxima: 'Próxima página',
     ultima: 'Última página',
   },
   en: {
+    titulo: 'Tender documents',
+    subtitulo: 'Calls for bids, terms of reference and attachments of family-farming tenders. Click a document to view or download it.',
+    fonte: 'Source: Curitiba Transparency Portal — SMSAN/FAAC calls for bids',
     carregando: 'Loading documents...',
-    baixar: '⬇️ Download',
-    fechar: '✕ Close',
+    baixar: 'Download',
+    fechar: 'Close',
     buscarPlaceholder: 'Search by name, process or object...',
     limparBusca: 'Clear search',
-    filtros: '⚙️ Filters',
-    limpar: '✕ Clear',
+    filtros: 'Filters',
+    limpar: 'Clear',
     nDocumentos: '{n} documents',
-    ano: '📅 YEAR',
-    mes: '📆 MONTH',
-    modalidade: '🏷️ MODALITY',
-    situacao: '✅ STATUS',
-    canal: '🏪 CHANNEL',
+    ano: 'YEAR',
+    mes: 'MONTH',
+    modalidade: 'MODALITY',
+    situacao: 'STATUS',
+    canal: 'CHANNEL',
     todos: 'All',
     todas: 'All',
     nenhum: 'No documents found',
     ajustar: 'Try adjusting the filters',
-    visualizar: '👁️ View',
+    visualizar: 'View',
     primeira: 'First page',
     anterior: 'Previous page',
     proxima: 'Next page',
     ultima: 'Last page',
   },
   es: {
+    titulo: 'Documentos de las licitaciones',
+    subtitulo: 'Pliegos, términos de referencia y anexos de las licitaciones de agricultura familiar. Haga clic en un documento para verlo o descargarlo.',
+    fonte: 'Fuente: Portal de la Transparencia de Curitiba — pliegos SMSAN/FAAC',
     carregando: 'Cargando documentos...',
-    baixar: '⬇️ Descargar',
-    fechar: '✕ Cerrar',
+    baixar: 'Descargar',
+    fechar: 'Cerrar',
     buscarPlaceholder: 'Buscar por nombre, proceso u objeto...',
     limparBusca: 'Limpiar búsqueda',
-    filtros: '⚙️ Filtros',
-    limpar: '✕ Limpiar',
+    filtros: 'Filtros',
+    limpar: 'Limpiar',
     nDocumentos: '{n} documentos',
-    ano: '📅 AÑO',
-    mes: '📆 MES',
-    modalidade: '🏷️ MODALIDAD',
-    situacao: '✅ SITUACIÓN',
-    canal: '🏪 CANAL',
+    ano: 'AÑO',
+    mes: 'MES',
+    modalidade: 'MODALIDAD',
+    situacao: 'SITUACIÓN',
+    canal: 'CANAL',
     todos: 'Todos',
     todas: 'Todas',
     nenhum: 'Ningún documento encontrado',
     ajustar: 'Intente ajustar los filtros',
-    visualizar: '👁️ Ver',
+    visualizar: 'Ver',
     primeira: 'Primera página',
     anterior: 'Página anterior',
     proxima: 'Página siguiente',
@@ -217,12 +232,21 @@ export default function Documentos() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const situacaoCor = (s: string) => {
-    if (!s) return { bg: 'var(--cinza-claro)', cor: 'var(--texto-suave)' }
+  // Esc fecha o visualizador de PDF
+  useEffect(() => {
+    if (!pdfAberto) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPdfAberto(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pdfAberto])
+
+  // Situação da licitação → tom do selo (o texto da situação vai junto; nunca só a cor).
+  const situacaoTom = (s: string): Tom => {
+    if (!s) return 'neutro'
     const sl = s.toLowerCase()
-    if (sl.includes('vencedor') || sl.includes('empenhado')) return { bg: 'var(--verde-fundo)', cor: 'var(--verde)' }
-    if (sl.includes('fracassado') || sl.includes('cancelado')) return { bg: '#fef2f2', cor: '#b91c1c' }
-    return { bg: 'var(--amarelo-claro)', cor: '#b45309' }
+    if (sl.includes('vencedor') || sl.includes('empenhado') || sl.includes('conclu')) return 'ok'
+    if (sl.includes('fracassado') || sl.includes('cancelado') || sl.includes('deserto')) return 'erro'
+    return 'aviso'
   }
 
   if (loading) return (
@@ -236,19 +260,24 @@ export default function Documentos() {
 
   return (
     <div className="page">
+      <PageHeader title={t('titulo')} subtitle={t('subtitulo')} source={t('fonte')} />
 
       {/* ── Modal PDF ── */}
       {pdfAberto && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
+        <div
+          role="dialog" aria-modal="true" aria-label={pdfAberto.nome_doc || pdfAberto.nome_arquivo}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}
+        >
           <div style={{ background: 'var(--branco)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--borda)', flexShrink: 0, gap: 16 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--texto)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                📄 {pdfAberto.nome_doc || pdfAberto.nome_arquivo}
+              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--texto)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FileText size={18} aria-hidden style={{ flexShrink: 0, color: 'var(--verde)' }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{pdfAberto.nome_doc || pdfAberto.nome_arquivo}</span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--texto-suave)', marginTop: 3, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {pdfAberto.processo && <span>📋 {pdfAberto.processo}</span>}
-                {pdfAberto.dt_abertura && <span>📅 {fmtData(pdfAberto.dt_abertura)}</span>}
-                {pdfAberto.modalidade && <span>🏷️ {pdfAberto.modalidade}</span>}
+                {pdfAberto.processo && <span style={META}><ClipboardList size={13} aria-hidden /> {pdfAberto.processo}</span>}
+                {pdfAberto.dt_abertura && <span style={META}><Calendar size={13} aria-hidden /> {fmtData(pdfAberto.dt_abertura)}</span>}
+                {pdfAberto.modalidade && <span style={META}><Tag size={13} aria-hidden /> {pdfAberto.modalidade}</span>}
               </div>
               {pdfAberto.objeto && (
                 <div style={{ fontSize: 12, color: 'var(--texto-suave)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -258,42 +287,46 @@ export default function Documentos() {
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <a href={toDownloadUrl(pdfAberto.url_publica)} target="_blank" rel="noopener noreferrer"
-                style={{ background: 'var(--verde)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {t('baixar')}
+                className="btn btn-primario btn-sm">
+                <Download size={15} aria-hidden /> {t('baixar')}
               </a>
-              <button onClick={() => setPdfAberto(null)}
-                style={{ background: 'var(--cinza-claro)', border: '1px solid var(--borda)', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: 'var(--texto)' }}>
-                {t('fechar')}
+              <button onClick={() => setPdfAberto(null)} className="btn btn-secundario btn-sm" autoFocus>
+                <X size={15} aria-hidden /> {t('fechar')}
               </button>
             </div>
           </div>
           <iframe src={toEmbedUrl(pdfAberto.url_publica)}
-            style={{ flex: 1, border: 'none', width: '100%', background: '#525659' }}
+            style={{ flex: 1, border: 'none', width: '100%', background: 'var(--cinza)' }}
             title={pdfAberto.nome_doc} />
         </div>
       )}
 
       {/* ── Barra de busca + filtros ── */}
-      <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '16px 20px', marginBottom: 16 }}>
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--cinza-claro)', border: '1.5px solid var(--borda)', borderRadius: 10, padding: '8px 14px' }}>
-            <span>🔍</span>
+            <Search size={16} aria-hidden style={{ color: 'var(--texto-suave)', flexShrink: 0 }} />
             <input
-              style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'Inter', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
+              style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: 'var(--texto)', outline: 'none' }}
               placeholder={t('buscarPlaceholder')}
+              aria-label={t('buscarPlaceholder')}
               value={busca}
               onChange={e => { setBusca(e.target.value); setPage(1) }}
             />
-            {busca && <button onClick={() => setBusca('')} aria-label={t('limparBusca')} title={t('limparBusca')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cinza)', fontSize: 16 }}>×</button>}
+            {busca && (
+              <button onClick={() => setBusca('')} aria-label={t('limparBusca')} title={t('limparBusca')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--texto-suave)', display: 'flex', padding: 2 }}>
+                <X size={16} aria-hidden />
+              </button>
+            )}
           </div>
-          <button onClick={() => setShowFilters(v => !v)}
-            style={{ background: showFilters ? 'var(--verde-fundo)' : 'var(--cinza-claro)', border: `1.5px solid ${showFilters ? 'var(--verde)' : 'var(--borda)'}`, borderRadius: 10, padding: '9px 16px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: showFilters ? 'var(--verde)' : 'var(--texto)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {t('filtros')}{hasFilters ? ` (${[filAno,filMes,filModalidade,filSituacao,filCanal].filter(Boolean).length})` : ''}
+          <button onClick={() => setShowFilters(v => !v)} className="btn btn-secundario btn-sm" aria-expanded={showFilters}
+            style={showFilters ? { background: 'var(--verde-fundo)', borderColor: 'var(--verde)', color: 'var(--verde)' } : undefined}>
+            <SlidersHorizontal size={15} aria-hidden /> {t('filtros')}{hasFilters ? ` (${[filAno,filMes,filModalidade,filSituacao,filCanal].filter(Boolean).length})` : ''}
           </button>
           {hasFilters && (
-            <button onClick={clearFilters}
-              style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 10, padding: '9px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
-              {t('limpar')}
+            <button onClick={clearFilters} className="btn btn-sutil btn-sm">
+              <X size={15} aria-hidden /> {t('limpar')}
             </button>
           )}
           <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
@@ -304,36 +337,36 @@ export default function Documentos() {
         {showFilters && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--borda)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('ano')}</label>
-              <select className="filter-select" style={{ width: '100%' }} value={filAno} onChange={e => { setFilAno(e.target.value); setPage(1) }}>
+              <label htmlFor="fil-ano" style={LABEL}>{t('ano')}</label>
+              <select id="fil-ano" className="filter-select" style={{ width: '100%' }} value={filAno} onChange={e => { setFilAno(e.target.value); setPage(1) }}>
                 <option value="">{t('todos')}</option>
                 {anos.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('mes')}</label>
-              <select className="filter-select" style={{ width: '100%' }} value={filMes} onChange={e => { setFilMes(e.target.value); setPage(1) }}>
+              <label htmlFor="fil-mes" style={LABEL}>{t('mes')}</label>
+              <select id="fil-mes" className="filter-select" style={{ width: '100%' }} value={filMes} onChange={e => { setFilMes(e.target.value); setPage(1) }}>
                 <option value="">{t('todos')}</option>
                 {MESES.map((m, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('modalidade')}</label>
-              <select className="filter-select" style={{ width: '100%' }} value={filModalidade} onChange={e => { setFilModalidade(e.target.value); setPage(1) }}>
+              <label htmlFor="fil-modalidade" style={LABEL}>{t('modalidade')}</label>
+              <select id="fil-modalidade" className="filter-select" style={{ width: '100%' }} value={filModalidade} onChange={e => { setFilModalidade(e.target.value); setPage(1) }}>
                 <option value="">{t('todas')}</option>
                 {modalidades.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('situacao')}</label>
-              <select className="filter-select" style={{ width: '100%' }} value={filSituacao} onChange={e => { setFilSituacao(e.target.value); setPage(1) }}>
+              <label htmlFor="fil-situacao" style={LABEL}>{t('situacao')}</label>
+              <select id="fil-situacao" className="filter-select" style={{ width: '100%' }} value={filSituacao} onChange={e => { setFilSituacao(e.target.value); setPage(1) }}>
                 <option value="">{t('todas')}</option>
                 {situacoes.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4 }}>{t('canal')}</label>
-              <select className="filter-select" style={{ width: '100%' }} value={filCanal} onChange={e => { setFilCanal(e.target.value); setPage(1) }}>
+              <label htmlFor="fil-canal" style={LABEL}>{t('canal')}</label>
+              <select id="fil-canal" className="filter-select" style={{ width: '100%' }} value={filCanal} onChange={e => { setFilCanal(e.target.value); setPage(1) }}>
                 <option value="">{t('todos')}</option>
                 {canais.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -344,41 +377,39 @@ export default function Documentos() {
 
       {/* ── Lista ── */}
       {pageItems.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--texto-suave)' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📂</div>
-          <p style={{ fontWeight: 700, fontSize: 16 }}>{t('nenhum')}</p>
-          <p style={{ fontSize: 14, marginTop: 6 }}>{t('ajustar')}</p>
+        <div className="empty-state">
+          <FolderOpen size={44} aria-hidden />
+          <strong>{t('nenhum')}</strong>
+          <span style={{ fontSize: 14 }}>{t('ajustar')}</span>
         </div>
       ) : pageItems.map(doc => {
-        const sc = situacaoCor(doc.situacao)
+        const sc = situacaoTom(doc.situacao)
         return (
           <div key={doc.id} className="item-card" style={{ cursor: 'pointer', alignItems: 'flex-start' }}
-            onClick={() => setPdfAberto(doc)}>
-            <div style={{ width: 44, height: 44, background: '#fef2f2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-              📄
+            role="button" tabIndex={0}
+            onClick={() => setPdfAberto(doc)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPdfAberto(doc) } }}>
+            <div aria-hidden style={{ width: 44, height: 44, background: 'var(--verde-fundo)', color: 'var(--verde)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileText size={22} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="item-title" style={{ marginBottom: 6 }}>{doc.nome_doc || doc.nome_arquivo}</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
                 {doc.processo && (
-                  <span style={{ background: 'var(--cinza-claro)', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
-                    📋 {doc.processo}
+                  <span style={{ ...META, background: 'var(--cinza-claro)', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                    <ClipboardList size={12} aria-hidden /> {doc.processo}
                   </span>
                 )}
                 {doc.dt_abertura && (
-                  <span style={{ fontSize: 11, color: 'var(--texto-suave)' }}>
-                    📅 {fmtData(doc.dt_abertura)}
+                  <span style={{ ...META, fontSize: 11, color: 'var(--texto-suave)' }}>
+                    <Calendar size={12} aria-hidden /> {fmtData(doc.dt_abertura)}
                   </span>
                 )}
                 {doc.modalidade && (
-                  <span style={{ background: 'var(--ceu-claro)', color: 'var(--ceu)', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, border: '1px solid #b3d9f5' }}>
-                    {doc.modalidade}
-                  </span>
+                  <StatusBadge tom="info">{doc.modalidade}</StatusBadge>
                 )}
                 {doc.situacao && (
-                  <span style={{ background: sc.bg, color: sc.cor, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6 }}>
-                    {doc.situacao}
-                  </span>
+                  <StatusBadge tom={sc}>{doc.situacao}</StatusBadge>
                 )}
               </div>
               {doc.objeto && (
@@ -391,8 +422,8 @@ export default function Documentos() {
               {doc.tamanho_bytes > 0 && (
                 <span style={{ fontSize: 11, color: 'var(--texto-suave)', fontWeight: 600 }}>{fmtBytes(doc.tamanho_bytes)}</span>
               )}
-              <span style={{ background: 'var(--verde-fundo)', color: 'var(--verde)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--borda)', whiteSpace: 'nowrap' }}>
-                {t('visualizar')}
+              <span style={{ ...META, background: 'var(--verde-fundo)', color: 'var(--verde)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--borda)', whiteSpace: 'nowrap' }}>
+                <Eye size={13} aria-hidden /> {t('visualizar')}
               </span>
             </div>
           </div>
@@ -416,3 +447,10 @@ export default function Documentos() {
     </div>
   )
 }
+
+// Metadado com ícone (processo, data, modalidade)
+const META = { display: 'inline-flex', alignItems: 'center', gap: 4 } as const
+const LABEL = {
+  fontSize: 11, fontWeight: 700, color: 'var(--texto-suave)', display: 'block', marginBottom: 4,
+  textTransform: 'uppercase', letterSpacing: '0.04em',
+} as const

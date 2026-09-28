@@ -9,13 +9,12 @@ import Auditoria from './pages/Auditoria'
 import Coleta from './pages/Coleta'
 import Mercado from './pages/Mercado'
 import Produtor from './pages/Produtor'
-import Ofertas from './pages/Ofertas'
 import BenchmarkMotores from './pages/BenchmarkMotores'
 
-// Redireciona rotas antigas para /demanda preservando a query (?cultura=...&ano=...).
-function RedirectToDemanda() {
+// Redireciona rotas antigas preservando a query (?cultura=...&ano=..., ?q=...).
+function RedirectPreservando({ para }: { para: string }) {
   const { search } = useLocation()
-  return <Navigate to={`/demanda${search}`} replace />
+  return <Navigate to={`${para}${search}`} replace />
 }
 
 export default function App() {
@@ -23,22 +22,23 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          {/* Página inicial do portal = Assistente */}
-          <Route index element={<Navigate to="/assistente" replace />} />
+          {/* Página inicial do portal = Início (visão institucional + atalhos por público) */}
+          <Route index element={<Navigate to="/inicio" replace />} />
           <Route path="inicio" element={<Home />} />
           <Route path="assistente" element={<Chat />} />
           <Route path="demanda" element={<Demanda />} />
           <Route path="mercado" element={<Mercado />} />
-          <Route path="ofertas" element={<Ofertas />} />
           <Route path="produtor" element={<Produtor />} />
           <Route path="documentos" element={<Documentos />} />
           <Route path="alertas" element={<Alertas />} />
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="benchmark" element={<BenchmarkMotores />} />
           <Route path="coleta" element={<Coleta />} />
-          {/* Compatibilidade: rotas antigas → Demanda */}
-          <Route path="dashboard" element={<RedirectToDemanda />} />
-          <Route path="consultas" element={<RedirectToDemanda />} />
+          {/* Compatibilidade: rotas antigas */}
+          <Route path="dashboard" element={<RedirectPreservando para="/demanda" />} />
+          <Route path="consultas" element={<RedirectPreservando para="/demanda" />} />
+          {/* "Ofertas" era o mesmo chat do Assistente com outros exemplos — unificado */}
+          <Route path="ofertas" element={<RedirectPreservando para="/assistente" />} />
         </Route>
       </Routes>
     </BrowserRouter>

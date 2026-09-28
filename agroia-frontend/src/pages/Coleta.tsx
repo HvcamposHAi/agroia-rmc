@@ -4,6 +4,12 @@ import { streamPost, iniciarColeta as apiIniciarColeta, cancelarColeta as apiCan
 import { formatarDataHora } from '../lib/format'
 import { defineMessages, useT, useI18n } from '../i18n'
 import axios from 'axios'
+import {
+  Activity, Ban, Calendar, CalendarClock, CircleAlert, CircleCheck, CirclePause, CircleX,
+  Clock, Download, History, Info, RefreshCw, Save, Square, TriangleAlert,
+} from 'lucide-react'
+import { TONS, type Tom } from '../lib/tons'
+import PageHeader from '../components/PageHeader'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 // Em produção (nuvem/Render) a coleta por navegador não roda — execute localmente.
@@ -81,16 +87,16 @@ interface UltimaExecucao {
 
 const MSG = defineMessages({
   pt: {
-    etapaIniciando: '🔄 Iniciando...',
-    etapaColetando: '📥 Coletando dados...',
-    etapaFinalizado: '✓ Finalizado',
-    etapaTimeout: '⏱️ Sem resposta',
-    etapaFalha: '⚠️ Falha',
-    statusIdle: '⏸️ Parado',
-    statusRunning: '🔵 Em andamento',
-    statusCompleted: '✅ Concluído',
-    statusCancelled: '⛔ Cancelado',
-    statusError: '❌ Erro',
+    etapaIniciando: 'Iniciando...',
+    etapaColetando: 'Coletando dados...',
+    etapaFinalizado: 'Finalizado',
+    etapaTimeout: 'Sem resposta',
+    etapaFalha: 'Falha',
+    statusIdle: 'Parado',
+    statusRunning: 'Em andamento',
+    statusCompleted: 'Concluído',
+    statusCancelled: 'Cancelado',
+    statusError: 'Erro',
     erroIniciar: 'Erro ao iniciar coleta',
     erroConectar: 'Erro ao conectar ao servidor',
     erroCancelar: 'Erro ao cancelar coleta',
@@ -99,25 +105,27 @@ const MSG = defineMessages({
     agricolas: 'Agrícolas',
     naoAgricolas: 'Não-Agrícolas',
     proxAbrev: 'Próx. {dia} {hora}',
-    titulo: '📊 Atualização de Dados',
+    eyebrow: 'Gestão',
+    titulo: 'Atualização de dados',
+    fonte: 'Fonte: Portal da Transparência de Curitiba, órgão FAAC',
     subtitulo: 'Busque novos dados agrícolas do portal com um clique ou configure atualizações automáticas.',
-    abaControle: '🎮 Controle',
-    abaAgendamento: '⏰ Agendamento',
+    abaControle: 'Controle',
+    abaAgendamento: 'Agendamento',
     lblStatus: 'STATUS',
     lblEtapa: 'ETAPA',
     lblProximaExec: 'PRÓXIMA EXEC.',
-    ultimaAtualizacao: '🕒 Última Atualização',
+    ultimaAtualizacao: 'Última Atualização',
     semExecucoes: 'Sem execuções registradas ainda. Os dados aparecerão aqui após a primeira coleta.',
     lblData: 'DATA',
     lblResultado: 'RESULTADO',
     lblIntervalo: 'INTERVALO CONSULTADO',
     lblDuracao: 'DURAÇÃO',
     duracao: '{min}min {seg}s',
-    concluidaSemNovas: '✅ Concluída — nenhuma licitação nova no período',
+    concluidaSemNovas: 'Concluída — nenhuma licitação nova no período',
     puladaUma: ' ({n} já existente foi pulada).',
     puladasVarias: ' ({n} já existentes foram puladas).',
-    coletaExpirou: '⏱️ A coleta expirou sem responder (job travado ou Portal da Transparência fora do ar). Tente novamente.',
-    coletaErro: '❌ A coleta terminou com erro — veja o detalhe abaixo.',
+    coletaExpirou: 'A coleta expirou sem responder (job travado ou Portal da Transparência fora do ar). Tente novamente.',
+    coletaErro: 'A coleta terminou com erro — veja o detalhe abaixo.',
     oQueAtualizado: 'O que foi atualizado',
     kpiProcessados: 'PROCESSADOS',
     kpiItens: 'ITENS',
@@ -127,33 +135,33 @@ const MSG = defineMessages({
     kpiNovos: 'LICITAÇÕES NOVAS',
     kpiErros: 'ERROS',
     falhasAtualizacao: 'Falhas na atualização',
-    nenhumaFalha: '✅ Nenhuma falha registrada nesta execução.',
-    falhaUma: '❌ {n} falha registrada',
-    falhasVarias: '❌ {n} falhas registradas',
-    falhaExecucao: '❌ Falha na execução',
+    nenhumaFalha: 'Nenhuma falha registrada nesta execução.',
+    falhaUma: '{n} falha registrada',
+    falhasVarias: '{n} falhas registradas',
+    falhaExecucao: 'Falha na execução',
     verDetalhe: 'Ver detalhe ({n})',
     executeLocal: 'Execute a coleta na máquina local',
-    buscando: '🔄 Buscando...',
-    buscarDados: '🔍 Buscar Dados',
-    cancelar: '⛔ Cancelar',
-    avisoLocal: 'ℹ️ A coleta do portal usa um navegador e roda apenas na máquina local. Esta página exibe o status e as estatísticas mais recentes da base.',
-    progressoTitulo: '📈 Progresso em Tempo Real',
+    buscando: 'Buscando...',
+    buscarDados: 'Buscar dados',
+    cancelar: 'Cancelar',
+    avisoLocal: 'A coleta roda automaticamente todos os dias às 06:00 (Portal da Transparência de Curitiba). Nesta instalação o disparo manual está desativado; esta página exibe o status e as estatísticas mais recentes da base.',
+    progressoTitulo: 'Progresso em Tempo Real',
     processando: 'Processando... {n} licitações',
-    consultaPortal: 'ℹ️ Consulta ao Portal',
+    consultaPortal: 'Consulta ao Portal',
     lblUrl: 'URL:',
     lblOrgao: 'Órgão:',
     lblDataInicial: 'Data Inicial:',
     lblDataFinal: 'Data Final:',
     registrosPorPagina: 'Registros por página:',
-    agendamentoTitulo: '⏰ Configurar Agendamento Semanal',
+    agendamentoTitulo: 'Configurar Agendamento Semanal',
     agendamentoDesc: 'Configure o dia e hora para a coleta automática semanal. O sistema iniciará a coleta automaticamente neste horário.',
     lblDiaSemana: 'Dia da Semana',
     lblHora: 'Hora (0-23)',
     lblMinuto: 'Minuto (0-59)',
-    agendadaPara: '✓ Coleta agendada para:',
+    agendadaPara: 'Coleta agendada para:',
     diaAs: '{dia} às {hora}',
-    salvando: '💾 Salvando...',
-    salvarConfig: '💾 Salvar Configuração',
+    salvando: 'Salvando...',
+    salvarConfig: 'Salvar configuração',
     totalLicitacoes: 'TOTAL DE LICITAÇÕES',
     agricolasPct: '{n} agrícolas ({pct}%)',
     totalItens: 'TOTAL DE ITENS',
@@ -167,16 +175,16 @@ const MSG = defineMessages({
     serieLicitacoes: 'Licitações',
   },
   en: {
-    etapaIniciando: '🔄 Starting...',
-    etapaColetando: '📥 Collecting data...',
-    etapaFinalizado: '✓ Finished',
-    etapaTimeout: '⏱️ No response',
-    etapaFalha: '⚠️ Failed',
-    statusIdle: '⏸️ Idle',
-    statusRunning: '🔵 Running',
-    statusCompleted: '✅ Completed',
-    statusCancelled: '⛔ Cancelled',
-    statusError: '❌ Error',
+    etapaIniciando: 'Starting...',
+    etapaColetando: 'Collecting data...',
+    etapaFinalizado: 'Finished',
+    etapaTimeout: 'No response',
+    etapaFalha: 'Failed',
+    statusIdle: 'Idle',
+    statusRunning: 'Running',
+    statusCompleted: 'Completed',
+    statusCancelled: 'Cancelled',
+    statusError: 'Error',
     erroIniciar: 'Error starting data collection',
     erroConectar: 'Error connecting to the server',
     erroCancelar: 'Error cancelling data collection',
@@ -185,25 +193,27 @@ const MSG = defineMessages({
     agricolas: 'Agricultural',
     naoAgricolas: 'Non-agricultural',
     proxAbrev: 'Next {dia} {hora}',
-    titulo: '📊 Data Update',
+    eyebrow: 'Management',
+    titulo: 'Data update',
+    fonte: 'Source: Curitiba Transparency Portal, agency FAAC',
     subtitulo: 'Fetch new agricultural data from the portal with one click or set up automatic updates.',
-    abaControle: '🎮 Control',
-    abaAgendamento: '⏰ Schedule',
+    abaControle: 'Control',
+    abaAgendamento: 'Schedule',
     lblStatus: 'STATUS',
     lblEtapa: 'STAGE',
     lblProximaExec: 'NEXT RUN',
-    ultimaAtualizacao: '🕒 Last Update',
+    ultimaAtualizacao: 'Last Update',
     semExecucoes: 'No runs recorded yet. Data will appear here after the first data collection.',
     lblData: 'DATE',
     lblResultado: 'RESULT',
     lblIntervalo: 'QUERIED RANGE',
     lblDuracao: 'DURATION',
     duracao: '{min}min {seg}s',
-    concluidaSemNovas: '✅ Completed — no new biddings in the period',
+    concluidaSemNovas: 'Completed — no new biddings in the period',
     puladaUma: ' ({n} already existing was skipped).',
     puladasVarias: ' ({n} already existing were skipped).',
-    coletaExpirou: '⏱️ The data collection timed out without responding (job stuck or Transparency Portal offline). Please try again.',
-    coletaErro: '❌ The data collection ended with an error — see the details below.',
+    coletaExpirou: 'The data collection timed out without responding (job stuck or Transparency Portal offline). Please try again.',
+    coletaErro: 'The data collection ended with an error — see the details below.',
     oQueAtualizado: 'What was updated',
     kpiProcessados: 'PROCESSED',
     kpiItens: 'ITEMS',
@@ -213,33 +223,33 @@ const MSG = defineMessages({
     kpiNovos: 'NEW TENDERS',
     kpiErros: 'ERRORS',
     falhasAtualizacao: 'Update failures',
-    nenhumaFalha: '✅ No failures recorded in this run.',
-    falhaUma: '❌ {n} failure recorded',
-    falhasVarias: '❌ {n} failures recorded',
-    falhaExecucao: '❌ Run failed',
+    nenhumaFalha: 'No failures recorded in this run.',
+    falhaUma: '{n} failure recorded',
+    falhasVarias: '{n} failures recorded',
+    falhaExecucao: 'Run failed',
     verDetalhe: 'View details ({n})',
     executeLocal: 'Run the data collection on the local machine',
-    buscando: '🔄 Fetching...',
-    buscarDados: '🔍 Fetch Data',
-    cancelar: '⛔ Cancel',
-    avisoLocal: 'ℹ️ Portal data collection uses a browser and runs only on the local machine. This page shows the latest status and database statistics.',
-    progressoTitulo: '📈 Real-Time Progress',
+    buscando: 'Fetching...',
+    buscarDados: 'Fetch data',
+    cancelar: 'Cancel',
+    avisoLocal: 'Collection runs automatically every day at 06:00 (Curitiba Transparency Portal). Manual triggering is disabled in this installation; this page shows the latest status and database statistics.',
+    progressoTitulo: 'Real-Time Progress',
     processando: 'Processing... {n} biddings',
-    consultaPortal: 'ℹ️ Portal Query',
+    consultaPortal: 'Portal Query',
     lblUrl: 'URL:',
     lblOrgao: 'Agency:',
     lblDataInicial: 'Start Date:',
     lblDataFinal: 'End Date:',
     registrosPorPagina: 'Records per page:',
-    agendamentoTitulo: '⏰ Configure Weekly Schedule',
+    agendamentoTitulo: 'Configure Weekly Schedule',
     agendamentoDesc: 'Set the day and time for the automatic weekly data collection. The system will start the data collection automatically at this time.',
     lblDiaSemana: 'Day of the Week',
     lblHora: 'Hour (0-23)',
     lblMinuto: 'Minute (0-59)',
-    agendadaPara: '✓ Data collection scheduled for:',
+    agendadaPara: 'Data collection scheduled for:',
     diaAs: '{dia} at {hora}',
-    salvando: '💾 Saving...',
-    salvarConfig: '💾 Save Settings',
+    salvando: 'Saving...',
+    salvarConfig: 'Save settings',
     totalLicitacoes: 'TOTAL BIDDINGS',
     agricolasPct: '{n} agricultural ({pct}%)',
     totalItens: 'TOTAL ITEMS',
@@ -253,16 +263,16 @@ const MSG = defineMessages({
     serieLicitacoes: 'Biddings',
   },
   es: {
-    etapaIniciando: '🔄 Iniciando...',
-    etapaColetando: '📥 Recolectando datos...',
-    etapaFinalizado: '✓ Finalizado',
-    etapaTimeout: '⏱️ Sin respuesta',
-    etapaFalha: '⚠️ Fallo',
-    statusIdle: '⏸️ Detenido',
-    statusRunning: '🔵 En curso',
-    statusCompleted: '✅ Completado',
-    statusCancelled: '⛔ Cancelado',
-    statusError: '❌ Error',
+    etapaIniciando: 'Iniciando...',
+    etapaColetando: 'Recolectando datos...',
+    etapaFinalizado: 'Finalizado',
+    etapaTimeout: 'Sin respuesta',
+    etapaFalha: 'Fallo',
+    statusIdle: 'Detenido',
+    statusRunning: 'En curso',
+    statusCompleted: 'Completado',
+    statusCancelled: 'Cancelado',
+    statusError: 'Error',
     erroIniciar: 'Error al iniciar la recolección de datos',
     erroConectar: 'Error al conectar con el servidor',
     erroCancelar: 'Error al cancelar la recolección de datos',
@@ -271,25 +281,27 @@ const MSG = defineMessages({
     agricolas: 'Agrícolas',
     naoAgricolas: 'No agrícolas',
     proxAbrev: 'Próx. {dia} {hora}',
-    titulo: '📊 Actualización de Datos',
+    eyebrow: 'Gestión',
+    titulo: 'Actualización de datos',
+    fonte: 'Fuente: Portal de la Transparencia de Curitiba, órgano FAAC',
     subtitulo: 'Busque nuevos datos agrícolas del portal con un clic o configure actualizaciones automáticas.',
-    abaControle: '🎮 Control',
-    abaAgendamento: '⏰ Programación',
+    abaControle: 'Control',
+    abaAgendamento: 'Programación',
     lblStatus: 'ESTADO',
     lblEtapa: 'ETAPA',
     lblProximaExec: 'PRÓXIMA EJEC.',
-    ultimaAtualizacao: '🕒 Última Actualización',
+    ultimaAtualizacao: 'Última Actualización',
     semExecucoes: 'Aún no hay ejecuciones registradas. Los datos aparecerán aquí después de la primera recolección de datos.',
     lblData: 'FECHA',
     lblResultado: 'RESULTADO',
     lblIntervalo: 'INTERVALO CONSULTADO',
     lblDuracao: 'DURACIÓN',
     duracao: '{min}min {seg}s',
-    concluidaSemNovas: '✅ Completada — ninguna licitación nueva en el período',
+    concluidaSemNovas: 'Completada — ninguna licitación nueva en el período',
     puladaUma: ' ({n} ya existente fue omitida).',
     puladasVarias: ' ({n} ya existentes fueron omitidas).',
-    coletaExpirou: '⏱️ La recolección de datos expiró sin responder (job bloqueado o Portal de Transparencia fuera de línea). Inténtelo de nuevo.',
-    coletaErro: '❌ La recolección de datos terminó con error — vea el detalle abajo.',
+    coletaExpirou: 'La recolección de datos expiró sin responder (job bloqueado o Portal de Transparencia fuera de línea). Inténtelo de nuevo.',
+    coletaErro: 'La recolección de datos terminó con error — vea el detalle abajo.',
     oQueAtualizado: 'Qué se actualizó',
     kpiProcessados: 'PROCESADOS',
     kpiItens: 'ÍTEMS',
@@ -299,33 +311,33 @@ const MSG = defineMessages({
     kpiNovos: 'LICITACIONES NUEVAS',
     kpiErros: 'ERRORES',
     falhasAtualizacao: 'Fallos en la actualización',
-    nenhumaFalha: '✅ Ningún fallo registrado en esta ejecución.',
-    falhaUma: '❌ {n} fallo registrado',
-    falhasVarias: '❌ {n} fallos registrados',
-    falhaExecucao: '❌ Fallo en la ejecución',
+    nenhumaFalha: 'Ningún fallo registrado en esta ejecución.',
+    falhaUma: '{n} fallo registrado',
+    falhasVarias: '{n} fallos registrados',
+    falhaExecucao: 'Fallo en la ejecución',
     verDetalhe: 'Ver detalle ({n})',
     executeLocal: 'Ejecute la recolección de datos en la máquina local',
-    buscando: '🔄 Buscando...',
-    buscarDados: '🔍 Buscar Datos',
-    cancelar: '⛔ Cancelar',
-    avisoLocal: 'ℹ️ La recolección de datos del portal usa un navegador y se ejecuta solo en la máquina local. Esta página muestra el estado y las estadísticas más recientes de la base.',
-    progressoTitulo: '📈 Progreso en Tiempo Real',
+    buscando: 'Buscando...',
+    buscarDados: 'Buscar datos',
+    cancelar: 'Cancelar',
+    avisoLocal: 'La recolección se ejecuta automáticamente todos los días a las 06:00 (Portal de Transparencia de Curitiba). En esta instalación el disparo manual está desactivado; esta página muestra el estado y las estadísticas más recientes de la base.',
+    progressoTitulo: 'Progreso en Tiempo Real',
     processando: 'Procesando... {n} licitaciones',
-    consultaPortal: 'ℹ️ Consulta al Portal',
+    consultaPortal: 'Consulta al Portal',
     lblUrl: 'URL:',
     lblOrgao: 'Órgano:',
     lblDataInicial: 'Fecha Inicial:',
     lblDataFinal: 'Fecha Final:',
     registrosPorPagina: 'Registros por página:',
-    agendamentoTitulo: '⏰ Configurar Programación Semanal',
+    agendamentoTitulo: 'Configurar Programación Semanal',
     agendamentoDesc: 'Configure el día y la hora para la recolección de datos automática semanal. El sistema la iniciará automáticamente a esa hora.',
     lblDiaSemana: 'Día de la Semana',
     lblHora: 'Hora (0-23)',
     lblMinuto: 'Minuto (0-59)',
-    agendadaPara: '✓ Recolección de datos programada para:',
+    agendadaPara: 'Recolección de datos programada para:',
     diaAs: '{dia} a las {hora}',
-    salvando: '💾 Guardando...',
-    salvarConfig: '💾 Guardar Configuración',
+    salvando: 'Guardando...',
+    salvarConfig: 'Guardar configuración',
     totalLicitacoes: 'TOTAL DE LICITACIONES',
     agricolasPct: '{n} agrícolas ({pct}%)',
     totalItens: 'TOTAL DE ÍTEMS',
@@ -365,24 +377,13 @@ function nomeDiaSemana(idx: number, locale: string, formato: 'long' | 'short'): 
   return formato === 'long' ? nome.charAt(0).toLocaleUpperCase(locale) + nome.slice(1) : nome
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  'idle': '#9ca3af',
-  'running': '#0f766e',
-  'completed': '#155e63',
-  'cancelled': '#ef4444',
-  'error': '#dc2626',
-}
-
-const CATEGORIA_COLORS: Record<string, string> = {
-  'HORTIFRUTI': '#0f766e',
-  'FRUTAS': '#fb7185',
-  'GRAOS_CEREAIS': '#ca8a04',
-  'LATICINIOS': '#f59e0b',
-  'PROTEINA_ANIMAL': '#d97706',
-  'PROCESSADOS_AF': '#8b5cf6',
-  'INSUMOS_NAO_AGRO': '#64748b',
-  'OUTRO': '#6b7280',
-  'NAO_CLASSIFICADO': '#d1d5db',
+// Status: cor (tokens de status do index.css) + ícone — nunca só a cor (WCAG 1.4.1).
+const STATUS_CFG: Record<string, { tom: Tom; cor: string; Icon: typeof CircleCheck }> = {
+  'idle': { tom: 'neutro', cor: TONS.neutro.cor, Icon: CirclePause },
+  'running': { tom: 'info', cor: TONS.info.cor, Icon: RefreshCw },
+  'completed': { tom: 'ok', cor: TONS.ok.cor, Icon: CircleCheck },
+  'cancelled': { tom: 'aviso', cor: TONS.aviso.cor, Icon: Ban },
+  'error': { tom: 'erro', cor: TONS.erro.cor, Icon: CircleX },
 }
 
 export default function Coleta() {
@@ -537,8 +538,8 @@ export default function Coleta() {
 
   // ── Preparar dados para charts ──
   const piechartData = stats ? [
-    { name: t('agricolas'), value: stats.total_agricolas, color: '#0f766e' },
-    { name: t('naoAgricolas'), value: stats.total_nao_agricolas, color: '#9ca3af' }
+    { name: t('agricolas'), value: stats.total_agricolas, color: 'var(--chart-marca)' },
+    { name: t('naoAgricolas'), value: stats.total_nao_agricolas, color: 'var(--cinza)' }
   ] : []
 
   const categoriasData = stats && stats.itens_por_categoria
@@ -546,7 +547,6 @@ export default function Coleta() {
       .map(([cat, count]) => ({
         categoria: cat,
         quantidade: count,
-        color: CATEGORIA_COLORS[cat] || '#6b7280'
       }))
       .sort((a, b) => b.quantidade - a.quantidade)
       .slice(0, 10)
@@ -571,79 +571,101 @@ export default function Coleta() {
     ? formatarDataHora(proximaExec)
     : t('proxAbrev', { dia: diasAbrev[config.dia_semana], hora: horaMinuto })
 
+  const statusAtual = STATUS_CFG[status?.status || 'idle'] ?? STATUS_CFG.idle
+  const StatusIcon = statusAtual.Icon
+  const statusUltima = ultimaExec ? STATUS_CFG[ultimaExec.status] : undefined
+  const UltimaIcon = statusUltima?.Icon
+
+  // Caixas de KPI (tokens de status do index.css).
+  const kpiBox = (familia: 'ok' | 'aviso' | 'erro' | 'neutro') => {
+    const neutro = familia === 'neutro'
+    return {
+      box: {
+        background: neutro ? 'var(--cinza-claro)' : `var(--${familia}-fundo)`,
+        border: `1px solid ${neutro ? 'var(--borda)' : `var(--${familia}-borda)`}`,
+        borderRadius: 'var(--raio-sm)', padding: 10,
+      },
+      label: { fontSize: 11, fontWeight: 600, color: neutro ? 'var(--texto-suave)' : `var(--${familia})`, marginBottom: 4 },
+      valor: { fontSize: 18, fontWeight: 700, color: neutro ? 'var(--texto)' : `var(--${familia})`, fontVariantNumeric: 'tabular-nums' as const },
+    }
+  }
+  const rotulo = { fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }
+  const campo = {
+    width: '100%', padding: '10px 12px', border: '1px solid var(--borda)', borderRadius: 'var(--raio-sm)',
+    fontSize: 14, fontFamily: 'Inter', background: 'var(--branco)', color: 'var(--texto)',
+  }
+
   return (
     <div className="page" style={{ maxWidth: 1400 }}>
-      {/* ─── HEADER COM ABAS ─────────────────────────────────────────── */}
-      <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontFamily: 'Inter, sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--texto)', marginBottom: 8 }}>
-            {t('titulo')}
-          </h2>
-          <p style={{ fontSize: 14, color: 'var(--texto-suave)', lineHeight: 1.6, margin: 0 }}>
-            {t('subtitulo')}
-          </p>
-        </div>
+      {/* ─── CABEÇALHO ───────────────────────────────────────────────── */}
+      <PageHeader
+        eyebrow={t('eyebrow')}
+        title={t('titulo')}
+        subtitle={t('subtitulo')}
+        source={t('fonte')}
+        actions={
+          <>
+            <button
+              className="btn btn-primario"
+              onClick={iniciarColeta}
+              disabled={loading || !COLETA_ENABLED}
+              title={!COLETA_ENABLED ? t('executeLocal') : undefined}
+            >
+              {loading
+                ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} /> {t('buscando')}</>
+                : <><Download size={16} aria-hidden /> {t('buscarDados')}</>}
+            </button>
+            {loading && (
+              <button className="btn btn-secundario" onClick={cancelarColeta} style={{ color: 'var(--erro)', borderColor: 'var(--erro-borda)' }}>
+                <Square size={14} aria-hidden /> {t('cancelar')}
+              </button>
+            )}
+          </>
+        }
+      />
 
-        {/* Abas */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--borda)' }}>
-          <button
-            onClick={() => setActiveTab('controle')}
-            style={{
-              background: activeTab === 'controle' ? 'var(--verde)' : 'transparent',
-              color: activeTab === 'controle' ? '#fff' : 'var(--texto)',
-              border: 'none',
-              padding: '12px 20px',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: 'pointer',
-              borderRadius: '8px 8px 0 0',
-              marginBottom: -2,
-            }}
-          >
-            {t('abaControle')}
-          </button>
-          <button
-            onClick={() => setActiveTab('agendamento')}
-            style={{
-              background: activeTab === 'agendamento' ? 'var(--verde)' : 'transparent',
-              color: activeTab === 'agendamento' ? '#fff' : 'var(--texto)',
-              border: 'none',
-              padding: '12px 20px',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: 'pointer',
-              borderRadius: '8px 8px 0 0',
-              marginBottom: -2,
-              marginLeft: 8,
-            }}
-          >
-            {t('abaAgendamento')}
-          </button>
-        </div>
+      {/* Abas */}
+      <div className="seg-control" role="tablist" style={{ marginBottom: 20 }}>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'controle'}
+          className={`seg-btn${activeTab === 'controle' ? ' active' : ''}`}
+          onClick={() => setActiveTab('controle')}
+        >
+          <Activity size={16} aria-hidden /> {t('abaControle')}
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'agendamento'}
+          className={`seg-btn${activeTab === 'agendamento' ? ' active' : ''}`}
+          onClick={() => setActiveTab('agendamento')}
+        >
+          <CalendarClock size={16} aria-hidden /> {t('abaAgendamento')}
+        </button>
       </div>
 
       {/* ─── ABA 1: Controle ─────────────────────────────────────────── */}
       {activeTab === 'controle' && (
-      <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
-        <div></div>
-
+      <div className="card" style={{ marginBottom: 24 }}>
         {/* Status card */}
         <div style={{
-          background: '#f9fafb',
-          border: `2px solid ${STATUS_COLORS[status?.status || 'idle']}`,
-          borderRadius: 12,
+          background: 'var(--cinza-claro)',
+          border: '1px solid var(--borda)',
+          borderLeft: `4px solid ${statusAtual.cor}`,
+          borderRadius: 'var(--raio)',
           padding: 16,
           marginBottom: 16
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblStatus')}</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: STATUS_COLORS[status?.status || 'idle'] }}>
+              <p style={{ ...rotulo, fontSize: 12 }}>{t('lblStatus')}</p>
+              <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 700, color: statusAtual.cor }}>
+                <StatusIcon size={18} aria-hidden />
                 {t(STATUS_LABELS[status?.status || 'idle'] ?? 'statusIdle')}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblEtapa')}</p>
+              <p style={{ ...rotulo, fontSize: 12 }}>{t('lblEtapa')}</p>
               <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)' }}>
                 {(() => {
                   const etapa = status?.etapa || 'nenhuma'
@@ -653,8 +675,9 @@ export default function Coleta() {
               </p>
             </div>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblProximaExec')}</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)' }}>
+              <p style={{ ...rotulo, fontSize: 12 }}>{t('lblProximaExec')}</p>
+              <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 700, color: 'var(--texto)' }}>
+                <Clock size={16} aria-hidden style={{ color: 'var(--texto-suave)' }} />
                 {proximaExecLabel}
               </p>
             </div>
@@ -663,14 +686,15 @@ export default function Coleta() {
 
         {/* ── Última Atualização (histórico persistido) ── */}
         <div style={{
-          background: '#f9fafb',
-          border: `1px solid ${ultimaExec ? STATUS_COLORS[ultimaExec.status] || 'var(--borda)' : 'var(--borda)'}`,
-          borderRadius: 12,
+          background: 'var(--cinza-claro)',
+          border: '1px solid var(--borda)',
+          borderLeft: `4px solid ${statusUltima ? statusUltima.cor : 'var(--borda)'}`,
+          borderRadius: 'var(--raio)',
           padding: 16,
           marginBottom: 16,
         }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--texto)', marginBottom: 12 }}>
-            {t('ultimaAtualizacao')}
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--texto)', marginBottom: 12 }}>
+            <History size={16} aria-hidden style={{ color: 'var(--texto-suave)' }} /> {t('ultimaAtualizacao')}
           </p>
 
           {!ultimaExec ? (
@@ -682,24 +706,25 @@ export default function Coleta() {
               {/* Cabeçalho: data, status, intervalo, duração */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblData')}</p>
+                  <p style={rotulo}>{t('lblData')}</p>
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>{formatarDataHora(ultimaExec.finalizado_em)}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblResultado')}</p>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: STATUS_COLORS[ultimaExec.status] || 'var(--texto)' }}>
+                  <p style={rotulo}>{t('lblResultado')}</p>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 700, color: statusUltima?.cor || 'var(--texto)' }}>
+                    {UltimaIcon && <UltimaIcon size={16} aria-hidden />}
                     {STATUS_LABELS[ultimaExec.status] ? t(STATUS_LABELS[ultimaExec.status]) : ultimaExec.status}
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblIntervalo')}</p>
+                  <p style={rotulo}>{t('lblIntervalo')}</p>
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>
                     {ultimaExec.dt_inicio || '—'} → {ultimaExec.dt_fim || '—'}
                   </p>
                 </div>
                 {ultimaExec.duracao_seg != null && (
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 4 }}>{t('lblDuracao')}</p>
+                    <p style={rotulo}>{t('lblDuracao')}</p>
                     <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--texto)' }}>
                       {t('duracao', { min: Math.floor(ultimaExec.duracao_seg / 60), seg: ultimaExec.duracao_seg % 60 })}
                     </p>
@@ -713,27 +738,29 @@ export default function Coleta() {
                 && ultimaExec.novos === 0
                 && ultimaExec.itens_coletados === 0
                 && ultimaExec.erros === 0 && (
-                <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
-                  <p style={{ fontSize: 13, color: '#065f46', margin: 0 }}>
+                <div className="aviso-box ok" style={{ marginBottom: 16, fontSize: 13 }}>
+                  <CircleCheck size={16} aria-hidden />
+                  <span>
                     {t('concluidaSemNovas')}
                     {ultimaExec.pulados > 0
                       ? t(ultimaExec.pulados === 1 ? 'puladaUma' : 'puladasVarias', { n: ultimaExec.pulados })
                       : '.'}
-                  </p>
+                  </span>
                 </div>
               )}
               {(ultimaExec.status === 'error' || ultimaExec.etapa === 'timeout') && (
-                <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 8, padding: '10px 12px', marginBottom: 16 }}>
-                  <p style={{ fontSize: 13, color: '#9a3412', margin: 0 }}>
+                <div className="aviso-box aviso" style={{ marginBottom: 16, fontSize: 13 }}>
+                  {ultimaExec.etapa === 'timeout' ? <Clock size={16} aria-hidden /> : <TriangleAlert size={16} aria-hidden />}
+                  <span>
                     {ultimaExec.etapa === 'timeout'
                       ? t('coletaExpirou')
                       : t('coletaErro')}
-                  </p>
+                  </span>
                 </div>
               )}
 
               {/* O que foi atualizado */}
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8, textTransform: 'uppercase' }}>
+              <p style={{ ...rotulo, marginBottom: 8, textTransform: 'uppercase' }}>
                 {t('oQueAtualizado')}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 16 }}>
@@ -744,102 +771,69 @@ export default function Coleta() {
                   { label: t('kpiFornecedores'), value: ultimaExec.fornecedores },
                   { label: t('kpiEmpenhos'), value: ultimaExec.empenhos },
                   { label: t('kpiPulados'), value: ultimaExec.pulados },
-                ].map((kpi) => (
-                  <div key={kpi.label} style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 10 }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>{kpi.label}</p>
-                    <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{kpi.value}</p>
-                  </div>
-                ))}
+                ].map((kpi) => {
+                  const k = kpiBox('neutro')
+                  return (
+                    <div key={kpi.label} style={{ ...k.box, background: 'var(--branco)' }}>
+                      <p style={k.label}>{kpi.label}</p>
+                      <p style={k.valor}>{kpi.value}</p>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Falhas */}
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8, textTransform: 'uppercase' }}>
+              <p style={{ ...rotulo, marginBottom: 8, textTransform: 'uppercase' }}>
                 {t('falhasAtualizacao')}
               </p>
               {ultimaExec.erros === 0 && !ultimaExec.erro_resumo ? (
-                <p style={{ fontSize: 14, color: '#15803d', margin: 0 }}>{t('nenhumaFalha')}</p>
+                <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--ok)', margin: 0 }}>
+                  <CircleCheck size={16} aria-hidden /> {t('nenhumaFalha')}
+                </p>
               ) : (
-                <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: 12 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: '#b91c1c', margin: 0 }}>
-                    {ultimaExec.erros > 0
-                      ? t(ultimaExec.erros === 1 ? 'falhaUma' : 'falhasVarias', { n: ultimaExec.erros })
-                      : t('falhaExecucao')}
-                  </p>
-                  {ultimaExec.erro_resumo && (
-                    <pre style={{ fontSize: 12, color: '#7f1d1d', margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', maxHeight: 160, overflow: 'auto' }}>
-                      {ultimaExec.erro_resumo}
-                    </pre>
-                  )}
-                  {ultimaExec.erro_detalhes && ultimaExec.erro_detalhes.length > 0 && (
-                    <details style={{ marginTop: 8 }}>
-                      <summary style={{ fontSize: 13, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>
-                        {t('verDetalhe', { n: ultimaExec.erro_detalhes.length })}
-                      </summary>
-                      <ul style={{ margin: '8px 0 0 0', paddingLeft: 18, fontSize: 13, color: '#7f1d1d', lineHeight: 1.6 }}>
-                        {ultimaExec.erro_detalhes.map((d, idx) => (
-                          <li key={idx}><strong>{d.processo}</strong>: {d.mensagem}</li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
+                <div className="aviso-box erro">
+                  <CircleX size={16} aria-hidden />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+                      {ultimaExec.erros > 0
+                        ? t(ultimaExec.erros === 1 ? 'falhaUma' : 'falhasVarias', { n: ultimaExec.erros })
+                        : t('falhaExecucao')}
+                    </p>
+                    {ultimaExec.erro_resumo && (
+                      <pre style={{ fontSize: 12, color: 'var(--texto)', margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', maxHeight: 160, overflow: 'auto' }}>
+                        {ultimaExec.erro_resumo}
+                      </pre>
+                    )}
+                    {ultimaExec.erro_detalhes && ultimaExec.erro_detalhes.length > 0 && (
+                      <details style={{ marginTop: 8 }}>
+                        <summary style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                          {t('verDetalhe', { n: ultimaExec.erro_detalhes.length })}
+                        </summary>
+                        <ul style={{ margin: '8px 0 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--texto)', lineHeight: 1.6 }}>
+                          {ultimaExec.erro_detalhes.map((d, idx) => (
+                            <li key={idx}><strong>{d.processo}</strong>: {d.mensagem}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
                 </div>
               )}
             </>
           )}
         </div>
 
-        {/* Botões de controle */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button
-            onClick={iniciarColeta}
-            disabled={loading || !COLETA_ENABLED}
-            title={!COLETA_ENABLED ? t('executeLocal') : undefined}
-            style={{
-              background: (loading || !COLETA_ENABLED) ? 'var(--borda)' : '#0f766e',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 12,
-              padding: '14px 24px',
-              fontFamily: 'Inter',
-              fontSize: 15,
-              fontWeight: 800,
-              cursor: (loading || !COLETA_ENABLED) ? 'not-allowed' : 'pointer',
-              opacity: (loading || !COLETA_ENABLED) ? 0.6 : 1
-            }}
-          >
-            {loading ? t('buscando') : t('buscarDados')}
-          </button>
-          {loading && (
-            <button
-              onClick={cancelarColeta}
-              style={{
-                background: '#ef4444',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 12,
-                padding: '14px 24px',
-                fontFamily: 'Inter',
-                fontSize: 15,
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              {t('cancelar')}
-            </button>
-          )}
-        </div>
-
         {!COLETA_ENABLED && (
-          <div style={{ marginTop: 16, padding: 12, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, color: '#1e40af' }}>
-            <p style={{ fontSize: 14, margin: 0 }}>
-              {t('avisoLocal')}
-            </p>
+          <div className="aviso-box" style={{ marginTop: 16 }}>
+            <Info size={16} aria-hidden />
+            <span>{t('avisoLocal')}</span>
           </div>
         )}
 
         {error && (
-          <div style={{ marginTop: 16, padding: 12, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c' }}>
-            <p style={{ fontSize: 14, margin: 0 }}>❌ {error}</p>
+          <div className="aviso-box erro" role="alert" style={{ marginTop: 16 }}>
+            <CircleAlert size={16} aria-hidden />
+            <span>{error}</span>
           </div>
         )}
       </div>
@@ -847,9 +841,9 @@ export default function Coleta() {
 
       {/* ─── SEÇÃO 2: Progresso em Tempo Real ─────────────────────────────── */}
       {loading && status && (
-        <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--texto)', marginBottom: 16 }}>
-            {t('progressoTitulo')}
+        <div className="card" style={{ marginBottom: 24 }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 700, color: 'var(--texto)', marginBottom: 16 }}>
+            <Activity size={18} aria-hidden style={{ color: 'var(--verde)' }} /> {t('progressoTitulo')}
           </h3>
 
           {/* Barra de progresso estimada */}
@@ -857,15 +851,21 @@ export default function Coleta() {
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
               {t('processando', { n: status.processados })}
             </p>
-            <div style={{
-              background: '#e5e7eb',
-              borderRadius: 8,
-              height: 24,
-              overflow: 'hidden',
-              position: 'relative'
-            }}>
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.min(status.processados, 100)}
+              style={{
+                background: 'var(--borda)',
+                borderRadius: 'var(--raio-sm)',
+                height: 24,
+                overflow: 'hidden',
+                position: 'relative'
+              }}
+            >
               <div style={{
-                background: '#0f766e',
+                background: 'var(--verde)',
                 width: `${Math.min((status.processados / 100) * 100, 100)}%`,
                 height: '100%',
                 transition: 'width 0.3s',
@@ -882,31 +882,29 @@ export default function Coleta() {
 
           {/* KPIs em tempo real */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-            <div style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>{t('kpiProcessados')}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{status.processados}</p>
-            </div>
-            <div style={{ background: '#e6f2f1', border: '1px solid #9fcdc8', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f766e', marginBottom: 4 }}>{t('kpiNovos')}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f766e' }}>{status.novos}</p>
-            </div>
-            <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>{t('kpiPulados')}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#92400e' }}>{status.pulados}</p>
-            </div>
-            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: 12 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#b91c1c', marginBottom: 4 }}>{t('kpiErros')}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#b91c1c' }}>{status.erros}</p>
-            </div>
+            {([
+              { label: t('kpiProcessados'), value: status.processados, familia: 'ok' },
+              { label: t('kpiNovos'), value: status.novos, familia: 'ok' },
+              { label: t('kpiPulados'), value: status.pulados, familia: 'aviso' },
+              { label: t('kpiErros'), value: status.erros, familia: 'erro' },
+            ] as const).map(kpi => {
+              const k = kpiBox(kpi.familia)
+              return (
+                <div key={kpi.label} style={{ ...k.box, padding: 12 }}>
+                  <p style={{ ...k.label, fontSize: 12 }}>{kpi.label}</p>
+                  <p style={k.valor}>{kpi.value}</p>
+                </div>
+              )
+            })}
           </div>
 
           {/* Informações de Consulta ao Portal */}
           {status.consulta_portal && (
-            <div style={{ marginTop: 20, padding: 16, background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 8 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 12, textTransform: 'uppercase' }}>
-                {t('consultaPortal')}
+            <div style={{ marginTop: 20, padding: 16, background: 'var(--cinza-claro)', border: '1px solid var(--borda)', borderRadius: 'var(--raio-sm)' }}>
+              <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 12, textTransform: 'uppercase' }}>
+                <Info size={14} aria-hidden /> {t('consultaPortal')}
               </p>
-              <div className="grid-2" style={{ gap: 12, fontSize: 13, lineHeight: 1.6, color: '#374151', fontFamily: 'monospace' }}>
+              <div className="grid-2" style={{ gap: 12, fontSize: 13, lineHeight: 1.6, color: 'var(--texto)', fontFamily: 'monospace' }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 600 }}>{t('lblUrl')}</p>
                   <p style={{ margin: '4px 0 0 0', wordBreak: 'break-all', fontSize: 12 }}>{status.consulta_portal.url}</p>
@@ -924,7 +922,7 @@ export default function Coleta() {
                   <p style={{ margin: '4px 0 0 0' }}>{status.consulta_portal.dt_fim}</p>
                 </div>
               </div>
-              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #d1d5db', fontSize: 12, color: '#6b7280' }}>
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--borda)', fontSize: 12, color: 'var(--texto-suave)' }}>
                 <p style={{ margin: 0 }}>{t('registrosPorPagina')} <strong>{status.consulta_portal.registros_por_pagina}</strong></p>
               </div>
             </div>
@@ -934,9 +932,9 @@ export default function Coleta() {
 
       {/* ─── ABA 2: Agendamento ──────────────────────────────────────── */}
       {activeTab === 'agendamento' && (
-      <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px', marginBottom: 24 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--texto)', marginBottom: 20 }}>
-          {t('agendamentoTitulo')}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 700, color: 'var(--texto)', marginBottom: 20 }}>
+          <CalendarClock size={18} aria-hidden style={{ color: 'var(--verde)' }} /> {t('agendamentoTitulo')}
         </h3>
 
         <p style={{ fontSize: 14, color: 'var(--texto-suave)', marginBottom: 16 }}>
@@ -946,20 +944,14 @@ export default function Coleta() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
           {/* Dia da Semana */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
+            <label htmlFor="coleta-dia" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
               {t('lblDiaSemana')}
             </label>
             <select
+              id="coleta-dia"
               value={config.dia_semana}
               onChange={(e) => setConfig({ ...config, dia_semana: parseInt(e.target.value) })}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid var(--borda)',
-                borderRadius: 8,
-                fontSize: 14,
-                fontFamily: 'Inter',
-              }}
+              style={campo}
             >
               {diasSemana.map((dia, idx) => (
                 <option key={idx} value={idx}>{dia}</option>
@@ -969,128 +961,90 @@ export default function Coleta() {
 
           {/* Hora */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
+            <label htmlFor="coleta-hora" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
               {t('lblHora')}
             </label>
             <input
+              id="coleta-hora"
               type="number"
               min="0"
               max="23"
               value={config.hora}
               onChange={(e) => setConfig({ ...config, hora: parseInt(e.target.value) || 0 })}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid var(--borda)',
-                borderRadius: 8,
-                fontSize: 14,
-                fontFamily: 'Inter',
-              }}
+              style={campo}
             />
           </div>
 
           {/* Minuto */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
+            <label htmlFor="coleta-minuto" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>
               {t('lblMinuto')}
             </label>
             <input
+              id="coleta-minuto"
               type="number"
               min="0"
               max="59"
               value={config.minuto}
               onChange={(e) => setConfig({ ...config, minuto: parseInt(e.target.value) || 0 })}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid var(--borda)',
-                borderRadius: 8,
-                fontSize: 14,
-                fontFamily: 'Inter',
-              }}
+              style={campo}
             />
           </div>
         </div>
 
         {/* Preview */}
-        <div style={{
-          background: '#e6f2f1',
-          border: '1px solid #9fcdc8',
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 24
-        }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#0f766e', margin: 0 }}>
+        <div className="aviso-box ok" style={{ marginBottom: 24 }}>
+          <Calendar size={16} aria-hidden />
+          <span style={{ fontWeight: 600 }}>
             {t('agendadaPara')} <strong>{t('diaAs', { dia: diasSemana[config.dia_semana], hora: horaMinuto })}</strong>
-          </p>
+          </span>
         </div>
 
         {/* Botão Salvar */}
-        <button
-          onClick={salvarConfig}
-          disabled={savingConfig}
-          style={{
-            background: savingConfig ? 'var(--borda)' : 'var(--verde)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 12,
-            padding: '14px 28px',
-            fontFamily: 'Inter',
-            fontSize: 15,
-            fontWeight: 800,
-            cursor: savingConfig ? 'not-allowed' : 'pointer',
-            opacity: savingConfig ? 0.6 : 1,
-          }}
-        >
-          {savingConfig ? t('salvando') : t('salvarConfig')}
+        <button className="btn btn-primario" onClick={salvarConfig} disabled={savingConfig}>
+          {savingConfig
+            ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} /> {t('salvando')}</>
+            : <><Save size={16} aria-hidden /> {t('salvarConfig')}</>}
         </button>
 
         {error && (
-          <div style={{ marginTop: 16, padding: 12, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c' }}>
-            <p style={{ fontSize: 14, margin: 0 }}>❌ {error}</p>
+          <div className="aviso-box erro" role="alert" style={{ marginTop: 16 }}>
+            <CircleAlert size={16} aria-hidden />
+            <span>{error}</span>
           </div>
         )}
       </div>
       )}
 
       {/* ─── SEÇÃO 3: Estatísticas de Classificação ──────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 20, marginBottom: 24 }}>
-        {/* KPIs principais */}
-        <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>{t('totalLicitacoes')}</p>
-          <h3 style={{ fontSize: 28, fontWeight: 700, color: 'var(--texto)', margin: 0, marginBottom: 4 }}>
-            {stats?.total_licitacoes || '—'}
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>
+      <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))' }}>
+        <div className="metric-card verde">
+          <div className="metric-label">{t('totalLicitacoes')}</div>
+          <div className="metric-value">{stats?.total_licitacoes || '—'}</div>
+          <div className="metric-sub">
             {stats ? t('agricolasPct', { n: stats.total_agricolas, pct: stats.cobertura_agricola_pct }) : '—'}
-          </p>
+          </div>
         </div>
 
-        <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>{t('totalItens')}</p>
-          <h3 style={{ fontSize: 28, fontWeight: 700, color: 'var(--texto)', margin: 0, marginBottom: 4 }}>
-            {stats?.total_itens || '—'}
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>{t('itensAgricolas')}</p>
+        <div className="metric-card ceu">
+          <div className="metric-label">{t('totalItens')}</div>
+          <div className="metric-value">{stats?.total_itens || '—'}</div>
+          <div className="metric-sub">{t('itensAgricolas')}</div>
         </div>
 
-        <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--texto-suave)', marginBottom: 8 }}>{t('coberturaAgricola')}</p>
-          <h3 style={{ fontSize: 28, fontWeight: 700, color: 'var(--texto)', margin: 0, marginBottom: 4 }}>
-            {stats?.cobertura_agricola_pct || '—'}%
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--texto-suave)', margin: 0 }}>{t('doTotalLicitacoes')}</p>
+        <div className="metric-card terra">
+          <div className="metric-label">{t('coberturaAgricola')}</div>
+          <div className="metric-value">{stats?.cobertura_agricola_pct || '—'}%</div>
+          <div className="metric-sub">{t('doTotalLicitacoes')}</div>
         </div>
       </div>
 
       {/* Gráficos */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: 20, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: 20, marginBottom: 4 }}>
         {/* Pie: Agrícola vs Não-Agrícola */}
         {stats && piechartData.length > 0 && (
-          <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16, margin: '0 0 16px 0' }}>
-              {t('graficoAgroVsNao')}
-            </h3>
+          <div className="chart-card" style={{ margin: 0 }}>
+            <h3>{t('graficoAgroVsNao')}</h3>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie data={piechartData} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name}: ${value}`} outerRadius={80}>
@@ -1103,23 +1057,17 @@ export default function Coleta() {
           </div>
         )}
 
-        {/* Bar: Itens por Categoria */}
+        {/* Bar: Itens por Categoria (série única → uma cor; categorias no eixo) */}
         {stats && categoriasData.length > 0 && (
-          <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16, margin: '0 0 16px 0' }}>
-              {t('top10Categorias')}
-            </h3>
+          <div className="chart-card" style={{ margin: 0 }}>
+            <h3>{t('top10Categorias')}</h3>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={categoriasData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--borda)" />
-                <XAxis dataKey="categoria" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grade)" />
+                <XAxis dataKey="categoria" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 12, fill: 'var(--chart-eixo)' }} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--chart-eixo)' }} />
                 <Tooltip />
-                <Bar dataKey="quantidade" name={t('serieQuantidade')} radius={[8, 8, 0, 0]}>
-                  {categoriasData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={entry.color} />
-                  ))}
-                </Bar>
+                <Bar dataKey="quantidade" name={t('serieQuantidade')} fill="var(--chart-marca)" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1128,17 +1076,15 @@ export default function Coleta() {
 
       {/* Bar: Licitações Agrícolas por Ano */}
       {stats && anosData.length > 0 && (
-        <div style={{ background: 'var(--branco)', border: '1px solid var(--borda)', borderRadius: 16, padding: '24px 28px' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--texto)', marginBottom: 16, margin: '0 0 16px 0' }}>
-            {t('licitacoesPorAno')}
-          </h3>
+        <div className="chart-card" style={{ marginTop: 20 }}>
+          <h3>{t('licitacoesPorAno')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={anosData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--borda)" />
-              <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grade)" />
+              <XAxis dataKey="ano" tick={{ fontSize: 12, fill: 'var(--chart-eixo)' }} />
+              <YAxis tick={{ fontSize: 12, fill: 'var(--chart-eixo)' }} />
               <Tooltip />
-              <Bar dataKey="licitacoes" name={t('serieLicitacoes')} fill="#0f766e" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="licitacoes" name={t('serieLicitacoes')} fill="var(--chart-marca)" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

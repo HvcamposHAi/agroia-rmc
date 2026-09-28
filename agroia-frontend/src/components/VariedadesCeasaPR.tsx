@@ -9,7 +9,7 @@ import { defineMessages, useI18n, useT, fmtBRL as fmtBRLi, fmtData as fmtDataI }
 
 const MSG = defineMessages({
   pt: {
-    titulo: '🍊 Preços por variedade — CEASA/PR · {p}',
+    titulo: 'Preços por variedade — CEASA/PR · {p}',
     intro: 'O preço muda conforme a variedade e a classificação. Escolha uma para ver só ela e a evolução.',
     ariaUnidade: 'Unidade CEASA/PR',
     ariaVariedade: 'Variedade',
@@ -30,7 +30,7 @@ const MSG = defineMessages({
     rodape: 'Preço mais comum do dia no atacado, por embalagem; R$/kg calculado pelo peso da embalagem. Fonte: CEASA/PR.',
   },
   en: {
-    titulo: '🍊 Prices by variety — CEASA/PR · {p}',
+    titulo: 'Prices by variety — CEASA/PR · {p}',
     intro: 'Prices vary by variety and grade. Pick one to see only it and its trend.',
     ariaUnidade: 'CEASA/PR unit',
     ariaVariedade: 'Variety',
@@ -51,7 +51,7 @@ const MSG = defineMessages({
     rodape: 'Most common wholesale price of the day, per package; R$/kg calculated from the package weight. Source: CEASA/PR.',
   },
   es: {
-    titulo: '🍊 Precios por variedad — CEASA/PR · {p}',
+    titulo: 'Precios por variedad — CEASA/PR · {p}',
     intro: 'El precio cambia según la variedad y la clasificación. Elige una para ver solo esa y su evolución.',
     ariaUnidade: 'Unidad CEASA/PR',
     ariaVariedade: 'Variedad',
@@ -103,7 +103,8 @@ const UNIDADES_PR = [
   { value: 'CASCAVEL',      label: 'Cascavel' },
 ]
 
-const CHART_CEO = '#1e3a5f'
+// Série única → cor de marca dos gráficos; estilo do tooltip comum às páginas.
+const TOOLTIP_STYLE: CSSProperties = { border: '1px solid var(--borda)', borderRadius: 10 }
 
 const fmtBRL = (v: number | null | undefined) =>
   v == null ? '—' : fmtBRLi(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -188,17 +189,17 @@ export default function VariedadesCeasaPR({ produto, unidadeInicial }: { produto
         </select>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <div className="data-table-wrap">
+        <table className="data-table">
           <thead>
-            <tr style={{ background: 'var(--verde-fundo)', color: 'var(--verde)' }}>
-              <th style={thStyle}>{t('variedade')}</th>
-              <th style={thStyle}>{t('embalagem')}</th>
-              <th style={thStyle}>{t('ultimoPreco')}</th>
-              <th style={thStyle}>R$/kg</th>
-              <th style={thStyle}>{t('media30')}</th>
-              <th style={thStyle}>{t('minMax30')}</th>
-              <th style={thStyle}>{t('data')}</th>
+            <tr>
+              <th>{t('variedade')}</th>
+              <th>{t('embalagem')}</th>
+              <th>{t('ultimoPreco')}</th>
+              <th>R$/kg</th>
+              <th>{t('media30')}</th>
+              <th>{t('minMax30')}</th>
+              <th>{t('data')}</th>
             </tr>
           </thead>
           <tbody>
@@ -206,16 +207,20 @@ export default function VariedadesCeasaPR({ produto, unidadeInicial }: { produto
               <tr
                 key={l.descricao}
                 onClick={() => setVariedade(selecionada ? '' : l.descricao)}
-                style={{ borderBottom: '1px solid var(--borda)', cursor: 'pointer' }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setVariedade(selecionada ? '' : l.descricao) }
+                }}
+                tabIndex={0}
+                className={`clicavel${selecionada ? ' selecionada' : ''}`}
                 title={selecionada ? t('mostrarTodas') : t('verSo')}
               >
-                <td style={{ ...tdStyle, fontWeight: 700 }}>{capitalizar(l.variedade ?? t('comum'))}</td>
-                <td style={tdStyle}>{l.embalagem ?? '—'}</td>
-                <td style={tdStyle}>{fmtBRL(l.ultimo_preco)}</td>
-                <td style={{ ...tdStyle, fontWeight: 700 }}>{fmtBRL(l.ultimo_preco_kg)}</td>
-                <td style={tdStyle}>{fmtBRL(l.media_30d)}</td>
-                <td style={tdStyle}>{fmtBRL(l.min_30d)} – {fmtBRL(l.max_30d)}</td>
-                <td style={tdStyle}>{fmtData(l.ultima_data)}</td>
+                <td className="forte">{capitalizar(l.variedade ?? t('comum'))}</td>
+                <td>{l.embalagem ?? '—'}</td>
+                <td>{fmtBRL(l.ultimo_preco)}</td>
+                <td className="forte">{fmtBRL(l.ultimo_preco_kg)}</td>
+                <td>{fmtBRL(l.media_30d)}</td>
+                <td>{fmtBRL(l.min_30d)} – {fmtBRL(l.max_30d)}</td>
+                <td>{fmtData(l.ultima_data)}</td>
               </tr>
             ))}
           </tbody>
@@ -229,14 +234,15 @@ export default function VariedadesCeasaPR({ produto, unidadeInicial }: { produto
           </p>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--cinza-claro)" />
-              <XAxis dataKey="data_coleta" tickFormatter={fmtData} tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `R$${v}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grade)" />
+              <XAxis dataKey="data_coleta" tickFormatter={fmtData} tick={{ fontSize: 11, fill: 'var(--chart-eixo)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--chart-eixo)' }} tickFormatter={(v: number) => `R$${v}`} />
               <Tooltip
+                contentStyle={TOOLTIP_STYLE}
                 formatter={(value) => [fmtBRL(Number(value)), porKg ? 'R$/kg' : t('rsEmb')]}
                 labelFormatter={(label) => t('dataLabel', { d: fmtData(String(label)) })}
               />
-              <Line type="monotone" dataKey={porKg ? 'preco_kg' : 'preco'} stroke={CHART_CEO} strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey={porKg ? 'preco_kg' : 'preco'} stroke="var(--chart-marca)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -249,8 +255,3 @@ export default function VariedadesCeasaPR({ produto, unidadeInicial }: { produto
   )
 }
 
-const thStyle: CSSProperties = {
-  padding: '10px 12px', textAlign: 'left', fontWeight: 700, fontSize: 12,
-  borderBottom: '2px solid var(--verde-claro)',
-}
-const tdStyle: CSSProperties = { padding: '9px 12px', color: 'var(--texto)' }

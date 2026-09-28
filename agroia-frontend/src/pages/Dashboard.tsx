@@ -6,16 +6,17 @@ import {
   Area, AreaChart, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 import { defineMessages, useT, useI18n, fmtNum, fmtBRL } from '../i18n'
+import { Coins, Package, Sprout, Receipt, Scale, Store, X } from 'lucide-react'
 
 const MSG = defineMessages({
   pt: {
     carregando: 'Carregando dados...',
-    filtrar: '🔎 Filtrar:',
-    todosAnos: '📅 Todos os anos',
-    todosCanais: '🏪 Todos os canais',
-    todasCategorias: '📂 Todas as categorias',
-    todasCulturas: '🌱 Todas as culturas',
-    limpar: '✕ Limpar',
+    filtrar: 'Filtrar:',
+    todosAnos: 'Todos os anos',
+    todosCanais: 'Todos os canais',
+    todasCategorias: 'Todas as categorias',
+    todasCulturas: 'Todas as culturas',
+    limpar: 'Limpar',
     nItens: '{n} itens',
     valorTotal: 'Valor Total',
     totalItens: 'Total de Itens',
@@ -28,21 +29,21 @@ const MSG = defineMessages({
     kgTotal: '{n} kg total',
     canaisAtivos: 'Canais Ativos',
     canaisDistribuicao: 'canais de distribuição',
-    topCulturas: '🏆 Top Culturas por Valor',
+    topCulturas: 'Top Culturas por Valor',
     top: 'Top {n}',
     valor: 'Valor',
-    porCanal: '🏪 Por Canal',
-    evolucaoMensal: '📈 Evolução Mensal — {ano}',
-    evolucaoAnual: '📈 Evolução Anual da Demanda',
+    porCanal: 'Por Canal',
+    evolucaoMensal: 'Evolução Mensal — {ano}',
+    evolucaoAnual: 'Evolução Anual da Demanda',
   },
   en: {
     carregando: 'Loading data...',
-    filtrar: '🔎 Filter:',
-    todosAnos: '📅 All years',
-    todosCanais: '🏪 All channels',
-    todasCategorias: '📂 All categories',
-    todasCulturas: '🌱 All crops',
-    limpar: '✕ Clear',
+    filtrar: 'Filter:',
+    todosAnos: 'All years',
+    todosCanais: 'All channels',
+    todasCategorias: 'All categories',
+    todasCulturas: 'All crops',
+    limpar: 'Clear',
     nItens: '{n} items',
     valorTotal: 'Total Value',
     totalItens: 'Total Items',
@@ -55,21 +56,21 @@ const MSG = defineMessages({
     kgTotal: '{n} kg total',
     canaisAtivos: 'Active Channels',
     canaisDistribuicao: 'distribution channels',
-    topCulturas: '🏆 Top Crops by Value',
+    topCulturas: 'Top Crops by Value',
     top: 'Top {n}',
     valor: 'Value',
-    porCanal: '🏪 By Channel',
-    evolucaoMensal: '📈 Monthly Trend — {ano}',
-    evolucaoAnual: '📈 Annual Demand Trend',
+    porCanal: 'By Channel',
+    evolucaoMensal: 'Monthly Trend — {ano}',
+    evolucaoAnual: 'Annual Demand Trend',
   },
   es: {
     carregando: 'Cargando datos...',
-    filtrar: '🔎 Filtrar:',
-    todosAnos: '📅 Todos los años',
-    todosCanais: '🏪 Todos los canales',
-    todasCategorias: '📂 Todas las categorías',
-    todasCulturas: '🌱 Todos los cultivos',
-    limpar: '✕ Limpiar',
+    filtrar: 'Filtrar:',
+    todosAnos: 'Todos los años',
+    todosCanais: 'Todos los canales',
+    todasCategorias: 'Todas las categorías',
+    todasCulturas: 'Todos los cultivos',
+    limpar: 'Limpiar',
     nItens: '{n} ítems',
     valorTotal: 'Valor Total',
     totalItens: 'Total de Ítems',
@@ -82,12 +83,12 @@ const MSG = defineMessages({
     kgTotal: '{n} kg en total',
     canaisAtivos: 'Canales Activos',
     canaisDistribuicao: 'canales de distribución',
-    topCulturas: '🏆 Top Cultivos por Valor',
+    topCulturas: 'Top Cultivos por Valor',
     top: 'Top {n}',
     valor: 'Valor',
-    porCanal: '🏪 Por Canal',
-    evolucaoMensal: '📈 Evolución Mensual — {ano}',
-    evolucaoAnual: '📈 Evolución Anual de la Demanda',
+    porCanal: 'Por Canal',
+    evolucaoMensal: 'Evolución Mensual — {ano}',
+    evolucaoAnual: 'Evolución Anual de la Demanda',
   },
 })
 
@@ -99,13 +100,16 @@ const fmt = (v: number) =>
 const fmtFull = (v: number) =>
   fmtBRL(v, { maximumFractionDigits: 0 })
 
+// Canais em paleta categórica Okabe-Ito (segura para daltonismo) — tokens --cat-* do index.css.
 const CANAL_COLORS: Record<string, string> = {
-  ARMAZEM_FAMILIA: '#334155',
-  PNAE: '#b45309',
-  PAA: '#1e3a5f',
-  BANCO_ALIMENTOS: '#78716c',
+  ARMAZEM_FAMILIA: 'var(--cat-1)',
+  PNAE: 'var(--cat-2)',
+  PAA: 'var(--cat-3)',
+  BANCO_ALIMENTOS: 'var(--cat-4)',
 }
-const DEFAULT_COLOR = '#64748b'
+const DEFAULT_COLOR = 'var(--cat-5)'
+const EIXO = { fontSize: 11, fill: 'var(--chart-eixo)', fontFamily: 'Inter' }
+const TOOLTIP = { fontFamily: 'Inter', fontSize: 12, borderRadius: 10, border: '1px solid var(--borda)' }
 
 export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
   // Quando `items` é fornecido (uso embutido na Demanda), reutiliza o dataset e não busca.
@@ -219,8 +223,8 @@ export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
         </select>
         {(filAno !== 'todos' || filCanal !== 'todos' || filCategoria !== 'todas' || filCultura !== 'todas') && (
           <button onClick={() => { setFilAno('todos'); setFilCanal('todos'); setFilCategoria('todas'); setFilCultura('todas') }}
-            style={{ background: 'var(--terra-claro)', border: '1px solid #d6d3d1', borderRadius: 8, padding: '8px 14px', fontFamily: 'Inter', fontSize: 13, fontWeight: 700, color: 'var(--terra)', cursor: 'pointer' }}>
-            {t('limpar')}
+            className="btn btn-sutil btn-sm">
+            <X size={14} aria-hidden /> {t('limpar')}
           </button>
         )}
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--texto-suave)', fontWeight: 600 }}>
@@ -230,37 +234,37 @@ export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
 
       <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
         <div className="metric-card verde">
-          <span className="metric-icon">💰</span>
+          <span className="metric-icon"><Coins size={19} aria-hidden /></span>
           <div className="metric-label">{t('valorTotal')}</div>
           <div className="metric-value">{fmt(valorTotal)}</div>
           <div className="metric-sub">{fmtFull(valorTotal)}</div>
         </div>
         <div className="metric-card amarelo">
-          <span className="metric-icon">📦</span>
+          <span className="metric-icon"><Package size={19} aria-hidden /></span>
           <div className="metric-label">{t('totalItens')}</div>
           <div className="metric-value">{fmtNum(totalItens)}</div>
           <div className="metric-sub">{t('registrosFiltrados')}</div>
         </div>
         <div className="metric-card ceu">
-          <span className="metric-icon">🌱</span>
+          <span className="metric-icon"><Sprout size={19} aria-hidden /></span>
           <div className="metric-label">{t('culturas')}</div>
           <div className="metric-value">{totalCulturas}</div>
           <div className="metric-sub">{t('tiposDistintos')}</div>
         </div>
         <div className="metric-card terra">
-          <span className="metric-icon">🎟️</span>
+          <span className="metric-icon"><Receipt size={19} aria-hidden /></span>
           <div className="metric-label">{t('ticketMedio')}</div>
           <div className="metric-value" style={{ fontSize: 20 }}>{fmt(ticketMedio)}</div>
           <div className="metric-sub">{t('porItem')}</div>
         </div>
         <div className="metric-card verde">
-          <span className="metric-icon">⚖️</span>
+          <span className="metric-icon"><Scale size={19} aria-hidden /></span>
           <div className="metric-label">{t('precoMedioKg')}</div>
           <div className="metric-value" style={{ fontSize: 20 }}>{precoMedioKg > 0 ? fmtBRL(precoMedioKg, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</div>
           <div className="metric-sub">{t('kgTotal', { n: qtTotal.toLocaleString(locale) })}</div>
         </div>
         <div className="metric-card amarelo">
-          <span className="metric-icon">🏪</span>
+          <span className="metric-icon"><Store size={19} aria-hidden /></span>
           <div className="metric-label">{t('canaisAtivos')}</div>
           <div className="metric-value">{porCanal.length}</div>
           <div className="metric-sub">{t('canaisDistribuicao')}</div>
@@ -279,11 +283,11 @@ export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
           </div>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={topCulturas} margin={{ top: 4, right: 8, left: 8, bottom: 70 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-              <XAxis dataKey="cultura" tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'Inter' }} angle={-40} textAnchor="end" interval={0} />
-              <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'Inter' }} />
-              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), t('valor')]} contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10, border: '1px solid #e2e8f0' }} />
-              <Bar dataKey="total" fill="#334155" radius={[5, 5, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grade)" />
+              <XAxis dataKey="cultura" tick={{ ...EIXO, fontSize: 10 }} angle={-40} textAnchor="end" interval={0} />
+              <YAxis tickFormatter={v => fmt(v)} tick={{ ...EIXO, fontSize: 10 }} />
+              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), t('valor')]} contentStyle={TOOLTIP} />
+              <Bar dataKey="total" fill="var(--chart-marca)" radius={[5, 5, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -298,7 +302,7 @@ export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
                   <Cell key={entry.canal} fill={CANAL_COLORS[entry.canal] ?? DEFAULT_COLOR} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), t('valor')]} contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10 }} />
+              <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), t('valor')]} contentStyle={TOOLTIP} />
               <Legend formatter={(v) => <span style={{ fontSize: 11, fontFamily: 'Inter' }}>{v}</span>} />
             </PieChart>
           </ResponsiveContainer>
@@ -311,15 +315,15 @@ export default function Dashboard({ items }: { items?: ItemAgro[] } = {}) {
           <AreaChart data={(filAno !== 'todos' ? evolucaoMensal : evolucao) as any[]} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
             <defs>
               <linearGradient id="gradVerde" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#334155" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#334155" stopOpacity={0} />
+                <stop offset="5%" stopColor="var(--chart-marca)" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="var(--chart-marca)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e8e2d8" />
-            <XAxis dataKey={filAno !== 'todos' ? 'mes' : 'ano'} tick={{ fontSize: 11, fill: '#64748b', fontFamily: 'Inter' }} />
-            <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'Inter' }} />
-            <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), t('valor')]} contentStyle={{ fontFamily: 'Inter', fontSize: 12, borderRadius: 10, border: '1px solid #e2e8f0' }} />
-            <Area type="monotone" dataKey="total" stroke="#334155" strokeWidth={2.5} fill="url(#gradVerde)" dot={{ fill: '#334155', r: 3 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grade)" />
+            <XAxis dataKey={filAno !== 'todos' ? 'mes' : 'ano'} tick={EIXO} />
+            <YAxis tickFormatter={v => fmt(v)} tick={{ ...EIXO, fontSize: 10 }} />
+            <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), t('valor')]} contentStyle={TOOLTIP} />
+            <Area type="monotone" dataKey="total" stroke="var(--chart-marca)" strokeWidth={2.5} fill="url(#gradVerde)" dot={{ fill: 'var(--chart-marca)', r: 3 }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
