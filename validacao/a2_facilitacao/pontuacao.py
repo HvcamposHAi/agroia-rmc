@@ -74,7 +74,7 @@ def _contem_nome(texto: str, nome: str, limiar: float = 0.6) -> bool:
 
 def pontuar(inst: dict, saida_texto: str, status_exec: str) -> dict:
     """Devolve {desfecho, sucesso, pontuacao, motivo, resposta_json}."""
-    if status_exec in ("TIMEOUT", "ERRO_INFRA", "ERRO_INFRA_CHROME"):
+    if status_exec in ("TIMEOUT", "ERRO_INFRA", "ERRO_INFRA_CHROME", "ERRO_INFRA_PERMISSAO"):
         return {"desfecho": status_exec, "sucesso": 0, "pontuacao": 0.0, "motivo": status_exec, "resposta_json": None}
     js = extrair_json(saida_texto)
     if js is None or "resposta" not in js:

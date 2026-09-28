@@ -65,6 +65,7 @@ def analisar(caminho_jsonl) -> dict:
     acoes, urls, chars_lidos = [], [], 0
     tool_nomes = {}
     negadas = 0
+    navegacao_negada = 0      # site sem permissão na extensão ("Permission denied by user")
     for e in ev:
         if e.get("type") == "assistant":
             for c in e.get("message", {}).get("content", []) or []:
@@ -83,6 +84,8 @@ def analisar(caminho_jsonl) -> dict:
                 nome = tool_nomes.get(c.get("tool_use_id"), "")
                 if c.get("is_error") and "permission" in txt.lower():
                     negadas += 1
+                    if nome.startswith(PREFIXO_CHROME):
+                        navegacao_negada += 1
                 if any(nome.endswith(x) for x in ("get_page_text", "read_page", "find")):
                     chars_lidos += len(txt)
                 urls += [u.rstrip(".,;") for u in URL_RE.findall(txt)
@@ -108,5 +111,6 @@ def analisar(caminho_jsonl) -> dict:
         "tempo_humano_klm_s": klm.tempo_total(principais),
         "chars_lidos": chars_lidos,
         "ferramentas_negadas": negadas + len(fin.get("permission_denials") or []),
+        "navegacao_negada": navegacao_negada,
         "usou_chat": any("/assistente" in u for u in urls_norm),
     }

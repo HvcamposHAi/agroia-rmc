@@ -18,7 +18,7 @@ from validacao.estatistica.pareados import (cliff_delta, fisher_exato, magnitude
                                             tabela_2x2, wilcoxon_pareado)
 from validacao.estatistica.proporcoes import wilson
 
-INFRA = {"ERRO_INFRA", "ERRO_INFRA_CHROME"}
+INFRA = {"ERRO_INFRA", "ERRO_INFRA_CHROME", "ERRO_INFRA_PERMISSAO"}
 NAO_MEDIDO = {"BLOQUEADO", "TIMEOUT"}
 
 
