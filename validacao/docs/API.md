@@ -65,9 +65,9 @@ direto (supabase-js, chave anônima): `vw_itens_agro`, `vw_licitacoes_agro_docum
 Versão verificada: 2.1.119. Comando efetivo (montado em `validacao/claude_chrome.py`):
 
 ```
-ENABLE_TOOL_SEARCH=false claude -p "<prompt>" --chrome --output-format stream-json --verbose \
+ENABLE_TOOL_SEARCH=false MCP_CONNECTION_NONBLOCKING=false MCP_TIMEOUT=30000 claude -p --chrome --output-format stream-json --verbose \
   --no-session-persistence --permission-mode dontAsk --model <modelo> --max-turns <n> \
-  --allowedTools "mcp__claude-in-chrome__*" --disallowedTools "<lista>"
+  --allowedTools "mcp__claude-in-chrome__*" --disallowedTools "<lista>"  < prompt.txt
 ```
 
 Adaptações em relação ao plano, com o motivo:
@@ -78,6 +78,8 @@ Adaptações em relação ao plano, com o motivo:
 | restringir ferramentas | `--disallowedTools` com as internas e as do Chrome que um usuário não tem | com `--tools ""` o servidor do Chrome não é carregado (lista de ferramentas vazia na inicialização) |
 | `--max-turns` | mantido | não aparece no `--help` da 2.1.119, mas é aceito (teste em 26/09/2026) |
 | (não previsto) | `ENABLE_TOOL_SEARCH=false` | com a busca sob demanda, a primeira busca de ferramentas ocorre antes da conexão com a extensão e não encontra o Chrome; com a variável, as 18 ferramentas vêm carregadas na inicialização |
+| (não previsto) | `MCP_CONNECTION_NONBLOCKING=false` e `MCP_TIMEOUT=30000` | sem elas o servidor do Chrome não estava conectado na inicialização em 4 de 4 testes (27/09/2026); com elas, em 4 de 4 |
+| (não previsto) | prompt pela entrada padrão, não como argumento | no Windows o `claude` é um `.cmd` e o `cmd.exe` corta o argumento na 1ª quebra de linha, descartando as flags seguintes (saída em texto, ferramentas internas liberadas) |
 | (não previsto) | status `ERRO_INFRA_CHROME` quando o agente termina sem usar o navegador e a inicialização não tinha `claude-in-chrome` conectado | a conexão com a extensão é assíncrona e às vezes chega depois da inicialização |
 
 Ferramentas do servidor `claude-in-chrome` (lista obtida por `ToolSearch` em 26/09/2026):
@@ -89,7 +91,8 @@ Ferramentas do servidor `claude-in-chrome` (lista obtida por `ToolSearch` em 26/
 | `find`, `read_page`, `get_page_text` | sim | ler página (fora do KLM) |
 | `form_input` | sim | digitar |
 | `tabs_context_mcp`, `tabs_create_mcp` | sim | instrumentação / nova aba |
-| `gif_creator`, `update_plan` | sim | instrumentação (não conta como ação) |
+| `gif_creator` | sim | instrumentação (não conta como ação) |
+| `update_plan` | não | pede aprovação humana do plano na extensão; em execução autônoma o plano é rejeitado e o agente para |
 | `resize_window` | sim | outro |
 | `javascript_tool`, `read_network_requests`, `read_console_messages` | não | um usuário não dispõe desses meios |
 | `shortcuts_execute`, `shortcuts_list`, `switch_browser`, `upload_image` | não | fora do escopo das tarefas |

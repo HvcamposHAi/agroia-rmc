@@ -11,6 +11,7 @@ Regras:
 - Você pode fazer contas com os dados que encontrar.
 - Se concluir que a informação não está disponível, diga isso.
 - Não peça ajuda nem confirmação; decida sozinho.
+- Trabalhe na aba que já existe no grupo do navegador; não crie abas novas por conta própria.
 {INSTRUCAO_GIF}
 Ao terminar, responda SOMENTE com um bloco JSON:
 {"resposta": <valor ou lista>, "encontrada": true|false,

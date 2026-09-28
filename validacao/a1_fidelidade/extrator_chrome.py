@@ -33,6 +33,7 @@ ESQUEMA = {
 }
 
 PROMPT = """Abra {url}. Leia a página e os documentos listados nela.
+Use a aba que já existe no grupo do navegador (tabs_context_mcp) e navegue nela; não crie abas novas.
 Não navegue para outras páginas além dos links desta página.
 Devolva SOMENTE um JSON no esquema abaixo, copiando os valores exatamente
 como aparecem na tela (sem converter formatos):

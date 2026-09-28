@@ -87,6 +87,8 @@ a2:
     - "mcp__claude-in-chrome__shortcuts_list"
     - "mcp__claude-in-chrome__switch_browser"
     - "mcp__claude-in-chrome__upload_image"
+    # update_plan pede aprovação humana do plano na extensão; sem aprovador, o plano é rejeitado.
+    - "mcp__claude-in-chrome__update_plan"
     - "WebSearch"
     - "WebFetch"
     - "Bash"

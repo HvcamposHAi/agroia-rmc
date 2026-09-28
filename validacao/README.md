@@ -36,6 +36,14 @@ os dados brutos e as evidências em `validacao/execucoes/<run_id>/`.
 
 ## Uso
 
+**Página de testes:** dê dois cliques em `INICIAR_VALIDACAO.bat` (raiz do repositório). Ele sobe o
+servidor local e abre a página no navegador (porta 8765 ou a próxima livre; o endereço também fica
+em `validacao/execucoes/_coordenacao_url.txt`). Na página: "Verificar novamente" roda as checagens,
+os botões disparam as etapas, a seção Progresso mostra o andamento ao vivo e a tabela Execuções dá
+acesso aos relatórios. Mantenha a janela preta aberta enquanto usar a página.
+
+Linha de comando (equivalente):
+
 ```powershell
 # tudo, do início ao fim (sem interação)
 python -m validacao.run_all --etapas snapshot,a1,a2,b,relatorios

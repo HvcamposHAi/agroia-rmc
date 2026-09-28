@@ -34,7 +34,9 @@ def _exe() -> str:
 
 def montar_comando(prompt: str, cfg: dict, modelo: str | None = None, max_turns: int | None = None) -> list[str]:
     a2 = cfg["a2"]
-    cmd = [_exe(), "-p", prompt, "--chrome",
+    # O prompt vai pela entrada padrão (ver executar): no Windows o `claude` é um .cmd e o
+    # cmd.exe corta argumentos na primeira quebra de linha, descartando as flags seguintes.
+    cmd = [_exe(), "-p", "--chrome",
            "--output-format", "stream-json", "--verbose",
            "--no-session-persistence",
            "--permission-mode", a2.get("permission_mode", "dontAsk")]
@@ -66,12 +68,18 @@ def executar(prompt: str, cfg: dict, cwd: Path, saida_jsonl: Path, timeout_s: in
     env.setdefault("PYTHONIOENCODING", "utf-8")
     # Ferramentas do Chrome carregadas desde o início (ver docstring do módulo).
     env["ENABLE_TOOL_SEARCH"] = "false"
+    # Espera a conexão MCP antes do 1º turno: sem isto o servidor do Chrome não estava conectado
+    # na inicialização em 4 de 4 testes (27/09/2026); com isto, em 4 de 4.
+    env["MCP_CONNECTION_NONBLOCKING"] = "false"
+    env.setdefault("MCP_TIMEOUT", "30000")
     status, rc = "OK", None
     flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+    arq_prompt = saida_jsonl.with_suffix(".prompt.txt")
+    arq_prompt.write_text(prompt, encoding="utf-8")
     try:
         with open(saida_jsonl, "w", encoding="utf-8") as out, open(saida_jsonl.with_suffix(".err"), "w",
-                                                                      encoding="utf-8") as err:
-            proc = subprocess.Popen(cmd, cwd=str(cwd), stdout=out, stderr=err, stdin=subprocess.DEVNULL,
+                                                                      encoding="utf-8") as err,                 open(arq_prompt, "rb") as entrada:
+            proc = subprocess.Popen(cmd, cwd=str(cwd), stdout=out, stderr=err, stdin=entrada,
                                     env=env, creationflags=flags, start_new_session=(os.name != "nt"))
             try:
                 rc = proc.wait(timeout=timeout_s)
@@ -84,6 +92,8 @@ def executar(prompt: str, cfg: dict, cwd: Path, saida_jsonl: Path, timeout_s: in
     dur = time.monotonic() - t0
     if status == "OK" and not _tem_resultado(saida_jsonl):
         status = "ERRO_INFRA"
+    if status == "OK" and not any(e.get("type") == "system" for e in ler_eventos(saida_jsonl)):
+        status = "ERRO_INFRA"          # saída fora do formato stream-json: flags não aplicadas
     if status == "OK":
         ev = ler_eventos(saida_jsonl)
         # A conexão com a extensão é assíncrona: se o agente terminou sem usar o navegador e
@@ -91,7 +101,7 @@ def executar(prompt: str, cfg: dict, cwd: Path, saida_jsonl: Path, timeout_s: in
         if not usou_chrome(ev) and not chrome_conectado_no_inicio(ev):
             status = "ERRO_INFRA_CHROME"
     meta = {"status": status, "rc": rc, "duracao_s": round(dur, 2), "inicio": inicio, "fim": carimbo(),
-            "comando": [c if c != prompt else "<prompt>" for c in cmd]}
+            "comando": cmd, "prompt_arquivo": arq_prompt.name}
     salvar_json(saida_jsonl.with_suffix(".meta.json"), meta)
     return meta
 

@@ -122,12 +122,32 @@ def arquivo(run_id: str, caminho: str):
     return FileResponse(alvo)
 
 
+def porta_livre(inicial: int, tentativas: int = 20) -> int:
+    """Primeira porta livre a partir de `inicial` em 127.0.0.1 (a 8765 pode estar em uso)."""
+    import socket
+    for p in range(inicial, inicial + tentativas):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", p)) != 0:
+                return p
+    raise RuntimeError(f"nenhuma porta livre entre {inicial} e {inicial + tentativas - 1}")
+
+
 def main():
     import argparse
+    import threading
+    import webbrowser
     import uvicorn
     ap = argparse.ArgumentParser()
     ap.add_argument("--porta", type=int, default=8765)
-    uvicorn.run(app, host="127.0.0.1", port=ap.parse_args().porta)
+    ap.add_argument("--abrir", action="store_true", help="abre a página no navegador padrão")
+    a = ap.parse_args()
+    porta = porta_livre(a.porta)
+    url = f"http://127.0.0.1:{porta}"
+    print(f"Página de coordenação: {url}", flush=True)
+    (EXECUCOES / "_coordenacao_url.txt").write_text(url, encoding="utf-8")
+    if a.abrir:
+        threading.Timer(2.0, lambda: webbrowser.open(url)).start()
+    uvicorn.run(app, host="127.0.0.1", port=porta)
 
 
 if __name__ == "__main__":
