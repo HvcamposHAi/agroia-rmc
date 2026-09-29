@@ -21,7 +21,8 @@ os dados brutos e as evidências em `validacao/execucoes/<run_id>/`.
       `claude setup-token` não funcionam com o Chrome).
 - [ ] No Claude Code: `/chrome` → **Enabled by default** → selecionar o perfil `agroia-validacao`.
 - [ ] Permissões de site da extensão **somente** para `www.transparencia.curitiba.pr.gov.br`,
-      `mid-transparencia.curitiba.pr.gov.br`, `celepar7.pr.gov.br` e `agroia-rmc.pages.dev`.
+      `mid-transparencia.curitiba.pr.gov.br`, `celepar7.pr.gov.br`, `agroia-rmc.pages.dev` e
+      `drive.google.com` (onde a plataforma hospeda os PDFs dos editais).
 - [ ] Runner self-hosted em **sessão interativa** (não como serviço do Windows): `run.cmd`
       iniciado no logon, ou tarefa agendada "executar somente quando o usuário estiver conectado"
       (`scripts/setup-runner-autostart.ps1` já configura assim). Como serviço, o Chrome não abre.

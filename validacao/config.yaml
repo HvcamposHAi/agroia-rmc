@@ -15,7 +15,9 @@ fontes:
   ceasa_pr_url: "https://celepar7.pr.gov.br/ceasa/cotprod_evolucao.asp"
   ceasa_pr_dominios: ["celepar7.pr.gov.br"]
   agroia_front_url: "https://agroia-rmc.pages.dev"
-  agroia_front_dominios: ["agroia-rmc.pages.dev"]
+  # A plataforma hospeda os PDFs dos editais no Google Drive (documentos_licitacao.url_publica);
+  # sem esses domínios o agente não abre os documentos que a própria plataforma oferece.
+  agroia_front_dominios: ["agroia-rmc.pages.dev", "drive.google.com", "drive.usercontent.google.com"]
   agroia_api_url: "https://agroia-rmc.onrender.com"
   # Anos publicados pelo Portal da Transparência para o órgão FAAC.
   anos: [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]

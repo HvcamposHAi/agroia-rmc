@@ -124,6 +124,7 @@ Nesta execução: {% if a2.excluidas_infra %}tarefas excluídas por infraestrutu
 - O comando do agente usa `--permission-mode dontAsk` com `--allowedTools mcp__claude-in-chrome__*` e lista de ferramentas negadas, em vez de `bypassPermissions`, para restringir o agente às ferramentas de navegador; `ENABLE_TOOL_SEARCH=false` carrega as ferramentas do Chrome desde o início.
 {% if cfg.a2.chrome_perfil != "agroia-validacao" %}- O agente usou o perfil do Chrome {{ cfg.a2.chrome_perfil_descricao or cfg.a2.chrome_perfil }} em vez de um perfil dedicado sem contas. As permissões de site da extensão restringem a navegação aos domínios da comparação, mas o estado do navegador (cookies, histórico) não é o de um perfil limpo.
 {% endif %}
+- A condição AGROIA inclui os domínios do Google Drive ({{ cfg.fontes.agroia_front_dominios[1:] | join(", ") }}), onde a plataforma hospeda os PDFs dos editais; sem eles o agente não abre os documentos que a própria plataforma oferece (ajuste feito após o piloto).
 - Três enunciados foram ajustados aos campos existentes na base e na fonte (T02, T04, T05), conforme o cabeçalho do catálogo.
 {% if prereg_alterado %}- O arquivo de pré-registro difere do hash registrado.
 {% endif %}

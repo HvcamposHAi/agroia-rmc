@@ -130,6 +130,15 @@ def chk_permissoes_sites(cfg):
     from validacao.claude_chrome import sonda_sites
     f = cfg["fontes"]
     urls = [f["portal_url"], f["agroia_front_url"], f["ceasa_pr_url"]]
+    # Um PDF real da plataforma no Google Drive (a condição AGROIA precisa abrir os editais).
+    try:
+        from validacao.snapshot.congelar import cliente
+        d = (cliente().table("documentos_licitacao").select("url_publica")
+             .ilike("url_publica", "%drive.google.com%").limit(1).execute().data)
+        if d:
+            urls.append(d[0]["url_publica"])
+    except Exception:
+        pass
     r = sonda_sites(cfg, RAIZ_VALIDACAO / "execucoes" / "_sondas", urls)
     negados = [u for u, ok in r.items() if ok is False]
     nao_testados = [u for u, ok in r.items() if ok is None]
