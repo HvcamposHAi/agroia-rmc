@@ -220,69 +220,88 @@ def query_itens_agro(
 
     return []
 
+def _paginado(montar, pagina: int = 1000) -> list[dict]:
+    """Lê todas as linhas de uma consulta PostgREST (limite de 1000 linhas por resposta)."""
+    out, off = [], 0
+    while True:
+        dados = montar().range(off, off + pagina - 1).execute().data or []
+        out += dados
+        if len(dados) < pagina:
+            return out
+        off += pagina
+
+
 def query_fornecedores(
     tipo: str | None = None,
     canal: str | None = None,
-    ano: int | None = None
+    ano: int | None = None,
+    processo: str | None = None,
+    somente_vencedores: bool = False,
 ) -> list[dict]:
     """
-    Consulta fornecedores (cooperativas, associações) que participaram de licitações agrícolas.
+    Consulta fornecedores (cooperativas, associações, empresas) que participaram de licitações
+    agrícolas (relevante_af=true). Filtros: processo (ex.: "PE 69/2026"), canal, ano, tipo e
+    somente_vencedores.
+
+    Busca só as linhas necessárias e cruza por dicionário. A versão anterior baixava todos os
+    fornecedores e fazia busca linear por participação (dezenas de milhões de comparações),
+    o que travava o servidor de 0,1 CPU por minutos; além disso perdia fornecedores por causa
+    do limite de 1000 linhas por resposta do PostgREST.
     """
     sb = get_supabase_client()
 
-    licitacoes = sb.from_("licitacoes").select(
-        "id, canal, dt_abertura"
-    ).neq("canal", "OUTRO").execute().data or []
+    def _lics():
+        q = sb.from_("licitacoes").select("id, processo, canal, dt_abertura").eq("relevante_af", True)
+        if processo:
+            q = q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        if canal:
+            q = q.eq("canal", sanitizar_string(canal, 50))
+        if ano:
+            try:
+                a = int(ano)
+                q = q.gte("dt_abertura", f"{a}-01-01").lte("dt_abertura", f"{a}-12-31")
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid ano: {ano}")
+        return q.order("id")
 
-    if tipo:
-        licitacoes_filtradas = [l for l in licitacoes]
-    else:
-        licitacoes_filtradas = licitacoes
-
-    if canal:
-        licitacoes_filtradas = [l for l in licitacoes_filtradas if l.get("canal") == canal]
-
-    if ano:
-        licitacoes_filtradas = [
-            l for l in licitacoes_filtradas
-            if l.get("dt_abertura", "")[:4] == str(ano)
-        ]
-
-    licitacao_ids = [l["id"] for l in licitacoes_filtradas]
-    if not licitacao_ids:
+    licitacoes = {l["id"]: l for l in _paginado(_lics)}
+    if not licitacoes:
         return []
 
-    fornecedores = sb.from_("fornecedores").select("*").execute().data or []
-    if tipo:
-        fornecedores = [f for f in fornecedores if f.get("tipo") == tipo]
+    ids = list(licitacoes)
+    participacoes = []
+    for i in range(0, len(ids), 150):
+        bloco = ids[i:i + 150]
 
-    participacoes = sb.from_("participacoes").select(
-        "fornecedor_id, licitacao_id"
-    ).in_("licitacao_id", licitacao_ids).execute().data or []
+        def _parts(bloco=bloco):
+            q = sb.from_("participacoes").select("fornecedor_id, licitacao_id, vencedor").in_("licitacao_id", bloco)
+            if somente_vencedores:
+                q = q.eq("vencedor", True)
+            return q.order("id")
+        participacoes += _paginado(_parts)
 
-    resultado_dict = {}
+    forn_ids = sorted({p["fornecedor_id"] for p in participacoes if p.get("fornecedor_id")})
+    fornecedores = {}
+    for i in range(0, len(forn_ids), 150):
+        bloco = forn_ids[i:i + 150]
+        for f in (sb.from_("fornecedores").select("id, cpf_cnpj, razao_social, tipo")
+                  .in_("id", bloco).execute().data or []):
+            fornecedores[f["id"]] = f
+
+    resultado_dict: dict = {}
     for p in participacoes:
-        forn_id = p.get("fornecedor_id")
-        forn = next((f for f in fornecedores if f.get("id") == forn_id), None)
-        if not forn:
+        forn = fornecedores.get(p.get("fornecedor_id"))
+        if not forn or (tipo and forn.get("tipo") != tipo):
             continue
-
-        chave = forn_id
-        if chave not in resultado_dict:
-            resultado_dict[chave] = {
-                "cpf_cnpj": forn.get("cpf_cnpj"),
-                "razao_social": forn.get("razao_social"),
-                "tipo": forn.get("tipo"),
-                "licitacoes": set(),
-                "canais": set()
-            }
-
-        lic_id = p.get("licitacao_id")
-        resultado_dict[chave]["licitacoes"].add(lic_id)
-
-        lic = next((l for l in licitacoes_filtradas if l["id"] == lic_id), None)
-        if lic:
-            resultado_dict[chave]["canais"].add(lic.get("canal", ""))
+        r = resultado_dict.setdefault(forn["id"], {
+            "cpf_cnpj": forn.get("cpf_cnpj"), "razao_social": forn.get("razao_social"),
+            "tipo": forn.get("tipo"), "licitacoes": set(), "vitorias": set(), "canais": set(),
+        })
+        lic = licitacoes.get(p.get("licitacao_id"), {})
+        r["licitacoes"].add(lic.get("processo"))
+        r["canais"].add(lic.get("canal", ""))
+        if p.get("vencedor"):
+            r["vitorias"].add(lic.get("processo"))
 
     resultado = [
         {
@@ -290,12 +309,14 @@ def query_fornecedores(
             "razao_social": v["razao_social"],
             "tipo": v["tipo"],
             "qtd_licitacoes": len(v["licitacoes"]),
-            "canais": list(v["canais"])
+            "qtd_vitorias": len(v["vitorias"]),
+            "canais": sorted(c for c in v["canais"] if c),
+            **({"processos": sorted(v["licitacoes"])[:10], "venceu": sorted(v["vitorias"])[:10]}
+               if processo else {}),
         }
         for v in resultado_dict.values()
     ]
-
-    return sorted(resultado, key=lambda x: x["qtd_licitacoes"], reverse=True)[:50]
+    return sorted(resultado, key=lambda x: (x["qtd_vitorias"], x["qtd_licitacoes"]), reverse=True)[:50]
 
 def query_licitacoes(
     processo: str | None = None,
@@ -304,7 +325,9 @@ def query_licitacoes(
     ano_fim: int | None = None
 ) -> list[dict]:
     """
-    Consulta licitações que possuem itens agrícolas relevantes.
+    Consulta licitações agrícolas (relevante_af=true, escopo do projeto).
+    O filtro anterior (canal != OUTRO) escondia 145 licitações agrícolas de canal OUTRO e
+    exibia 14 não agrícolas (Banco de Alimentos / Mesa Solidária).
     """
     sb = get_supabase_client()
 
@@ -312,7 +335,7 @@ def query_licitacoes(
         "id, processo, tipo_processo, canal, dt_abertura, situacao, objeto"
     )
 
-    query = query.neq("canal", "OUTRO")
+    query = query.eq("relevante_af", True)
 
     if processo:
         processo = sanitizar_string(processo, 100)
@@ -936,10 +959,18 @@ TOOLS_SCHEMA = [
     },
     {
         "name": "query_fornecedores",
-        "description": "Consulta fornecedores (cooperativas, associações, empresas) que participaram de licitações agrícolas.",
+        "description": "Consulta fornecedores (cooperativas, associações, empresas) que participaram de licitações agrícolas do FAAC. Use processo (ex.: 'PE 69/2026') e somente_vencedores=true para saber quem venceu um processo.",
         "input_schema": {
             "type": "object",
             "properties": {
+                "processo": {
+                    "type": "string",
+                    "description": "Número do processo, ex.: 'PE 69/2026' ou 'DS 62/2021'"
+                },
+                "somente_vencedores": {
+                    "type": "boolean",
+                    "description": "true = só fornecedores vencedores"
+                },
                 "tipo": {
                     "type": "string",
                     "enum": ["COOPERATIVA", "ASSOCIACAO", "EMPRESA", "PESSOA_FISICA"],
@@ -947,7 +978,7 @@ TOOLS_SCHEMA = [
                 },
                 "canal": {
                     "type": "string",
-                    "enum": ["PNAE", "PAA", "ARMAZEM_FAMILIA", "BANCO_ALIMENTOS", "MESA_SOLIDARIA"],
+                    "enum": ["ARMAZEM_FAMILIA", "BANCO_ALIMENTOS", "MESA_SOLIDARIA", "OUTRO"],
                     "description": "Canal de licitação"
                 },
                 "ano": {
