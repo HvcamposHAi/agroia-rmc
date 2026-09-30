@@ -19,6 +19,14 @@ MESES = {"janeiro": 1, "fevereiro": 2, "marco": 3, "abril": 4, "maio": 5, "junho
          "out": 10, "nov": 11, "dez": 12}
 BLOQUEIO_RE = re.compile(r"captcha|recaptcha|n[aã]o sou um rob[oô]|fa[cç]a login|tela de login|acesso negado", re.I)
 STOP = {"de", "da", "do", "das", "dos", "e", "a", "o", "para", "com", "em", "no", "na", "por", "as", "os"}
+# Termos genéricos dos objetos do FAAC: não identificam o que foi comprado. A regra do objeto
+# (T01) confere as palavras principais, para aceitar o objeto resumido (calibração do piloto:
+# "Aquisição de Repelente de Insetos" × "...para o Programa Armazém da Família"). Vale igual
+# para as duas condições.
+GENERICAS = {"aquisicao", "aquisicoes", "contratacao", "programa", "armazem", "familia", "atraves",
+             "sistema", "registro", "precos", "preco", "smsan", "faac", "curitiba", "municipio",
+             "secretaria", "fornecimento", "generos", "alimenticios", "demanda", "edital",
+             "chamamento", "publico", "selecionados", "fornecedores", "oriundos"}
 
 
 def _texto(resp) -> str:
@@ -97,7 +105,11 @@ def pontuar(inst: dict, saida_texto: str, status_exec: str) -> dict:
     p = inst["pontuacao"]
     if tipo == "objeto_data":
         ok_data = g["data"] in datas(txt)
-        ok_obj = _contem_nome(txt, g["objeto"], 0.7)
+        principais = _tokens(g["objeto"]) - GENERICAS
+        if principais:
+            ok_obj = len(principais & _tokens(txt)) / len(principais) >= 0.7
+        else:
+            ok_obj = _contem_nome(txt, g["objeto"], 0.7)
         return _d(ok_data and ok_obj, (ok_data + ok_obj) / 2, f"data={ok_data} objeto={ok_obj}", js)
     if tipo == "documento_data":
         fontes = " ".join(map(str, js.get("fontes") or [])) + " " + txt
