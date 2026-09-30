@@ -146,6 +146,15 @@ def test_pontuacao_numero_e_abstencao():
     assert pontuacao.pontuar(t12, '{"resposta": null, "encontrada": false}', "OK")["sucesso"] == 1
 
 
+def test_pontuacao_objeto_resumido():
+    inst = {"pontuacao": {"tipo": "objeto_data"}, "parametros": {},
+            "gabarito": {"objeto": "AQUISIÇÃO DE REPELENTE DE INSETOS PARA O PROGRAMA ARMAZÉM DA FAMÍLIA", "data": "2024-11-13"}}
+    ok = '{"resposta": {"objeto": "Aquisição de Repelente de Insetos", "data": "13/11/2024"}, "encontrada": true}'
+    assert pontuacao.pontuar(inst, ok, "OK")["sucesso"] == 1
+    errado = '{"resposta": {"objeto": "Aquisição de café", "data": "13/11/2024"}, "encontrada": true}'
+    assert pontuacao.pontuar(inst, errado, "OK")["sucesso"] == 0
+
+
 def test_pontuacao_meses_e_categorica():
     inst = {"pontuacao": {"tipo": "conjunto_meses"}, "gabarito": {"meses": [3, 7]}, "parametros": {"ano": 2025}}
     r = pontuacao.pontuar(inst, '{"resposta": ["março", "julho"], "encontrada": true}', "OK")

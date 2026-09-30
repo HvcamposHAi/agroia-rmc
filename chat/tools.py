@@ -62,21 +62,43 @@ def sanitizar_string(valor: str, max_length: int = 100) -> str:
         raise ValueError(f"Invalid characters in input")
     return valor
 
+COLUNAS_ITEM = ("processo, dt_abertura, canal, cultura, categoria_v2, descricao, unidade_medida, "
+                 "qt_solicitada, valor_unitario, valor_total")
+
+
+def _filtro_ano(query, ano):
+    """Aplica o filtro de ano de abertura (antes o parâmetro era aceito e ignorado)."""
+    if ano:
+        try:
+            a = int(ano)
+            query = query.gte("dt_abertura", f"{a}-01-01").lte("dt_abertura", f"{a}-12-31")
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid ano: {ano}")
+    return query
+
+
 def query_itens_agro(
     cultura: str | None = None,
     categoria: str | None = None,
     canal: str | None = None,
     ano: int | None = None,
-    agregacao: str = "detalhado"
+    agregacao: str = "detalhado",
+    processo: str | None = None,
 ) -> list[dict]:
     """
     Consulta itens agrícolas de vw_itens_agro (filtrados por relevante_agro=true).
-    Agregações: detalhado, por_cultura, por_canal, por_ano, por_categoria
+    Agregações: detalhado, por_cultura, por_canal, por_ano, por_categoria.
+    `processo` (ex.: "DS 62/2021") restringe aos itens de um processo; `ano` ao ano de abertura.
+    O modo detalhado devolve só as colunas úteis (o select * de 50 itens aleatórios passava de
+    25 mil caracteres e deixava a resposta lenta no servidor de 0,1 CPU).
     """
     sb = get_supabase_client()
 
     if agregacao == "detalhado":
-        query = sb.from_("vw_itens_agro").select("*").eq("relevante_agro", True)
+        query = sb.from_("vw_itens_agro").select(COLUNAS_ITEM).eq("relevante_agro", True)
+        if processo:
+            query = query.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        query = _filtro_ano(query, ano)
         if cultura:
             cultura = sanitizar_string(cultura)
             query = query.ilike("cultura", f"%{cultura}%")
@@ -86,15 +108,19 @@ def query_itens_agro(
         if canal:
             canal = sanitizar_string(canal, 50)
             query = query.eq("canal", canal)
-        result = query.limit(50).execute()
+        result = query.order("valor_total", desc=True).limit(50).execute()
         return result.data if result.data else []
 
     if agregacao == "por_cultura":
         # Otimizado: uma única query com agregação
         # Garante que está filtrando apenas items agrícolas
-        items_all = sb.from_("vw_itens_agro").select(
+        items_q = sb.from_("vw_itens_agro").select(
             "cultura, categoria_v2, valor_total, valor_unitario"
-        ).eq("relevante_agro", True).limit(10000).execute().data or []
+        ).eq("relevante_agro", True)
+        items_q = _filtro_ano(items_q, ano)
+        if processo:
+            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items_all = items_q.limit(10000).execute().data or []
 
         culturas_dict = {}
         for item in items_all:
@@ -131,9 +157,13 @@ def query_itens_agro(
 
     if agregacao == "por_canal":
         # Otimizado: uma única query
-        items_all = sb.from_("vw_itens_agro").select(
+        items_q = sb.from_("vw_itens_agro").select(
             "canal, licitacao_id, valor_total"
-        ).eq("relevante_agro", True).limit(10000).execute().data or []
+        ).eq("relevante_agro", True)
+        items_q = _filtro_ano(items_q, ano)
+        if processo:
+            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items_all = items_q.limit(10000).execute().data or []
 
         canais_dict = {}
         for item in items_all:
@@ -165,9 +195,13 @@ def query_itens_agro(
         return sorted(resultado, key=lambda x: x["valor_total_R$"], reverse=True)
 
     if agregacao == "por_ano":
-        items = sb.from_("vw_itens_agro").select(
+        items_q = sb.from_("vw_itens_agro").select(
             "dt_abertura, licitacao_id, valor_total"
-        ).eq("relevante_agro", True).limit(10000).execute().data or []
+        ).eq("relevante_agro", True)
+        items_q = _filtro_ano(items_q, ano)
+        if processo:
+            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items = items_q.limit(10000).execute().data or []
 
         anos_dict = {}
         for item in items:
@@ -191,9 +225,13 @@ def query_itens_agro(
         return resultado
 
     if agregacao == "por_categoria":
-        items = sb.from_("vw_itens_agro").select(
+        items_q = sb.from_("vw_itens_agro").select(
             "categoria_v2, licitacao_id, valor_total"
-        ).eq("relevante_agro", True).limit(10000).execute().data or []
+        ).eq("relevante_agro", True)
+        items_q = _filtro_ano(items_q, ano)
+        if processo:
+            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items = items_q.limit(10000).execute().data or []
 
         categorias_dict = {}
         for item in items:
@@ -930,6 +968,10 @@ TOOLS_SCHEMA = [
         "input_schema": {
             "type": "object",
             "properties": {
+                "processo": {
+                    "type": "string",
+                    "description": "Número do processo para ver os itens de uma licitação específica, ex.: 'DS 62/2021'"
+                },
                 "cultura": {
                     "type": "string",
                     "description": "Nome da cultura (ex: alface, tomate, arroz)"
@@ -941,7 +983,7 @@ TOOLS_SCHEMA = [
                 },
                 "canal": {
                     "type": "string",
-                    "enum": ["PNAE", "PAA", "ARMAZEM_FAMILIA", "BANCO_ALIMENTOS", "MESA_SOLIDARIA"],
+                    "enum": ["ARMAZEM_FAMILIA", "BANCO_ALIMENTOS", "MESA_SOLIDARIA", "OUTRO"],
                     "description": "Canal institucional de compra"
                 },
                 "ano": {
