@@ -69,6 +69,7 @@ def executar(etapas: list[str], run_id: str | None = None, reusar: str | None = 
               "preregistro": _prereg()})
     m.setdefault("inicio", carimbo())
     m.setdefault("etapas_concluidas", [])
+    m["incompletas"] = []          # recalculado a cada chamada (retomadas automáticas)
     m.setdefault("erros", {})
     _salvar_manifesto(run_id, m)
     (d / "config_usado.yaml").write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -119,7 +120,9 @@ def executar(etapas: list[str], run_id: str | None = None, reusar: str | None = 
             elif etapa == "b":
                 from validacao.b_benchmark.executar import executar as b
                 b(run_id, cfg, piloto=bool(opcoes.get("b_piloto")))
-            m["etapas_concluidas"].append(etapa)
+            if etapa not in m["etapas_concluidas"]:
+                m["etapas_concluidas"].append(etapa)
+            m["erros"].pop(etapa, None)        # retomada bem-sucedida apaga a pendência anterior
             estado.etapa_concluida(run_id, etapa)
             estado.evento(run_id, etapa, "concluída")
         except EtapaIncompleta as e:
@@ -179,6 +182,9 @@ def main():
     ap.add_argument("--a2-instancias", type=int)
     ap.add_argument("--b-reps", type=int)
     ap.add_argument("--sem-chrome", action="store_true")
+    ap.add_argument("--auto-retomar", type=int, default=0,
+                    help="se uma etapa ficar incompleta (limite de uso do plano), espera e retoma até N vezes")
+    ap.add_argument("--espera-min", type=int, default=45, help="espera entre retomadas automáticas (min)")
     a = ap.parse_args()
     opcoes = {k: v for k, v in {"a1_limite": a.a1_limite, "a2_piloto": a.a2_piloto, "b_piloto": a.b_piloto,
                                 "a2_instancias": a.a2_instancias, "b_reps": a.b_reps,
@@ -189,7 +195,18 @@ def main():
         anterior = estado.obter_execucao(a.retomar) or {}
         etapas = anterior.get("etapas") or etapas
         opcoes = {**(anterior.get("opcoes") or {}), **opcoes, "retomando": True}
-    print(executar(etapas, run_id=run_id, reusar=a.reusar, opcoes=opcoes))
+    run_id = executar(etapas, run_id=run_id, reusar=a.reusar, opcoes=opcoes)
+    for n in range(a.auto_retomar):
+        incompletas = _manifesto(run_id).get("incompletas") or []
+        if not incompletas:
+            break
+        estado.evento(run_id, "orquestrador", f"etapas incompletas {incompletas}: nova tentativa "
+                                              f"{n + 1}/{a.auto_retomar} em {a.espera_min} min")
+        import time
+        time.sleep(a.espera_min * 60)
+        opcoes = {**opcoes, "retomando": True}
+        executar(etapas, run_id=run_id, opcoes=opcoes)
+    print(run_id)
 
 
 if __name__ == "__main__":

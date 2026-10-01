@@ -1,4 +1,5 @@
 import json
+import os
 import logging
 import re
 import time
@@ -15,18 +16,67 @@ _st_model = None
 _cache: dict[str, tuple[str, float]] = {}
 CACHE_TTL = 3600
 
+MODELO_EMBED = "paraphrase-multilingual-MiniLM-L12-v2"
+_embed_cache: dict[str, list[float]] = {}
+
+
+def embed_local_permitido() -> bool:
+    """O modelo local (sentence-transformers + torch) ocupa mais de 512 MB de RAM: no Render
+    gratuito ele derruba o servidor por falta de memória (30/09/2026). Lá a vetorização vai
+    para a Hugging Face; local só fora do Render ou com RAG_EMBED_LOCAL=true."""
+    v = os.getenv("RAG_EMBED_LOCAL")
+    if v is not None:
+        return v.strip().lower() in ("1", "true", "sim", "yes")
+    return not os.getenv("RENDER")
+
+
 def get_st_model():
     """
     Carrega o modelo de embeddings sob demanda.
 
-    Levanta ImportError onde a biblioteca não está instalada — quem chama
-    trata e responde sem RAG, em vez de quebrar.
+    Levanta ImportError onde a biblioteca não está instalada ou o modelo local
+    não é permitido — quem chama trata e responde sem RAG, em vez de quebrar.
     """
     global _st_model
+    if not embed_local_permitido():
+        raise ImportError("modelo de embeddings local desativado neste ambiente")
     if _st_model is None:
         from sentence_transformers import SentenceTransformer
-        _st_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        _st_model = SentenceTransformer(MODELO_EMBED)
     return _st_model
+
+
+def _embed_hf(texto: str) -> list[float] | None:
+    """Vetoriza na Inference API da Hugging Face (mesmo modelo dos chunks; 384 dimensões)."""
+    token = os.getenv("HF_TOKEN")
+    if not token:
+        return None
+    import requests
+    url = ("https://router.huggingface.co/hf-inference/models/sentence-transformers/"
+           f"{MODELO_EMBED}/pipeline/feature-extraction")
+    r = requests.post(url, headers={"Authorization": f"Bearer {token}"},
+                      json={"inputs": texto, "options": {"wait_for_model": True}}, timeout=60)
+    r.raise_for_status()
+    v = r.json()
+    while isinstance(v, list) and v and isinstance(v[0], list):   # [[...]] → [...]
+        v = v[0]
+    if not isinstance(v, list) or len(v) != 384:
+        raise ValueError(f"embedding inesperado da Hugging Face (dimensão {len(v) if isinstance(v, list) else '?'})")
+    return [float(x) for x in v]
+
+
+def vetorizar_pergunta(texto: str) -> list[float]:
+    """Hugging Face se HF_TOKEN existir; senão o modelo local, se permitido.
+    Levanta ImportError quando nenhum dos dois está disponível."""
+    if texto in _embed_cache:
+        return _embed_cache[texto]
+    v = _embed_hf(texto)
+    if v is None:
+        v = get_st_model().encode(texto).tolist()
+    if len(_embed_cache) > 500:
+        _embed_cache.clear()
+    _embed_cache[texto] = v
+    return v
 
 def normalize_pergunta(pergunta: str) -> str:
     pergunta = pergunta.lower().strip()
@@ -430,20 +480,22 @@ def buscar_chunks_rag(
     pergunta_sanitizada = sanitizar_string(pergunta, 500)
 
     try:
-        model = get_st_model()
+        query_embedding = vetorizar_pergunta(pergunta_sanitizada)
     except ImportError:
-        logger.warning("RAG indisponível: sentence-transformers não instalado")
+        logger.warning("RAG indisponível: sem HF_TOKEN e sem modelo de embeddings local")
         return [{
             "erro": "Busca em PDFs indisponível neste ambiente.",
             "detalhe": (
-                "O servidor não tem o modelo de embeddings instalado. "
+                "O servidor não tem o modelo de embeddings disponível. "
                 "As consultas a licitações, itens e fornecedores continuam "
                 "funcionando normalmente."
             )
         }]
+    except Exception as e:
+        logger.error(f"Erro ao vetorizar a pergunta: {e}")
+        return [{"erro": f"Busca em PDFs indisponível no momento: {str(e)[:100]}"}]
 
     try:
-        query_embedding = model.encode(pergunta_sanitizada).tolist()
 
         processo_filtro = sanitizar_string(processo, 100) if processo else None
 

@@ -119,7 +119,17 @@ def sha256_arquivo(p: str | Path) -> str:
 
 def salvar_json(p: str | Path, obj) -> None:
     Path(p).parent.mkdir(parents=True, exist_ok=True)
-    Path(p).write_text(json.dumps(obj, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    texto = json.dumps(obj, ensure_ascii=False, indent=2, default=str)
+    # O repositório fica no Google Drive para desktop, que às vezes recusa a abertura de um
+    # arquivo em sincronização (OSError 22/13) — erro passageiro: espera e tenta de novo.
+    for tentativa in range(6):
+        try:
+            Path(p).write_text(texto, encoding="utf-8")
+            return
+        except OSError:
+            if tentativa == 5:
+                raise
+            time.sleep(2 * (tentativa + 1))
 
 
 def ler_json(p: str | Path, padrao=None):

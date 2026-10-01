@@ -158,6 +158,13 @@ class Cliente:
                 "latencia_s": round(time.monotonic() - t0, 3), "erro_http": erro_http}
 
 
+def espera_apos_429(chamada: dict, tentativa: int) -> float:
+    """Espera antes de repetir após 429: o tempo sugerido pelo provedor ("try again in 28.9s")
+    + 2 s, limitado a 90 s; sem sugestão, backoff exponencial (4, 8, 16, 32 s)."""
+    sugerido = re.search(r"try again in ([\d.]+)\s*s", str((chamada.get("fim") or {}).get("erro") or ""), re.I)
+    return min(90.0, float(sugerido.group(1)) + 2) if sugerido else float(2 ** (tentativa + 2))
+
+
 def classificar_erro(chamada: dict) -> str | None:
     e = str(chamada.get("erro_http") or "") + " " + str((chamada.get("fim") or {}).get("erro") or "")
     baixo = e.lower()
@@ -232,8 +239,7 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
                 erro = classificar_erro(c)
                 if erro == "ERRO_INFRA_429" and tent < int(cfg["b"]["max_backoff_tentativas"]):
                     # Espera o tempo indicado pelo provedor ("try again in 28.9s"), senão backoff exponencial.
-                    m = re.search(r"try again in ([\d.]+)\s*s", str((c.get("fim") or {}).get("erro") or ""), re.I)
-                    espera = min(90.0, float(m.group(1)) + 2) if m else float(2 ** (tent + 2))
+                    espera = espera_apos_429(c, tent)
                     estado.evento(run_id, "b", f"{k}: 429, espera {espera:.0f} s", "aviso")
                     time.sleep(espera)
                     tent += 1
