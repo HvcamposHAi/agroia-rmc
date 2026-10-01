@@ -110,12 +110,15 @@ def sortear_parametros(tipo_lista: list[str], ctx: Contexto, rng: random.Random,
             if campo == "empenhos":
                 df = ctx.q("SELECT DISTINCT regexp_replace(f.cpf_cnpj, '[^0-9]', '', 'g') AS doc, f.razao_social AS nome "
                            "FROM empenhos e JOIN itens_licitacao i ON i.id = e.item_id JOIN lic ON lic.id = i.licitacao_id "
-                           "JOIN fornecedores f ON f.id = e.fornecedor_id WHERE lic.chave = $processo", {"processo": chave})
+                           "JOIN fornecedores f ON f.id = e.fornecedor_id WHERE lic.chave = $processo ORDER BY doc, nome",
+                           {"processo": chave})
             else:
                 df = ctx.q("SELECT DISTINCT regexp_replace(f.cpf_cnpj, '[^0-9]', '', 'g') AS doc, f.razao_social AS nome "
                            "FROM participacoes pa JOIN lic ON lic.id = pa.licitacao_id JOIN fornecedores f "
-                           "ON f.id = pa.fornecedor_id WHERE lic.chave = $processo", {"processo": chave})
-            df = df[df["doc"].str.len() >= 11]
+                           "ON f.id = pa.fornecedor_id WHERE lic.chave = $processo ORDER BY doc, nome", {"processo": chave})
+            # ORDER BY + reset_index: sem ordem fixa o DuckDB pode devolver as linhas em outra
+            # sequência e o sorteio (mesma semente) escolheria outro fornecedor.
+            df = df[df["doc"].str.len() >= 11].reset_index(drop=True)
             if df.empty:
                 return None
             r = df.sample(1, random_state=rng.randrange(2 ** 31)).iloc[0]
@@ -150,14 +153,24 @@ def gabarito_t11(ctx: Contexto, chave: str) -> tuple[dict | None, str]:
         if not pdf.exists():
             continue
         try:
-            import fitz
-            with fitz.open(pdf) as doc:
-                t1 = "\n".join(p.get_text() for p in doc)
+            # 1ª leitura (PyMuPDF): reaproveita o texto que a A1 extraiu com a mesma biblioteca.
+            txt_cache = pdf.with_suffix(".txt")
+            if txt_cache.exists():
+                t1 = txt_cache.read_text(encoding="utf-8")
+            else:
+                import fitz
+                with fitz.open(pdf) as doc:
+                    t1 = "\n".join(p.get_text() for p in doc)
+            a = prazos_texto(t1)
+            # A regra só aceita prazo único nas duas leituras: sem prazo único na 1ª, a 2ª
+            # (pypdf, lenta em PDFs digitalizados grandes) não muda o resultado.
+            if len(a) != 1:
+                continue
             from pypdf import PdfReader
             t2 = "\n".join((pg.extract_text() or "") for pg in PdfReader(str(pdf)).pages)
         except Exception:
             continue
-        a, b = prazos_texto(t1), prazos_texto(t2)
+        b = prazos_texto(t2)
         if len(a) == 1 and a == b:
             return {"valor": next(iter(a)), "documento": url, "sha256_pdf": sha256_arquivo(pdf)}, ""
     return None, "prazo não encontrado de forma única e concordante nas duas leituras"

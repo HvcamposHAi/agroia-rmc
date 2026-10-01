@@ -57,6 +57,7 @@ T04:
     SELECT DISTINCT regexp_replace(f.cpf_cnpj, '[^0-9]', '', 'g') AS doc, f.razao_social AS nome
     FROM participacoes p JOIN lic ON lic.id = p.licitacao_id JOIN fornecedores f ON f.id = p.fornecedor_id
     WHERE lic.chave = $processo AND p.vencedor
+    ORDER BY doc
   pontuacao: {tipo: conjunto_fornecedores}
 
 T05:
