@@ -21,12 +21,12 @@ beautifulsoup4==4.12.2
 lxml==4.9.3
 
 # Google Drive Integration
-google-api-python-client>=1.12.0
+google-api-python-client>=2.0.0
 google-auth-httplib2>=0.2.0
 google-auth-oauthlib>=1.2.0
 
 # PDF Processing & Embedding
-PyPDF2==3.0.1
+pypdf>=3.0.1
 pdfplumber==0.10.3
 sentence-transformers==2.2.2
 

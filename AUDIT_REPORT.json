@@ -1,10 +1,10 @@
 {
   "meta": {
-    "versao": "2.2",
-    "data": "2026-09-01",
+    "versao": "2.3",
+    "data": "2026-10-01",
     "gerado_por": "auditoria-automatica-bot",
     "repositorio": "hvcamposhai/agroia-rmc",
-    "auditoria_anterior": "2026-08-01"
+    "auditoria_anterior": "2026-09-01"
   },
   "fase1_auditoria": {
     "status": "CONCLUIDA",
@@ -17,12 +17,13 @@
         "benchmark": "OK",
         "ingestion": "OK",
         "scripts": "OK",
-        "sql": "OK"
+        "sql": "OK",
+        "validacao": "OK"
       },
       "arquivos_raiz": {
         "CLAUDE.md": "OK",
         "README.md": "OK",
-        "requirements.txt": "OK",
+        "requirements.txt": "CORRIGIDO",
         ".env.example": "OK",
         ".gitignore": "OK",
         "Dockerfile": "OK",
@@ -39,44 +40,70 @@
       },
       "scripts_suporte_adicionais": {
         "dados_atualizados.py": "OK — referenciado no CLAUDE.md como ferramenta de consulta",
-        "backfill_prohort.py": "OK — script de backfill ProHort legítimo"
+        "backfill_prohort.py": "OK — script de backfill ProHort legítimo",
+        "coleta_transparencia.py": "OK — coletor principal do Portal da Transparência",
+        "classificacao_licitacao.py": "OK — módulo de classificação agrícola"
       }
     },
-    "problemas_encontrados": {},
-    "sem_problemas": [
+    "problemas_encontrados": {
+      "DEP-001": {
+        "severidade": "MEDIA",
+        "arquivo": "requirements.txt",
+        "descricao": "PyPDF2==3.0.1 é pacote depreciado (renomeado para pypdf). O código em validacao/a2_facilitacao/tarefas/instanciar.py já importa 'from pypdf import PdfReader', gerando inconsistência entre dependência declarada e a usada de fato.",
+        "status": "CORRIGIDO"
+      },
+      "DEP-002": {
+        "severidade": "BAIXA",
+        "arquivo": "requirements.txt",
+        "descricao": "google-api-python-client>=1.12.0 está desatualizado; requirements_rag.txt já especifica >=2.100.0. A versão 1.x foi descontinuada.",
+        "status": "CORRIGIDO"
+      }
+    },
+    "observacoes": [
+      "api/test_upload_ofertas.py: arquivo de teste válido dentro de api/ (pytest encontra via caminho explícito). Não é script órfão.",
+      "metrics/*.json: rastreados intencionalmente como snapshots de referência via 'git add -f' (conforme comentário no .gitignore).",
+      "SECURITY_ACTIONS.json: documento de referência intencional (22 itens abertos de 2026-04-21).",
       "Nenhum script obsoleto detectado (padrões *_v[2-8].py, debug_*, diag_*, teste_* ausentes)",
       "Nenhum arquivo de log rastreado no git",
       "Nenhum artefato de debug/diagnóstico rastreado",
-      "Nenhum __pycache__ ou .pyc rastreado",
-      "Nenhuma chave de API exposta em arquivos rastreados",
-      "Todos os 7 scripts essenciais presentes",
-      "Estrutura de diretórios completa (api/, chat/, tests/, benchmark/, ingestion/)",
-      ".env não rastreado — .env.example presente",
-      "credentials.json e service_account*.json no .gitignore",
-      "Nenhum arquivo untracked fora do .gitignore detectado",
-      "1 commit desde auditoria anterior (2026-08-01) — próprio commit da auditoria anterior"
+      "Nenhum __pycache__ ou .pyc rastreado"
     ]
   },
   "fase2_limpeza": {
     "status": "CONCLUIDA",
-    "acoes_realizadas": [],
+    "acoes_realizadas": [
+      {
+        "acao": "SUBSTITUIR_DEPENDENCIA",
+        "arquivo": "requirements.txt",
+        "de": "PyPDF2==3.0.1",
+        "para": "pypdf>=3.0.1",
+        "motivo": "SEC-015 pendente desde 2026-04-21; pacote depreciado; código já usa pypdf"
+      },
+      {
+        "acao": "ATUALIZAR_VERSAO_MINIMA",
+        "arquivo": "requirements.txt",
+        "de": "google-api-python-client>=1.12.0",
+        "para": "google-api-python-client>=2.0.0",
+        "motivo": "v1.x descontinuada; requirements_rag.txt já em >=2.100.0"
+      }
+    ],
     "total_arquivos_removidos": 0,
-    "nota": "Repositório já estava completamente limpo. Auditoria anterior (2026-08-01) não deixou resíduos. Nenhuma ação necessária."
+    "nota": "Repositório limpo. Apenas atualizações de dependências necessárias."
   },
   "fase3_validacao": {
     "status": "CONCLUIDA",
     "estrutura": {
-      "diretorios_essenciais": "OK — api/, chat/, tests/, benchmark/ presentes",
+      "diretorios_essenciais": "OK — api/, chat/, tests/, benchmark/, validacao/ presentes",
       "scripts_7_essenciais": "OK — todos presentes",
       "frontend": "OK — agroia-frontend/ completo com React/Vite/TS",
-      "workflows_ci_cd": "OK — .github/workflows/ com 3 workflows ativos (coleta.yml, benchmark.yml, prohort.yml)"
+      "workflows_ci_cd": "OK — .github/workflows/ com 5 workflows (coleta.yml, benchmark.yml, prohort.yml, ceasa_pr.yml, validacao.yml)"
     },
     "dependencias": {
-      "requirements_txt": "OK — dependências principais com versões fixas",
+      "requirements_txt": "CORRIGIDO — PyPDF2→pypdf, google-api-python-client>=2.0.0",
       "requirements_benchmark_txt": "OK",
       "requirements_chat_txt": "OK",
-      "requirements_rag_txt": "OK",
-      "nota_pendente": "SEC-015: migrar PyPDF2→pypdf e atualizar google-api-python-client >=2.0 (pendente desde 2026-04-21)"
+      "requirements_rag_txt": "OK — já usa google-api-python-client>=2.100.0 e PyMuPDF",
+      "requirements_validacao_txt": "OK"
     },
     "seguranca": {
       "env_nao_no_git": "OK — .env está no .gitignore",
@@ -87,14 +114,13 @@
     },
     "git_status": {
       "branch": "main",
-      "sincronizado_com_origin": "SIM — up to date",
-      "arquivos_nao_rastreados": 0,
-      "estado": "LIMPO — working tree clean"
+      "arquivos_modificados": 2,
+      "estado": "requirements.txt corrigido — commit pendente"
     }
   },
   "resumo_executivo": {
-    "resultado": "OK — SEM PROBLEMAS",
-    "acao_tomada": "Nenhuma — repositório limpo e conforme",
-    "proxima_auditoria": "2026-10-01"
+    "resultado": "CORRECOES_APLICADAS",
+    "acao_tomada": "Atualização de dependências depreciadas em requirements.txt (PyPDF2→pypdf, google-api-python-client>=2.0.0)",
+    "proxima_auditoria": "2026-11-01"
   }
 }
