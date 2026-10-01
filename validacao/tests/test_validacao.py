@@ -331,3 +331,11 @@ def test_limite_de_uso_vira_erro_infra_limite(tmp_path, monkeypatch):
     assert meta["status"] == "ERRO_INFRA_LIMITE"
     assert cc.LIMITE_RE.search("5-hour limit reached ∙ resets 3am")
     assert not cc.LIMITE_RE.search("Pronto. {\"resposta\": 3}")
+
+
+def test_espera_apos_429():
+    from validacao.b_benchmark.executar import espera_apos_429
+    groq = {"fim": {"erro": "429 ... Please try again in 28.9425s. Need more tokens?"}}
+    assert espera_apos_429(groq, 0) == pytest.approx(30.9425)
+    assert espera_apos_429({"fim": {"erro": "429 Too Many Requests"}}, 1) == 8.0
+    assert espera_apos_429({"fim": {"erro": "try again in 500s"}}, 0) == 90.0
