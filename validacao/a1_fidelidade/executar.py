@@ -96,6 +96,12 @@ def executar(run_id: str, cfg: dict | None = None, limite: int | None = None, us
                     chrome_status["afetados"] += 1
                     continue
                 r = ler_detalhe(det["url"], cfg, trab, dir_a1 / "chrome")
+                if r["status"] == "ERRO_INFRA_LIMITE":
+                    # Leituras já feitas ficam em cache; --retomar lê só as que faltam.
+                    chrome_status["interrompido_limite"] = True
+                    estado.evento(run_id, "a1", "limite de uso do plano Claude: leituras pelo Chrome "
+                                                "interrompidas; retome com --retomar", "aviso")
+                    break
                 if r["status"] == "OK":
                     det_ch[chave] = r["dados"]
                     falhas_seguidas = 0

@@ -115,6 +115,7 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
     work = dir_a2 / "work"
     chrome_ok = cc.garantir_conexao(cfg, work / "_sonda", lambda m: estado.evento(run_id, "a2", m))
     desde_sonda = 0
+    incompleta = False
     for pos, u in enumerate(plano, 1):
         ch = chave_unidade(u)
         if ch in feitas:
@@ -143,9 +144,17 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
             if meta["status"] not in ("ERRO_INFRA", "ERRO_INFRA_CHROME") and not negou:
                 break
             estado.evento(run_id, "a2", f"{ch}: {meta['status']} (tentativa {tentativa + 1}/3)", "aviso")
+        if meta["status"] == "ERRO_INFRA_LIMITE":
+            # Não registra: a execução fica pendente e --retomar a refaz quando o plano liberar.
+            estado.evento(run_id, "a2", f"{ch}: limite de uso do plano Claude; etapa interrompida, "
+                                        "retome com --retomar", "aviso")
+            incompleta = True
+            break
         gif = mover_gif(cfg, nome_gif, d / "evidencias" / "a2" / f"{base}.gif", t0) if cfg["a2"].get("gravar_gif") else None
         _registrar(run_id, etapa, dir_a2, u, meta, saida, aquec, gif, tentativa)
-    return consolidar(run_id, etapa)
+    res = consolidar(run_id, etapa)
+    res["incompleta"] = incompleta
+    return res
 
 
 def pontuar_execucao(inst: dict, saida: Path | None, status_exec: str) -> tuple[dict, dict]:

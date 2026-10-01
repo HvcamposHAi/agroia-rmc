@@ -126,7 +126,9 @@ b:
     gemini: "Gemini 3.8 Flash"
   repeticoes: 5
   temperatura: 0
-  intervalo_por_motor_s: {groq_llama: 3, gemini: 5, maritaca: 3, claude: 1}
+  # Groq gratuito: 8.000 tokens/min; cada pergunta usa ~5.700 por chamada ao modelo (prompt +
+  # 11 ferramentas) e às vezes mais de uma chamada. 60 s entre perguntas evita estourar o limite.
+  intervalo_por_motor_s: {groq_llama: 60, gemini: 5, maritaca: 3, claude: 1}
   timeout_s: 120
   max_backoff_tentativas: 4
   # "requisicao": envia {motor} no corpo de /chat/stream (backend com suporte);
