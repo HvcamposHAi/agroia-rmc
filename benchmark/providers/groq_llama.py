@@ -1,4 +1,8 @@
-"""GroqLlamaProvider — Llama 3.1 8B via Groq (API compatível com OpenAI)."""
+"""GroqLlamaProvider — modelo aberto via Groq (API compatível com OpenAI).
+
+Era o Llama 3.1 8B (llama-3.1-8b-instant), desligado na camada gratuita em 16/08/2026; o
+substituto recomendado pela Groq é openai/gpt-oss-20b. Configurável por GROQ_MODELO.
+O nome da classe e a chave do motor (groq_llama) ficaram por compatibilidade."""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ import os
 
 from benchmark.providers.openai_base import OpenAICompatProvider
 
-MODELO_GROQ = "llama-3.1-8b-instant"
+MODELO_GROQ = os.getenv("GROQ_MODELO", "openai/gpt-oss-20b")
 GROQ_BASE_URL_PADRAO = "https://api.groq.com/openai/v1"
 
 

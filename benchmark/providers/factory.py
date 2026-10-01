@@ -7,11 +7,15 @@ from benchmark.providers.base import LLMProvider
 MOTORES_DISPONIVEIS = ("claude", "groq_llama", "maritaca", "gemini")
 
 # Rótulos amigáveis p/ relatórios e front.
+# As chaves (groq_llama, gemini) ficaram iguais para não quebrar app_config.motor_ativo e o
+# frontend; os modelos mudaram em 30/09/2026 porque os originais foram desligados pelos
+# provedores (Groq: llama-3.1-8b-instant em 16/08/2026, migrado ao plano Enterprise;
+# Google: gemini-2.0-flash em 01/06/2026).
 ROTULOS = {
     "claude": "Claude Haiku 4.5",
-    "groq_llama": "Llama 3.1 8B",
+    "groq_llama": "GPT-OSS 20B (Groq)",
     "maritaca": "Sabiá-4",
-    "gemini": "Gemini 2.0 Flash",
+    "gemini": "Gemini 2.5 Flash",
 }
 
 MOTOR_BASELINE = "claude"

@@ -18,7 +18,8 @@ from benchmark.schema_adapter import (
     canonico_para_gemini_history,
 )
 
-MODELO_GEMINI = "gemini-2.0-flash"
+# gemini-2.0-flash foi desligado em 01/06/2026; configurável por GEMINI_MODELO.
+MODELO_GEMINI = os.getenv("GEMINI_MODELO", "gemini-2.5-flash")
 
 
 def _proto_para_python(valor):

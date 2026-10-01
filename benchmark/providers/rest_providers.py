@@ -27,7 +27,10 @@ from benchmark.schema_adapter import (
 
 GROQ_BASE_URL_PADRAO = "https://api.groq.com/openai/v1"
 MARITACA_BASE_URL_PADRAO = "https://chat.maritaca.ai/api"
-GEMINI_MODELO = "gemini-2.0-flash"
+# Modelos desligados pelos provedores em 2026 (gemini-2.0-flash em 01/06; Groq
+# llama-3.1-8b-instant em 16/08): substitutos escolhidos em 30/09/2026, configuráveis.
+GEMINI_MODELO = os.getenv("GEMINI_MODELO", "gemini-2.5-flash")
+GROQ_MODELO = os.getenv("GROQ_MODELO", "openai/gpt-oss-20b")
 
 
 def _redigir_chave(msg: str, chave: str) -> str:
@@ -208,7 +211,7 @@ def get_live_provider(nome: str) -> LLMProvider:
             raise RuntimeError("Defina GROQ_API_KEY para usar o motor groq_llama.")
         return OpenAICompatRestProvider(
             api_key=chave, base_url=os.getenv("GROQ_BASE_URL", GROQ_BASE_URL_PADRAO),
-            modelo="llama-3.1-8b-instant", nome="groq_llama")
+            modelo=GROQ_MODELO, nome="groq_llama")
     if nome == "maritaca":
         chave = os.getenv("MARITACA_API_KEY")
         if not chave:

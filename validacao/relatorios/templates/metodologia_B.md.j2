@@ -31,7 +31,11 @@ A Tabela {{ tab("motores") }} lista os motores avaliados e a tabela de preços u
 
 {{ FONTE }}
 
-## 2 Princípios
+## 2 Desvio de desenho: substituição de motores
+
+O pré-registro e o plano previam Llama 3.1 8B (Groq) e Gemini 2.0 Flash. Os dois foram desligados pelos provedores antes da execução: o `gemini-2.0-flash` em 01/06/2026 e o `llama-3.1-8b-instant` em 16/08/2026 na camada gratuita da Groq (passou ao plano Enterprise); o piloto de 30/09/2026 recebeu "404 Not Found" de ambos. Por decisão do pesquisador em 30/09/2026, entraram os substitutos indicados pelos provedores ou a versão estável mais próxima: `openai/gpt-oss-20b` (Groq; substituto oficial do Llama 3.1 8B, modelo aberto) e `gemini-2.5-flash`. As chaves internas dos motores (`groq_llama`, `gemini`) foram mantidas por compatibilidade. Os modelos ficam configuráveis por `GROQ_MODELO` e `GEMINI_MODELO`.
+
+## 3 Princípios
 
 1. Caminho de produção: as chamadas vão para `/chat/stream`, o endpoint usado pela interface. A medição anterior de sucesso havia sido feita em `/chat`; a troca segue o princípio de medir o que o usuário usa.
 2. Paridade: mesmo prompt de sistema, mesmas ferramentas com os mesmos esquemas e mesmo Query Agent para todos os motores, porque todos passam pelo mesmo backend. Nenhum prompt foi ajustado para um motor específico; a ausência de chamadas de ferramenta por um motor é resultado, não defeito a corrigir.
@@ -39,7 +43,7 @@ A Tabela {{ tab("motores") }} lista os motores avaliados e a tabela de preços u
 4. Parâmetros de geração: os do caminho de produção. A rota não expõe a temperatura e o código dos provedores não a define, portanto vale o padrão de cada provedor. O plano original previa temperatura 0; a diferença é reportada como desvio.
 5. Base fixa: {% if cfg.b.modo_dados == "pausar_coleta" %}a assinatura da base viva (contagens, maior identificador, data da última cotação) foi comparada antes e depois da janela do benchmark{% if contexto_b.base_inalterada is defined %}; resultado: base {{ "inalterada" if contexto_b.base_inalterada else "ALTERADA durante a janela" }}{% endif %}{% else %}o backend consultou uma cópia do snapshot{% endif %}.
 
-## 3 Dataset
+## 4 Dataset
 
 Foram usadas as {{ perguntas | length }} perguntas do pacote `benchmark/` (arquivo `perguntas_benchmark.json`): conjunto A, com {{ perguntas | selectattr("conjunto", "equalto", "A") | list | length }} perguntas respondíveis com os dados, e conjunto B, com {{ perguntas | selectattr("conjunto", "equalto", "B") | list | length }} perguntas cuja resposta correta é a abstenção (PNAE, PAA e temas fora do escopo). Os gabaritos do conjunto A foram recalculados por SQL sobre o snapshot desta execução (`b/gabarito.json`); nenhum gabarito antigo foi reaproveitado. A Tabela {{ tab("gab") }} mostra o tipo de gabarito de cada pergunta.
 
@@ -51,11 +55,11 @@ Foram usadas as {{ perguntas | length }} perguntas do pacote `benchmark/` (arqui
 
 Perguntas sem gabarito factual (documentais ou abertas) têm como acerto principal o uso de ferramenta pertinente (AF@3 > 0), conforme o pré-registro.
 
-## 4 Protocolo
+## 5 Protocolo
 
 Cada pergunta foi enviada {{ cfg.b.repeticoes }} vezes a cada motor, em ordem aleatorizada com semente e com os motores intercalados, para diluir variações de horário e de carga das APIs. O espaçamento mínimo entre chamadas por motor foi: {% for k, v in cfg.b.intervalo_por_motor_s.items() %}{{ k }} {{ v }} s{% if not loop.last %}; {% endif %}{% endfor %}. Respostas HTTP 429 acionaram backoff exponencial (até {{ cfg.b.max_backoff_tentativas }} tentativas). Foram registrados por chamada: texto final, chamadas de ferramenta (nome, argumentos, resultado), tokens, latência até o primeiro token, latência total e código de erro.
 
-## 5 Métricas
+## 6 Métricas
 
 - Acurácia factual: extração de números e entidades da resposta e comparação com o gabarito (tolerância relativa de {{ cfg.b.tolerancia_relativa | pct }}).
 - AF@k: definição do pacote `benchmark/metricas.py` (ferramenta esperada nas k primeiras chamadas e parâmetros críticos corretos).
@@ -67,17 +71,17 @@ Cada pergunta foi enviada {{ cfg.b.repeticoes }} vezes a cada motor, em ordem al
 - Custo: tokens × preço de lista (Tabela {{ tab("motores") }}); o custo efetivo na camada gratuita é zero.
 - Taxonomia de erros: `ERRO_INFRA_413`, `ERRO_INFRA_429`, `SEM_FERRAMENTA`, `FERRAMENTA_ERRADA`, `ARGUMENTO_INVALIDO`, `NUMERO_SEM_ORIGEM`, `RESPOSTA_INCORRETA`, `FORMATO`, uma categoria principal por falha.
 
-## 6 Análise estatística
+## 7 Análise estatística
 
 O plano anterior previa teste t pareado com Bonferroni. Ele foi substituído porque as métricas principais são binárias e as de latência são assimétricas. A acurácia entre os motores é comparada pelo teste Q de Cochran (COCHRAN, 1950) sobre as perguntas do conjunto A, com o desfecho definido pela maioria das repetições; se significativo, segue o McNemar exato (MCNEMAR, 1947) par a par com correção de Holm (HOLM, 1979). Latência e custo são comparados pelo teste de Friedman; se significativo, Wilcoxon pareado (WILCOXON, 1945) par a par com Holm, com δ de Cliff como tamanho de efeito. A abstenção é descrita por proporções com IC de Wilson (WILSON, 1927), com baixo poder declarado.
 
 Duas análises são apresentadas lado a lado: principal (intenção de tratar), em que falhas de infraestrutura contam como erro, refletindo o uso real na camada gratuita; e sensibilidade (por protocolo), que exclui essas falhas e reflete a capacidade do modelo quando a API responde. Com n perguntas, reporta-se o menor tamanho de efeito detectável; resultado não significativo é tratado como inconclusivo, não como equivalência.
 
-## 7 Auditoria da pontuação automática
+## 8 Auditoria da pontuação automática
 
 Uma amostra de {{ cfg.b.auditoria_fracao | pct(0) }} das respostas, estratificada por motor e desfecho, foi gravada em `b/auditoria.csv` com colunas vazias para rotulagem humana. A execução não espera a auditoria; quando o arquivo é preenchido, `python -m validacao.b_benchmark.analise --run-id {{ run_id }} --auditoria` calcula o κ de Cohen (COHEN, 1960) entre a pontuação automática e a humana e regenera este relatório. Não se usa LLM como juiz na análise principal.
 
-## 8 Ameaças à validade
+## 9 Ameaças à validade
 
 - Construto: regras determinísticas de pontuação podem errar em respostas corretas redigidas de forma inesperada; a auditoria humana mede esse erro.
 - Interna: limites da camada gratuita (413, 429) e partida a frio do servidor afetam os motores de forma desigual; a análise por protocolo isola esse efeito. A temperatura padrão dos provedores introduz variação entre repetições.
