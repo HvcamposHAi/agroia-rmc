@@ -44,11 +44,18 @@ def numeros(texto: str) -> list[float]:
 
 
 def datas(texto: str) -> set:
+    """Datas em dd/mm/aaaa, aaaa-mm-dd e por extenso ("13 de novembro de 2024", "13 nov 2024")."""
     out = set()
     for m in re.finditer(r"\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2}", texto or ""):
         d = data_iso(m.group(0))
         if d:
             out.add(d)
+    for m in re.finditer(r"\b(\d{1,2})(?:o|º)?\s*(?:de\s+)?([a-z]{3,9})\.?\s*(?:de\s+)?(\d{4})\b",
+                         norm_texto(texto)):
+        mes = MESES.get(m.group(2))
+        dia = int(m.group(1))
+        if mes and 1 <= dia <= 31:
+            out.add(f"{m.group(3)}-{mes:02d}-{dia:02d}")
     return out
 
 

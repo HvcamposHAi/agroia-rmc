@@ -155,6 +155,19 @@ def test_pontuacao_objeto_resumido():
     assert pontuacao.pontuar(inst, errado, "OK")["sucesso"] == 0
 
 
+def test_datas_por_extenso():
+    assert pontuacao.datas("aberto em 13 de novembro de 2024") == {"2024-11-13"}
+    assert pontuacao.datas("13 nov 2024 e 2024-11-13") == {"2024-11-13"}
+    assert pontuacao.datas("1º de março de 2023") == {"2023-03-01"}
+
+
+def test_vinculo_documento_outro_ano():
+    from validacao.a1_fidelidade.comparar_documentos import vinculo_suspeito
+    assert vinculo_suspeito("DS_62_-_FAAC_-_2020.pdf", "DS 62/2021") is True
+    assert vinculo_suspeito("DS_62_-_FAAC_-_2021.pdf", "DS 62/2021") is False
+    assert vinculo_suspeito("PROCESSO_LICITATORIO.pdf", "DS 62/2021") is None
+
+
 def test_pontuacao_meses_e_categorica():
     inst = {"pontuacao": {"tipo": "conjunto_meses"}, "gabarito": {"meses": [3, 7]}, "parametros": {"ano": 2025}}
     r = pontuacao.pontuar(inst, '{"resposta": ["março", "julho"], "encontrada": true}', "OK")

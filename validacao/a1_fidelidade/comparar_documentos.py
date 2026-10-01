@@ -91,6 +91,16 @@ class Baixador:
         return ngramas(p.read_text(encoding="utf-8")) if p.is_file() else set()
 
 
+def vinculo_suspeito(nome_doc: str | None, chave: str | None) -> bool | None:
+    """True quando o nome do arquivo traz um ano diferente do ano do processo a que está ligado
+    (ex.: 'DS_62_-_FAAC_-_2020.pdf' ligado ao DS 62/2021). None se o nome não tem ano."""
+    anos = re.findall(r"(?<!\d)(20[0-3]\d)(?!\d)", nome_doc or "")
+    m = re.search(r"/(\d{4})$", chave or "")
+    if not anos or not m:
+        return None
+    return m.group(1) not in anos
+
+
 def disponivel(meta: dict) -> bool:
     return bool(meta.get("status_http") == 200 and not meta.get("erro"))
 
@@ -121,6 +131,7 @@ def comparar(run_id: str, cfg: dict, snap, amostra_det: dict[str, dict], dir_a1:
             "paginas": meta.get("paginas"), "sha256": meta.get("sha256"), "tem_chunks_rag": int(d["id"]) in com_chunks,
             "na_amostra": chave in amostra_det, "par_portal": None, "sim_nome": None, "jaccard_texto": None,
             "mesmo_tamanho_portal": None, "mesmo_sha_portal": None, "mesmas_paginas_portal": None,
+            "vinculo_suspeito": vinculo_suspeito(d.get("nome_doc") or d.get("nome_arquivo"), chave),
             "erro": meta.get("erro")})
 
     # 2) Documentos do portal nos processos da amostra + pareamento com a base.
@@ -168,6 +179,9 @@ def comparar(run_id: str, cfg: dict, snap, amostra_det: dict[str, dict], dir_a1:
         "base_total": int(len(base)), "base_disponiveis": int(base["disponivel"].sum()),
         "base_tamanho_confere": int((base["tamanho_confere_base"] == True).sum()),  # noqa: E712
         "base_tamanho_verificavel": int(base["tamanho_confere_base"].notna().sum()),
+        "base_com_ano_no_nome": int(base["vinculo_suspeito"].notna().sum()),
+        "base_vinculo_suspeito": int((base["vinculo_suspeito"] == True).sum()),  # noqa: E712
+        "base_vinculo_suspeito_lista": [f"{r.chave} ← {r.nome}" for r in base[base["vinculo_suspeito"] == True].itertuples()],  # noqa: E712
         "rag_docs_com_chunks": int(base["tem_chunks_rag"].sum()),
         "rag_cobertura": float(base["tem_chunks_rag"].mean()) if len(base) else None,
         "amostra_portal_docs": int(len(portal)), "amostra_portal_disponiveis": int(portal["disponivel"].sum()) if len(portal) else 0,
