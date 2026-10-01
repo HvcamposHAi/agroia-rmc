@@ -123,7 +123,7 @@ b:
     # escolhidos em 30/09/2026 (desvio registrado na metodologia da Parte B).
     groq_llama: "GPT-OSS 20B (Groq)"
     maritaca: "Sabiá-4 (Maritaca)"
-    gemini: "Gemini 2.5 Flash"
+    gemini: "Gemini 3.8 Flash"
   repeticoes: 5
   temperatura: 0
   intervalo_por_motor_s: {groq_llama: 3, gemini: 5, maritaca: 3, claude: 1}

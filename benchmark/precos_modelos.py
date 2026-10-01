@@ -28,9 +28,10 @@ PRECOS = {
         "fonte": "https://plataforma.maritaca.ai (Sabiá-4 — verificar preço atual)",
     },
     "gemini": {
-        "entrada_por_1m": 0.30, "saida_por_1m": 2.50, "moeda": "USD",
-        # gemini-2.5-flash (substituiu o gemini-2.0-flash em 30/09/2026); há camada gratuita
-        "fonte": "https://ai.google.dev/gemini-api/docs/pricing (Gemini 2.5 Flash, consultado em 30/09/2026)",
+        # gemini-3.8-flash: US$ 0,75/3,75 até 31/12/2026 (US$ 1,50/7,50 a partir de 01/01/2027);
+        # a saída inclui os tokens de raciocínio. Há camada gratuita.
+        "entrada_por_1m": 0.75, "saida_por_1m": 3.75, "moeda": "USD",
+        "fonte": "https://ai.google.dev/gemini-api/docs/pricing (Gemini 3.8 Flash, consultado em 30/09/2026)",
     },
 }
 

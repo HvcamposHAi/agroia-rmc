@@ -319,3 +319,46 @@ class TestDataset:
         assert all(q["categoria"] == "preco" for q in selecionar_perguntas("preco"))
         sel = selecionar_perguntas("L02,P01")
         assert {q["id"] for q in sel} == {"L02", "P01"}
+
+
+# ---------------------------------------------------------------------------
+# 6. Gemini 3: assinatura de raciocínio (thoughtSignature) nas chamadas de ferramenta
+# ---------------------------------------------------------------------------
+class TestGeminiAssinatura:
+    def test_assinatura_volta_no_turno_seguinte(self, monkeypatch):
+        import requests
+        import benchmark.agentic_loop as al
+        from benchmark.providers.rest_providers import GeminiRestProvider
+
+        respostas = [
+            {"candidates": [{"content": {"parts": [{
+                "functionCall": {"name": "query_licitacoes", "args": {"processo": "PE 1/2026"}},
+                "thoughtSignature": "SIG-ABC"}]}}]},
+            {"candidates": [{"content": {"parts": [{"text": "Pronto."}]}}]},
+        ]
+        enviados = []
+
+        class _Resp:
+            def __init__(self, dados):
+                self.dados = dados
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return self.dados
+
+        def _post(url, json=None, **_):
+            enviados.append(json)
+            return _Resp(respostas[len(enviados) - 1])
+
+        monkeypatch.setattr(requests, "post", _post)
+        monkeypatch.setattr(al, "executar_tool", lambda nome, inp: [{"ok": True}])
+        tools = [{"name": "query_licitacoes", "description": "d",
+                  "input_schema": {"type": "object", "properties": {"processo": {"type": "string"}}}}]
+        res = rodar_loop(GeminiRestProvider("chave"), "teste", system_prompt="s", tools_schema=tools)
+
+        assert res.resposta == "Pronto." and res.erro is None
+        turno_modelo = [c for c in enviados[1]["contents"] if c["role"] == "model"][0]
+        assert turno_modelo["parts"][0]["thoughtSignature"] == "SIG-ABC"
+        assert turno_modelo["parts"][0]["functionCall"]["name"] == "query_licitacoes"

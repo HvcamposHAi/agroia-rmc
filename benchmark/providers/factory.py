@@ -15,7 +15,7 @@ ROTULOS = {
     "claude": "Claude Haiku 4.5",
     "groq_llama": "GPT-OSS 20B (Groq)",
     "maritaca": "Sabiá-4",
-    "gemini": "Gemini 2.5 Flash",
+    "gemini": "Gemini 3.8 Flash",
 }
 
 MOTOR_BASELINE = "claude"

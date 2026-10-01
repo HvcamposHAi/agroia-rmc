@@ -19,7 +19,7 @@ from benchmark.schema_adapter import (
 )
 
 # gemini-2.0-flash foi desligado em 01/06/2026; configurável por GEMINI_MODELO.
-MODELO_GEMINI = os.getenv("GEMINI_MODELO", "gemini-2.5-flash")
+MODELO_GEMINI = os.getenv("GEMINI_MODELO", "gemini-3.8-flash")
 
 
 def _proto_para_python(valor):
@@ -66,7 +66,10 @@ class GeminiProvider(LLMProvider):
                 system_instruction=system_prompt,
                 tools=tools,
             )
-            history = canonico_para_gemini_history(messages)
+            # "_id" é chave interna (usada pelo provider REST p/ a assinatura do Gemini 3).
+            history = [{"role": t["role"], "parts": [{k: v for k, v in p.items() if k != "_id"}
+                                                     for p in t["parts"]]}
+                       for t in canonico_para_gemini_history(messages)]
             resp = model.generate_content(
                 history,
                 generation_config={"max_output_tokens": max_tokens},
