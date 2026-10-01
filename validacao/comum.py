@@ -238,6 +238,24 @@ def prf1(previstos, reais) -> dict:
     return {"precisao": p, "revocacao": r, "f1": f1, "n_prev": sum(cp.values()), "n_real": sum(cr.values())}
 
 
+# ─── Aquecimento do backend ──────────────────────────────────────────────────
+def aquecer_backend(url_base: str, limite_s: int = 300, intervalo_s: int = 10) -> float | None:
+    """GET /health até responder 200. A instância gratuita do Render dorme sem uso e levou até
+    ~3 min para acordar (27-30/09/2026). Devolve o tempo até ficar pronta (registrado à parte,
+    fora do tempo das tarefas) ou None se não acordou dentro do limite."""
+    import requests
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < limite_s:
+        try:
+            r = requests.get(url_base.rstrip("/") + "/health", timeout=min(120, limite_s))
+            if r.ok and (r.json() or {}).get("status") == "ok":
+                return round(time.monotonic() - t0, 2)
+        except Exception:
+            pass
+        time.sleep(intervalo_s)
+    return None
+
+
 # ─── Limite de taxa ──────────────────────────────────────────────────────────
 class LimiteTaxa:
     def __init__(self, intervalo_s: float):

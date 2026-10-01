@@ -46,10 +46,12 @@ def calcular_gabaritos(run_id: str, snap) -> dict:
     snap.sql("SELECT 1")
     con = snap._duck
     con.register("lic", lic)
+    # Itens pela view oficial vw_itens_agro (CLAUDE.md: fonte única das métricas de item, a
+    # mesma que as ferramentas do assistente consultam), com o ano do número do processo.
     con.execute("""CREATE OR REPLACE VIEW itag AS
-        SELECT i.*, lower(strip_accents(coalesce(i.cultura, ''))) AS cultura_n, lic.canal, lic.dt_abertura, lic.ano,
-               lic.chave
-        FROM itens_licitacao i JOIN lic ON lic.id = i.licitacao_id WHERE i.relevante_agro""")
+        SELECT v.* EXCLUDE (dt_abertura), TRY_CAST(v.dt_abertura AS DATE) AS dt_abertura,
+               lower(strip_accents(coalesce(v.cultura, ''))) AS cultura_n, lic.ano, lic.chave
+        FROM vw_itens_agro v JOIN lic ON lic.id = v.licitacao_id WHERE v.relevante_agro""")
     out = {}
     for q in carregar_perguntas():
         s = spec.get(q["id"])
@@ -71,13 +73,14 @@ def calcular_gabaritos(run_id: str, snap) -> dict:
                 SELECT NULL, avg(p.preco_medio), NULL, 'media_30d', max(p.d) FROM p, u WHERE p.d > u.dmax - 30
             """, {"prod": prod}).df()
             vals = sorted({round(float(v), 4) for c in ("preco_min", "preco_medio", "preco_max")
-                           for v in df[c].dropna()})
+                           for v in df[c].dropna()} - {0.0})
             out[q["id"]] = {"tipo": "numero", "valores": vals, "data_ref": str(df["d"].max()) if len(df) else None,
                             "produtos": sorted(set(df["produto_norm"].dropna()) - {"media_30d"})}
         else:
             df = con.execute(s["consulta"]).df()
             if s["tipo"] == "numero":
-                vals = sorted({round(float(v), 4) for c in df.columns for v in df[c].dropna()})
+                # Zero não entra: qualquer "0" na resposta casaria com ele (falso acerto).
+                vals = sorted({round(float(v), 4) for c in df.columns for v in df[c].dropna()} - {0.0})
                 out[q["id"]] = {"tipo": "numero", "valores": vals}
             else:
                 out[q["id"]] = {"tipo": "entidades", "nomes": list(df["nome"]), "limiar": s.get("limiar", 0.67)}
@@ -156,10 +159,14 @@ class Cliente:
 
 def classificar_erro(chamada: dict) -> str | None:
     e = str(chamada.get("erro_http") or "") + " " + str((chamada.get("fim") or {}).get("erro") or "")
+    baixo = e.lower()
     if "413" in e:
         return "ERRO_INFRA_413"
-    if "429" in e or "rate" in e.lower() or "quota" in e.lower():
+    # "rate" sozinho casava com "generateContent" na URL do Gemini: exige termos completos.
+    if "429" in e or "rate limit" in baixo or "rate_limit" in baixo or "ratelimit" in baixo or "quota" in baixo:
         return "ERRO_INFRA_429"
+    if "404" in e or "not found" in baixo or "model_not_found" in baixo:
+        return "ERRO_INFRA_404"        # modelo inexistente/aposentado no provedor
     if "TIMEOUT" in e:
         return "ERRO_INFRA_TIMEOUT"
     if chamada.get("erro_http") or (chamada.get("fim") or {}).get("erro"):
@@ -197,8 +204,13 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
     feitas = {u["chave"] for u in estado.unidades(run_id, etapa, "concluida")}
 
     from validacao.snapshot.congelar import assinatura_rapida
+    from validacao.comum import aquecer_backend
+    # A instância gratuita do Render dorme sem uso: acordar antes do lote (tempo registrado à parte).
+    aquec = aquecer_backend(cfg["fontes"]["agroia_api_url"], int(cfg["a2"].get("aquecimento_timeout_s", 300)))
+    estado.evento(run_id, "b", f"aquecimento do backend: {aquec} s")
     cli = Cliente(cfg)
-    ctx = {"inicio": carimbo(), "modo_motor": cfg["b"]["modo_motor"], "modo_dados": cfg["b"]["modo_dados"],
+    ctx = {"inicio": carimbo(), "aquecimento_s": aquec,
+           "modo_motor": cfg["b"]["modo_motor"], "modo_dados": cfg["b"]["modo_dados"],
            "assinatura_antes": assinatura_rapida(), "motor_global_antes": cli.motor_ativo(),
            "hash_snapshot": json.loads((snap.dir / "snapshot.json").read_text(encoding="utf-8"))["hash_agregado"]}
     ultimo_por_motor: dict[str, float] = {}

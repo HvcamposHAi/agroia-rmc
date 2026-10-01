@@ -8,7 +8,11 @@
 #                  principal é o uso de ferramenta pertinente (AF@3 > 0)
 # As colunas devolvidas por `consulta` são todas aceitas como valores (numero) ou nomes (entidades).
 #
-# Visões auxiliares: `lic` (licitacoes + chave + ano) e `itag` (itens agrícolas com dados da licitação).
+# Visões auxiliares: `lic` (licitacoes + chave + ano) e `itag` (itens de vw_itens_agro com
+# relevante_agro = true, a fonte única das métricas de item segundo o CLAUDE.md e a mesma que
+# as ferramentas do assistente consultam; + ano do número do processo). Observação de escopo
+# (30/09/2026): a view contém só HORTIFRUTI e FRUTAS; proteína animal e processados marcados
+# como agrícolas na tabela de itens ficam fora dela.
 
 P01: {tipo: numero, produto: alface}
 P02: {tipo: numero, produto: cenoura}
@@ -32,10 +36,15 @@ L02:
     SELECT sum(qt_solicitada) AS qt, sum(valor_total) AS valor FROM itag
     WHERE cultura_n LIKE '%cenoura%' AND canal = 'ARMAZEM_FAMILIA'
 L03:
+  # Ranking de culturas segue a regra de negócio documentada da plataforma (chat/tools.py,
+  # CATEGORIAS_EXCLUIR): processados, grãos, laticínios e não classificados ficam fora dos
+  # rankings. Sem isso o gabarito incluiria "macarrão" e nenhum motor poderia acertar.
   tipo: entidades
   limiar: 0.67
   consulta: >
     SELECT cultura AS nome FROM itag WHERE cultura IS NOT NULL
+      AND coalesce(categoria_v2, '') NOT IN ('PROCESSADOS_AF', 'GRAOS_CEREAIS', 'LATICINIOS',
+                                             'NAO_CLASSIFICADO', 'OUTRO')
     GROUP BY cultura ORDER BY sum(valor_total) DESC LIMIT 3
 L04:
   tipo: numero

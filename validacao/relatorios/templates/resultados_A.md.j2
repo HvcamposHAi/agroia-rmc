@@ -92,6 +92,7 @@ A Tabela {{ tab("docs") }} resume disponibilidade, integridade e cobertura dos d
   ["Disponíveis para download", dd.base_disponiveis | n],
   ["Tamanho igual ao registrado na base", (dd.base_tamanho_confere | n) ~ " de " ~ (dd.base_tamanho_verificavel | n) ~ " verificáveis"],
   ["Com trechos indexados no RAG", (dd.rag_docs_com_chunks | n) ~ " (" ~ (dd.rag_cobertura | pct) ~ ")"],
+  ["Ligados a processo de outro ano (ano no nome do arquivo ≠ ano do processo)", ((dd.base_vinculo_suspeito or 0) | n) ~ " de " ~ ((dd.base_com_ano_no_nome or 0) | n) ~ " com ano no nome"],
   ["Documentos do portal nos processos da amostra", dd.amostra_portal_docs | n],
   ["Documentos do portal disponíveis", dd.amostra_portal_disponiveis | n],
   ["Documentos do portal com correspondente na base", dd.amostra_portal_com_par_base | n],
@@ -103,6 +104,10 @@ A Tabela {{ tab("docs") }} resume disponibilidade, integridade e cobertura dos d
 
 {{ FONTE }}
 
+{% if dd.base_vinculo_suspeito %}
+Documentos ligados a processo de outro ano: {{ dd.base_vinculo_suspeito_lista | join("; ") }}.
+
+{% endif %}
 ### 2.4 Agregados por ano
 
 A Tabela {{ tab("agr") }} compara os agregados anuais. {{ a1.agregados.nota }}

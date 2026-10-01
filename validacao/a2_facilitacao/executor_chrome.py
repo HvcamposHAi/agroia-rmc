@@ -25,7 +25,8 @@ from validacao import claude_chrome as cc
 from validacao import estado
 from validacao.a2_facilitacao import parser_log, pontuacao
 from validacao.a2_facilitacao.tarefas.instanciar import instanciar
-from validacao.comum import RAIZ_VALIDACAO, carimbo, carregar_config, dir_execucao, salvar_json
+from validacao.comum import (RAIZ_VALIDACAO, aquecer_backend, carimbo, carregar_config, dir_execucao,
+                             ler_json, salvar_json)
 from validacao.dados import Snapshot
 
 CONDICOES = ("PORTAL", "AGROIA")
@@ -48,14 +49,14 @@ def montar_prompt(inst: dict, condicao: str, cfg: dict, nome_gif: str) -> str:
 
 
 def aquecer(cfg: dict) -> float | None:
+    """Acorda o backend (espera /health) e carrega o frontend; o tempo fica fora da tarefa."""
     t = time.monotonic()
+    pronto = aquecer_backend(cfg["fontes"]["agroia_api_url"], int(cfg["a2"].get("aquecimento_timeout_s", 300)))
     try:
-        requests.get(cfg["fontes"]["agroia_api_url"].rstrip("/") + "/health",
-                     timeout=cfg["a2"].get("aquecimento_timeout_s", 90))
         requests.get(cfg["fontes"]["agroia_front_url"], timeout=30)
-        return round(time.monotonic() - t, 2)
     except Exception:
-        return None
+        pass
+    return round(time.monotonic() - t, 2) if pronto is not None else None
 
 
 def mover_gif(cfg: dict, nome: str, destino: Path, desde: float) -> str | None:
@@ -147,16 +148,22 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
     return consolidar(run_id, etapa)
 
 
-def _registrar(run_id, etapa, dir_a2, u, meta, saida, aquec, gif, tentativa=0):
-    met = parser_log.analisar(saida) if saida else {}
-    pt = pontuacao.pontuar(u["inst"], met.get("texto_final", ""), meta["status"])
+def pontuar_execucao(inst: dict, saida: Path | None, status_exec: str) -> tuple[dict, dict]:
+    """Métricas do log + correção contra o gabarito (mesma regra em todas as execuções)."""
+    met = parser_log.analisar(saida) if saida and Path(saida).exists() else {}
+    pt = pontuacao.pontuar(inst, met.get("texto_final", ""), status_exec)
     # Site sem permissão na extensão: o agente não chegou a medir nada (infraestrutura).
     if met.get("navegacao_negada") and pt["desfecho"] != "CORRETO":
         pt.update({"desfecho": "ERRO_INFRA_PERMISSAO", "sucesso": 0, "pontuacao": 0.0,
                    "motivo": f"{met['navegacao_negada']} navegações negadas pela extensão (site sem permissão)"})
-    if meta["status"] == "OK" and met.get("subtipo_resultado") == "error_max_turns" and pt["desfecho"] == "INCORRETO" \
+    if status_exec == "OK" and met.get("subtipo_resultado") == "error_max_turns" and pt["desfecho"] == "INCORRETO" \
             and pt["motivo"] == "FORMATO":
         pt["desfecho"], pt["motivo"] = "TIMEOUT", "orçamento de turnos esgotado"
+    return met, pt
+
+
+def _registrar(run_id, etapa, dir_a2, u, meta, saida, aquec, gif, tentativa=0):
+    met, pt = pontuar_execucao(u["inst"], saida, meta["status"])
     linha = {"chave": chave_unidade(u), "instancia": u["inst"]["id"], "modelo": u["inst"]["modelo"],
              "tipo": u["inst"]["tipo"], "condicao": u["condicao"], "rep": u["rep"],
              "status_exec": meta["status"], "tentativas": tentativa + 1,
@@ -173,8 +180,21 @@ def _registrar(run_id, etapa, dir_a2, u, meta, saida, aquec, gif, tentativa=0):
 
 
 def consolidar(run_id: str, etapa: str = "a2") -> dict:
+    """Junta as execuções e RECALCULA a correção a partir dos logs com a regra vigente, para
+    que uma calibração da pontuação valha igual para todas as execuções e as duas condições."""
     d = dir_execucao(run_id) / "a2"
-    linhas = [u["dados"] for u in estado.unidades(run_id, etapa) if u.get("dados")]
+    insts = {i["id"]: i for i in (ler_json(d / "instancias.json", {}) or {}).get("instancias", [])}
+    linhas = []
+    for u in estado.unidades(run_id, etapa):
+        dados = u.get("dados")
+        if not dados:
+            continue
+        inst = insts.get(dados.get("instancia"))
+        if inst and dados.get("log"):
+            _, pt = pontuar_execucao(inst, d / "logs" / dados["log"], dados.get("status_exec") or "OK")
+            dados = {**dados, "desfecho": pt["desfecho"], "sucesso": pt["sucesso"], "pontuacao": pt["pontuacao"],
+                     "motivo": pt["motivo"], "resposta": pt.get("resposta_json")}
+        linhas.append(dados)
     df = pd.DataFrame(linhas)
     nome = "execucoes.csv" if etapa == "a2" else "execucoes_piloto.csv"
     if not df.empty:

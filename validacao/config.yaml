@@ -112,7 +112,8 @@ a2:
   tools_internas: null
   modelos_ativos: [T01, T02, T03, T04, T05, T06, T07, T08, T09, T10, T11, T12]
   piloto_n_tarefas: 5
-  aquecimento_timeout_s: 90
+  # A instância gratuita do Render dorme sem uso e levou até ~3 min para acordar.
+  aquecimento_timeout_s: 300
 
 b:
   motores: [claude, groq_llama, maritaca, gemini]

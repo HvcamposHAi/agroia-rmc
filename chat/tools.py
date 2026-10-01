@@ -94,20 +94,22 @@ def query_itens_agro(
     """
     sb = get_supabase_client()
 
-    if agregacao == "detalhado":
-        query = sb.from_("vw_itens_agro").select(COLUNAS_ITEM).eq("relevante_agro", True)
+    def _filtrar(query):
+        """Mesmos filtros em todos os modos (antes as agregações ignoravam cultura, categoria e
+        canal: "total de tomate por ano" devolvia o total de todos os itens por ano)."""
         if processo:
             query = query.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
         query = _filtro_ano(query, ano)
         if cultura:
-            cultura = sanitizar_string(cultura)
-            query = query.ilike("cultura", f"%{cultura}%")
+            query = query.ilike("cultura", f"%{sanitizar_string(cultura)}%")
         if categoria:
-            categoria = sanitizar_string(categoria, 50)
-            query = query.eq("categoria_v2", categoria)
+            query = query.eq("categoria_v2", sanitizar_string(categoria, 50))
         if canal:
-            canal = sanitizar_string(canal, 50)
-            query = query.eq("canal", canal)
+            query = query.eq("canal", sanitizar_string(canal, 50))
+        return query
+
+    if agregacao == "detalhado":
+        query = _filtrar(sb.from_("vw_itens_agro").select(COLUNAS_ITEM).eq("relevante_agro", True))
         result = query.order("valor_total", desc=True).limit(50).execute()
         return result.data if result.data else []
 
@@ -117,9 +119,7 @@ def query_itens_agro(
         items_q = sb.from_("vw_itens_agro").select(
             "cultura, categoria_v2, valor_total, valor_unitario"
         ).eq("relevante_agro", True)
-        items_q = _filtro_ano(items_q, ano)
-        if processo:
-            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items_q = _filtrar(items_q)
         items_all = items_q.limit(10000).execute().data or []
 
         culturas_dict = {}
@@ -150,7 +150,8 @@ def query_itens_agro(
                 "categoria_v2": data["categoria_v2"],
                 "qtd_itens": qtd,
                 "valor_total_R$": round(data["valor_total"], 2),
-                "preco_medio_unit": round(data["valor_total"] / qtd if qtd > 0 else 0, 2)
+                # Valor total ÷ nº de itens de licitação (não é preço unitário do produto).
+                "valor_medio_por_item": round(data["valor_total"] / qtd if qtd > 0 else 0, 2)
             })
 
         return sorted(resultado, key=lambda x: x["valor_total_R$"], reverse=True)[:20]
@@ -160,9 +161,7 @@ def query_itens_agro(
         items_q = sb.from_("vw_itens_agro").select(
             "canal, licitacao_id, valor_total"
         ).eq("relevante_agro", True)
-        items_q = _filtro_ano(items_q, ano)
-        if processo:
-            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items_q = _filtrar(items_q)
         items_all = items_q.limit(10000).execute().data or []
 
         canais_dict = {}
@@ -198,9 +197,7 @@ def query_itens_agro(
         items_q = sb.from_("vw_itens_agro").select(
             "dt_abertura, licitacao_id, valor_total"
         ).eq("relevante_agro", True)
-        items_q = _filtro_ano(items_q, ano)
-        if processo:
-            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items_q = _filtrar(items_q)
         items = items_q.limit(10000).execute().data or []
 
         anos_dict = {}
@@ -228,9 +225,7 @@ def query_itens_agro(
         items_q = sb.from_("vw_itens_agro").select(
             "categoria_v2, licitacao_id, valor_total"
         ).eq("relevante_agro", True)
-        items_q = _filtro_ano(items_q, ano)
-        if processo:
-            items_q = items_q.ilike("processo", f"%{sanitizar_string(processo, 100)}%")
+        items_q = _filtrar(items_q)
         items = items_q.limit(10000).execute().data or []
 
         categorias_dict = {}
