@@ -10,12 +10,14 @@ from __future__ import annotations
 # Preços de LISTA (não consideram desconto de cache). Datados em 2026-06.
 PRECOS = {
     "claude": {
-        "entrada_por_1m": 0.80, "saida_por_1m": 4.00, "moeda": "USD",
-        "fonte": "https://www.anthropic.com/pricing (Claude Haiku 4.5)",
+        # US$ 0,80/4,00 era o preço do Haiku 3.5; o de lista do Haiku 4.5 é US$ 1/5 (30/09/2026).
+        "entrada_por_1m": 1.00, "saida_por_1m": 5.00, "moeda": "USD",
+        "fonte": "https://www.anthropic.com/pricing (Claude Haiku 4.5, consultado em 30/09/2026)",
     },
     "groq_llama": {
-        "entrada_por_1m": 0.05, "saida_por_1m": 0.08, "moeda": "USD",
-        "fonte": "https://groq.com/pricing (llama-3.1-8b-instant)",
+        "entrada_por_1m": 0.075, "saida_por_1m": 0.30, "moeda": "USD",
+        # openai/gpt-oss-20b (substituiu o llama-3.1-8b-instant em 30/09/2026)
+        "fonte": "https://console.groq.com/docs/model/openai/gpt-oss-20b (consultado em 30/09/2026)",
     },
     "maritaca": {
         # Sabiá-4 — cotado em BRL pela Maritaca; converter p/ USD com cambio_brl_usd.
@@ -26,8 +28,9 @@ PRECOS = {
         "fonte": "https://plataforma.maritaca.ai (Sabiá-4 — verificar preço atual)",
     },
     "gemini": {
-        "entrada_por_1m": 0.10, "saida_por_1m": 0.40, "moeda": "USD",
-        "fonte": "https://ai.google.dev/pricing (Gemini 2.0 Flash, <=128k)",
+        "entrada_por_1m": 0.30, "saida_por_1m": 2.50, "moeda": "USD",
+        # gemini-2.5-flash (substituiu o gemini-2.0-flash em 30/09/2026); há camada gratuita
+        "fonte": "https://ai.google.dev/gemini-api/docs/pricing (Gemini 2.5 Flash, consultado em 30/09/2026)",
     },
 }
 
