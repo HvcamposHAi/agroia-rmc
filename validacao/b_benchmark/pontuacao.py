@@ -95,8 +95,11 @@ def pontuar(ch: dict, q: dict, gab: dict, tol_rel: float) -> dict:
         factual = (cit / len(gab["nomes"])) >= gab.get("limiar", 0.67) if gab["nomes"] else None
     abst = None
     if q["conjunto"] == "B":
-        abst = (q.get("tool_esperada") is None and len(nomes) == 0 and not numeros_relevantes(texto)) or \
-               (recusou(texto) and not numeros_relevantes(texto))
+        # Definição do pacote benchmark/ (metricas.abstencao_correta): sem ferramenta esperada,
+        # basta não chamar ferramenta; nas perguntas de dado inexistente (PAA/PNAE), não
+        # apresentar número inventado. Recusa explícita sem número também conta como correta.
+        from benchmark.metricas import abstencao_correta
+        abst = bool(abstencao_correta(exe, q)) or (recusou(texto) and not numeros_relevantes(texto))
     falsa_abst = (q["conjunto"] == "A" and recusou(texto) and not nums and not infra)
 
     # Desfecho principal por chamada

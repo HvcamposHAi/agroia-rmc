@@ -159,10 +159,14 @@ class Cliente:
 
 def classificar_erro(chamada: dict) -> str | None:
     e = str(chamada.get("erro_http") or "") + " " + str((chamada.get("fim") or {}).get("erro") or "")
+    baixo = e.lower()
     if "413" in e:
         return "ERRO_INFRA_413"
-    if "429" in e or "rate" in e.lower() or "quota" in e.lower():
+    # "rate" sozinho casava com "generateContent" na URL do Gemini: exige termos completos.
+    if "429" in e or "rate limit" in baixo or "rate_limit" in baixo or "ratelimit" in baixo or "quota" in baixo:
         return "ERRO_INFRA_429"
+    if "404" in e or "not found" in baixo or "model_not_found" in baixo:
+        return "ERRO_INFRA_404"        # modelo inexistente/aposentado no provedor
     if "TIMEOUT" in e:
         return "ERRO_INFRA_TIMEOUT"
     if chamada.get("erro_http") or (chamada.get("fim") or {}).get("erro"):

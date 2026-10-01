@@ -127,6 +127,7 @@ Nesta execução: {% if a2.excluidas_infra %}tarefas excluídas por infraestrutu
 - A condição AGROIA inclui os domínios do Google Drive ({{ cfg.fontes.agroia_front_dominios[1:] | join(", ") }}), onde a plataforma hospeda os PDFs dos editais; sem eles o agente não abre os documentos que a própria plataforma oferece (ajuste feito após o piloto).
 - A regra de pontuação do objeto (T01) passou a conferir as palavras principais, sem termos genéricos como "aquisição", "programa" e "Armazém da Família" (calibração feita no piloto, aplicada igualmente às duas condições).
 - Três enunciados foram ajustados aos campos existentes na base e na fonte (T02, T04, T05), conforme o cabeçalho do catálogo.
+- Após o piloto, o enunciado da T05 passou de "processos de compra do FAAC" para "processos de compra agrícolas do FAAC", com gabarito nas licitações classificadas como agrícolas pela plataforma (relevante_af). A versão anterior media algo fora do escopo do AgroIA. Na condição PORTAL o agente precisa julgar pelo objeto quais processos são agrícolas, enquanto o gabarito segue a classificação da plataforma; isso é uma limitação de construto desta tarefa.
 {% if prereg_alterado %}- O arquivo de pré-registro difere do hash registrado.
 {% endif %}
 {% if a2_piloto %}- A A2 não foi executada no dimensionamento completo nesta execução.

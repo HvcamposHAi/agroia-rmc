@@ -14,8 +14,12 @@
 #        (campo "Data Abertura Edital" do portal); o documento é pontuado pela URL.
 #   T04: vencedores por produto e ano → vencedores do processo (a base não guarda o vencedor
 #        por item; guarda por processo em participacoes.vencedor).
-#   T05: "processos de aquisição de gêneros alimentícios" → "processos de compra registrados
-#        pelo FAAC" (o portal não classifica o objeto; a contagem é verificável no censo).
+#   T05: "processos de aquisição de gêneros alimentícios" → "processos de compra agrícolas do
+#        FAAC", gabarito = licitações com relevante_af = true no ano (escopo da plataforma).
+#        Desvio aprovado em 30/09/2026 após o piloto: a versão "todos os processos do FAAC"
+#        media algo fora do escopo do AgroIA (ele cobre só as agrícolas). Limitação: o portal
+#        não classifica o objeto, então na condição PORTAL o agente precisa julgar quais
+#        processos são agrícolas pelo objeto, e o gabarito segue a classificação da plataforma.
 
 T01:
   tipo: localizacao
@@ -57,10 +61,10 @@ T04:
 
 T05:
   tipo: agregacao_simples
-  enunciado: "Quantos processos de compra o Fundo de Abastecimento Alimentar de Curitiba (FAAC) registrou com número do ano de {ano}?"
+  enunciado: "Quantos processos de compra agrícolas o Fundo de Abastecimento Alimentar de Curitiba (FAAC) registrou com número do ano de {ano}?"
   parametros: [ano_exato]
   depende: [censo]
-  consulta: "SELECT count(*) AS valor FROM lic WHERE ano = $ano"
+  consulta: "SELECT count(*) AS valor FROM lic WHERE ano = $ano AND relevante_af"
   pontuacao: {tipo: numero, tolerancia_abs: 0}
 
 T06:
