@@ -118,11 +118,13 @@ def chk_flags(cfg):
 
 
 def chk_chrome(cfg):
-    from validacao.claude_chrome import sonda
+    from validacao.claude_chrome import garantir_conexao
     d = RAIZ_VALIDACAO / "execucoes" / "_sondas"
-    r = sonda(cfg, d, timeout_s=120)
-    return _r("Extensão Claude in Chrome conectada", r["ok"],
-              f"sonda {r['status']} em {r['duracao_s']} s", ["a1_chrome", "a2"])
+    # A extensão às vezes cai sozinha ("No Chrome extension connected", 01/10/2026): uma
+    # única sonda negativa desligava a 2ª leitura da A1 inteira. Reabre o Chrome e insiste.
+    tentativas = []
+    ok = garantir_conexao(cfg, d, tentativas.append)
+    return _r("Extensão Claude in Chrome conectada", ok, "; ".join(tentativas), ["a1_chrome", "a2"])
 
 
 def chk_permissoes_sites(cfg):
