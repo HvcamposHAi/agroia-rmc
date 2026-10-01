@@ -302,3 +302,32 @@ def test_relatorio_sintetico(tmp_path, monkeypatch):
     assert "resultados_A.html" in arqs and "metodologia_B.md" in arqs
     md = (run / "relatorios" / "resultados_A.md").read_text(encoding="utf-8")
     assert "90,0%" in md and "Tabela 1" in md and " — " not in md
+
+
+# ─── limite de uso do plano Claude (execução autônoma longa) ─────────────────
+def test_limite_de_uso_vira_erro_infra_limite(tmp_path, monkeypatch):
+    from validacao import claude_chrome as cc
+
+    def falso_popen(cmd, cwd=None, stdout=None, stderr=None, stdin=None, env=None, **_):
+        linhas = [
+            {"type": "system", "subtype": "init",
+             "mcp_servers": [{"name": "claude-in-chrome", "status": "connected"}]},
+            {"type": "result", "subtype": "success", "is_error": True, "num_turns": 1,
+             "result": "Claude AI usage limit reached|1759300000"},
+        ]
+        stdout.write("\n".join(json.dumps(l) for l in linhas))
+        stdout.flush()
+
+        class _P:
+            pid = 0
+
+            def wait(self, timeout=None):
+                return 1
+        return _P()
+
+    monkeypatch.setattr(cc.subprocess, "Popen", falso_popen)
+    cfg = {"a2": {"permission_mode": "dontAsk", "modelo_agente": "m", "max_turns": 5}}
+    meta = cc.executar("prompt", cfg, tmp_path / "w", tmp_path / "s.jsonl", 30)
+    assert meta["status"] == "ERRO_INFRA_LIMITE"
+    assert cc.LIMITE_RE.search("5-hour limit reached ∙ resets 3am")
+    assert not cc.LIMITE_RE.search("Pronto. {\"resposta\": 3}")

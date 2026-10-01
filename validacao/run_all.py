@@ -26,6 +26,10 @@ from validacao.comum import (CONFIG_PADRAO, carimbo, carregar_config, carregar_e
 ORDEM = ["snapshot", "a1", "a2", "b", "relatorios"]
 
 
+class EtapaIncompleta(RuntimeError):
+    """Etapa interrompida de forma retomável (ex.: limite de uso do plano Claude)."""
+
+
 def _manifesto(run_id: str) -> dict:
     return ler_json(dir_execucao(run_id) / "manifesto.json", {}) or {}
 
@@ -104,16 +108,27 @@ def executar(etapas: list[str], run_id: str | None = None, reusar: str | None = 
                                  "linhas": {t: v["linhas"] for t, v in info["tabelas"].items()}}
             elif etapa == "a1":
                 from validacao.a1_fidelidade.executar import executar as a1
-                a1(run_id, cfg, limite=opcoes.get("a1_limite"), usar_chrome=False if opcoes.get("sem_chrome") else None)
+                r1 = a1(run_id, cfg, limite=opcoes.get("a1_limite"), usar_chrome=False if opcoes.get("sem_chrome") else None)
+                if (r1 or {}).get("chrome", {}).get("interrompido_limite"):
+                    raise EtapaIncompleta("leituras pelo Chrome interrompidas pelo limite de uso do plano Claude")
             elif etapa == "a2":
                 from validacao.a2_facilitacao.executor_chrome import executar as a2
-                a2(run_id, cfg, piloto=bool(opcoes.get("a2_piloto")))
+                r2 = a2(run_id, cfg, piloto=bool(opcoes.get("a2_piloto")))
+                if (r2 or {}).get("incompleta"):
+                    raise EtapaIncompleta("execuções interrompidas pelo limite de uso do plano Claude")
             elif etapa == "b":
                 from validacao.b_benchmark.executar import executar as b
                 b(run_id, cfg, piloto=bool(opcoes.get("b_piloto")))
             m["etapas_concluidas"].append(etapa)
             estado.etapa_concluida(run_id, etapa)
             estado.evento(run_id, etapa, "concluída")
+        except EtapaIncompleta as e:
+            # Não marca como concluída: --retomar continua de onde parou.
+            m["erros"][etapa] = f"incompleta: {e}; retome com --retomar"
+            m.setdefault("incompletas", [])
+            if etapa not in m["incompletas"]:
+                m["incompletas"].append(etapa)
+            estado.evento(run_id, etapa, f"incompleta: {e}", "aviso")
         except Exception as e:  # noqa: BLE001 — falha de etapa não interrompe as seguintes
             m["erros"][etapa] = f"{type(e).__name__}: {e}"
             (d / f"erro_{etapa}.txt").write_text(traceback.format_exc(), encoding="utf-8")

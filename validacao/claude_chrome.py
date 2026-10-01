@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -26,6 +27,9 @@ from pathlib import Path
 from validacao.comum import carimbo, salvar_json
 
 PREFIXO_CHROME = "mcp__claude-in-chrome__"
+# Mensagens do CLI quando o plano atinge o limite de uso (ex.: "Claude AI usage limit reached",
+# "5-hour limit reached ∙ resets 3am") ou a API recusa por sobrecarga/limite de taxa.
+LIMITE_RE = re.compile(r"usage limit|limit reached|resets? (?:at|in)\b|rate.?limit|overloaded|quota", re.I)
 
 
 def _exe() -> str:
@@ -96,9 +100,13 @@ def executar(prompt: str, cfg: dict, cwd: Path, saida_jsonl: Path, timeout_s: in
         status = "ERRO_INFRA"          # saída fora do formato stream-json: flags não aplicadas
     if status == "OK":
         ev = ler_eventos(saida_jsonl)
+        fin = resultado_final(ev) or {}
+        if fin.get("is_error") and LIMITE_RE.search(str(fin.get("result") or "")):
+            # Limite de uso do plano: a execução não mediu nada; quem chama interrompe a etapa.
+            status = "ERRO_INFRA_LIMITE"
         # A conexão com a extensão é assíncrona: se o agente terminou sem usar o navegador e
         # o servidor não estava conectado na inicialização, a execução não mediu nada.
-        if not usou_chrome(ev) and not chrome_conectado_no_inicio(ev):
+        elif not usou_chrome(ev) and not chrome_conectado_no_inicio(ev):
             status = "ERRO_INFRA_CHROME"
     meta = {"status": status, "rc": rc, "duracao_s": round(dur, 2), "inicio": inicio, "fim": carimbo(),
             "comando": cmd, "prompt_arquivo": arq_prompt.name}
