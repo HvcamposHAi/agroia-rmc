@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 from validacao import estado
 from validacao.comum import (LimiteTaxa, get_com_backoff, jaccard, ngramas, norm_texto, salvar_json,
@@ -65,11 +66,18 @@ class Baixador:
             meta["content_type"] = r.headers.get("content-type")
             if r.ok:
                 buf = bytearray()
-                for bloco in r.iter_content(1 << 16):
-                    buf += bloco
-                    if len(buf) > self.max_bytes:
-                        meta["truncado"] = True
-                        break
+                try:
+                    for bloco in r.iter_content(1 << 16):
+                        buf += bloco
+                        if len(buf) > self.max_bytes:
+                            meta["truncado"] = True
+                            break
+                except requests.RequestException as e:
+                    # Corpo interrompido (ex.: read timeout no meio do download): erro transitório,
+                    # registrado na linha mas fora do cache, para uma retomada tentar de novo.
+                    r.close()
+                    meta["erro"] = f"download interrompido: {type(e).__name__}"
+                    return meta
                 conteudo = bytes(buf)
                 meta["tamanho"] = len(conteudo) if not meta["truncado"] else None
                 meta["sha256"] = sha256_bytes(conteudo) if not meta["truncado"] else None
