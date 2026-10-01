@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import random
+import re
 import time
 import uuid
 
@@ -230,8 +231,11 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
                 ultimo_por_motor[m] = time.monotonic()
                 erro = classificar_erro(c)
                 if erro == "ERRO_INFRA_429" and tent < int(cfg["b"]["max_backoff_tentativas"]):
-                    estado.evento(run_id, "b", f"{k}: 429, backoff {2 ** (tent + 2)} s", "aviso")
-                    time.sleep(2 ** (tent + 2))
+                    # Espera o tempo indicado pelo provedor ("try again in 28.9s"), senão backoff exponencial.
+                    m = re.search(r"try again in ([\d.]+)\s*s", str((c.get("fim") or {}).get("erro") or ""), re.I)
+                    espera = min(90.0, float(m.group(1)) + 2) if m else float(2 ** (tent + 2))
+                    estado.evento(run_id, "b", f"{k}: 429, espera {espera:.0f} s", "aviso")
+                    time.sleep(espera)
                     tent += 1
                     continue
                 break
