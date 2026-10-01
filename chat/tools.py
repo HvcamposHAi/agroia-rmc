@@ -356,7 +356,7 @@ def query_licitacoes(
     canal: str | None = None,
     ano_inicio: int | None = None,
     ano_fim: int | None = None
-) -> list[dict]:
+) -> dict:
     """
     Consulta licitações agrícolas (relevante_af=true, escopo do projeto).
     O filtro anterior (canal != OUTRO) escondia 145 licitações agrícolas de canal OUTRO e
@@ -365,7 +365,7 @@ def query_licitacoes(
     sb = get_supabase_client()
 
     query = sb.from_("licitacoes").select(
-        "id, processo, tipo_processo, canal, dt_abertura, situacao, objeto"
+        "id, processo, tipo_processo, canal, dt_abertura, situacao, objeto", count="exact"
     )
 
     query = query.eq("relevante_af", True)
@@ -400,7 +400,14 @@ def query_licitacoes(
 
     query = query.order("dt_abertura", desc=True).limit(50)
     result = query.execute()
-    return result.data if result.data else []
+    linhas = result.data or []
+    total = result.count if result.count is not None else len(linhas)
+    saida = {"total_encontrado": total, "exibindo": len(linhas), "licitacoes": linhas}
+    if total > len(linhas):
+        # Sem isto o assistente apresentava o limite da lista (50) como contagem.
+        saida["aviso"] = (f"Lista limitada às {len(linhas)} mais recentes de {total}. "
+                          "Para perguntas de quantidade, use total_encontrado.")
+    return saida
 
 def buscar_chunks_rag(
     pergunta: str,
@@ -1027,17 +1034,17 @@ TOOLS_SCHEMA = [
     },
     {
         "name": "query_licitacoes",
-        "description": "Busca licitações por processo, canal, ou período. Retorna apenas licitações com itens agrícolas relevantes.",
+        "description": "Busca licitações agrícolas do FAAC por processo, canal ou período. Retorna {total_encontrado, exibindo, licitacoes}: a lista vem limitada às 50 mais recentes; para perguntas de quantidade use total_encontrado. Para todos os processos com número de um ano, use processo='/2024'.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "processo": {
                     "type": "string",
-                    "description": "Número do processo (ex: DE 4/2019, PNAE 5/2023)"
+                    "description": "Número do processo ou parte dele (ex: 'PE 69/2026', 'DS 62/2021', '/2024')"
                 },
                 "canal": {
                     "type": "string",
-                    "enum": ["PNAE", "PAA", "ARMAZEM_FAMILIA", "BANCO_ALIMENTOS", "MESA_SOLIDARIA"],
+                    "enum": ["ARMAZEM_FAMILIA", "BANCO_ALIMENTOS", "MESA_SOLIDARIA", "OUTRO"],
                     "description": "Canal institucional"
                 },
                 "ano_inicio": {
