@@ -197,8 +197,13 @@ def executar(run_id: str, cfg: dict | None = None, piloto: bool = False) -> dict
     feitas = {u["chave"] for u in estado.unidades(run_id, etapa, "concluida")}
 
     from validacao.snapshot.congelar import assinatura_rapida
+    from validacao.comum import aquecer_backend
+    # A instância gratuita do Render dorme sem uso: acordar antes do lote (tempo registrado à parte).
+    aquec = aquecer_backend(cfg["fontes"]["agroia_api_url"], int(cfg["a2"].get("aquecimento_timeout_s", 300)))
+    estado.evento(run_id, "b", f"aquecimento do backend: {aquec} s")
     cli = Cliente(cfg)
-    ctx = {"inicio": carimbo(), "modo_motor": cfg["b"]["modo_motor"], "modo_dados": cfg["b"]["modo_dados"],
+    ctx = {"inicio": carimbo(), "aquecimento_s": aquec,
+           "modo_motor": cfg["b"]["modo_motor"], "modo_dados": cfg["b"]["modo_dados"],
            "assinatura_antes": assinatura_rapida(), "motor_global_antes": cli.motor_ativo(),
            "hash_snapshot": json.loads((snap.dir / "snapshot.json").read_text(encoding="utf-8"))["hash_agregado"]}
     ultimo_por_motor: dict[str, float] = {}
