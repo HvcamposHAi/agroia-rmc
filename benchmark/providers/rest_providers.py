@@ -33,6 +33,22 @@ GEMINI_MODELO = os.getenv("GEMINI_MODELO", "gemini-2.5-flash")
 GROQ_MODELO = os.getenv("GROQ_MODELO", "openai/gpt-oss-20b")
 
 
+def _erro_com_detalhe(e: Exception) -> str:
+    """Mensagem do erro + explicação do provedor (campo error.message do corpo da resposta).
+    Sem isso, um 404 do Gemini ou da Groq não dizia se o modelo foi desligado, se a chave não
+    tem acesso a ele ou se o projeto não tem a API habilitada."""
+    resp = getattr(e, "response", None)
+    if resp is None:
+        return str(e)
+    try:
+        corpo = resp.json()
+        erro = corpo.get("error", corpo) if isinstance(corpo, dict) else corpo
+        detalhe = erro.get("message", "") if isinstance(erro, dict) else str(erro)
+    except Exception:  # noqa: BLE001
+        detalhe = resp.text or ""
+    return f"{e} | {str(detalhe)[:400]}" if detalhe else str(e)
+
+
 def _redigir_chave(msg: str, chave: str) -> str:
     """Remove a chave de API de mensagens de erro (evita vazamento na UI/logs)."""
     texto = str(msg)
@@ -71,7 +87,7 @@ class OpenAICompatRestProvider(LLMProvider):
             r.raise_for_status()
             data = r.json()
         except Exception as e:  # noqa: BLE001 — contrato base.py: nunca levanta
-            return LLMResponse(texto=_redigir_chave(e, self.api_key), stop_reason="erro",
+            return LLMResponse(texto=_redigir_chave(_erro_com_detalhe(e), self.api_key), stop_reason="erro",
                                latencia_ms=int((time.monotonic() - t0) * 1000))
 
         latencia = int((time.monotonic() - t0) * 1000)
@@ -162,7 +178,7 @@ class GeminiRestProvider(LLMProvider):
             r.raise_for_status()
             data = r.json()
         except Exception as e:  # noqa: BLE001
-            return LLMResponse(texto=_redigir_chave(e, self.api_key), stop_reason="erro",
+            return LLMResponse(texto=_redigir_chave(_erro_com_detalhe(e), self.api_key), stop_reason="erro",
                                latencia_ms=int((time.monotonic() - t0) * 1000))
 
         latencia = int((time.monotonic() - t0) * 1000)
