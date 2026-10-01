@@ -29,7 +29,9 @@ GROQ_BASE_URL_PADRAO = "https://api.groq.com/openai/v1"
 MARITACA_BASE_URL_PADRAO = "https://chat.maritaca.ai/api"
 # Modelos desligados pelos provedores em 2026 (gemini-2.0-flash em 01/06; Groq
 # llama-3.1-8b-instant em 16/08): substitutos escolhidos em 30/09/2026, configuráveis.
-GEMINI_MODELO = os.getenv("GEMINI_MODELO", "gemini-2.5-flash")
+# gemini-2.5-flash "não está mais disponível para usuários novos" (resposta da API à chave do
+# projeto, 30/09/2026); a própria API indicou gemini-3.8-flash.
+GEMINI_MODELO = os.getenv("GEMINI_MODELO", "gemini-3.8-flash")
 GROQ_MODELO = os.getenv("GROQ_MODELO", "openai/gpt-oss-20b")
 
 
@@ -130,11 +132,14 @@ class OpenAICompatRestProvider(LLMProvider):
 # ---------------------------------------------------------------------------
 # Gemini — generateContent via REST (sem SDK)
 # ---------------------------------------------------------------------------
-def _para_rest_parts(history: list) -> list:
+def _para_rest_parts(history: list, assinaturas: dict | None = None) -> list:
     """Converte o history (snake_case do schema_adapter) para o shape REST do Gemini.
 
     function_call -> functionCall ; function_response -> functionResponse.
+    `assinaturas` (id da chamada -> thoughtSignature): o Gemini 3 devolve uma assinatura na
+    parte functionCall e exige que ela volte, na mesma parte, nos turnos seguintes.
     """
+    assinaturas = assinaturas or {}
     out = []
     for turno in history:
         parts = []
@@ -143,7 +148,11 @@ def _para_rest_parts(history: list) -> list:
                 parts.append({"text": p["text"]})
             elif "function_call" in p:
                 fc = p["function_call"]
-                parts.append({"functionCall": {"name": fc.get("name"), "args": fc.get("args", {})}})
+                parte = {"functionCall": {"name": fc.get("name"), "args": fc.get("args", {})}}
+                sig = assinaturas.get(p.get("_id"))
+                if sig:
+                    parte["thoughtSignature"] = sig
+                parts.append(parte)
             elif "function_response" in p:
                 fr = p["function_response"]
                 parts.append({"functionResponse": {"name": fr.get("name"),
@@ -159,6 +168,8 @@ class GeminiRestProvider(LLMProvider):
     def __init__(self, api_key: str, modelo: str | None = None):
         self.api_key = api_key
         self.modelo = modelo or GEMINI_MODELO
+        self._assinaturas: dict[str, str] = {}   # id da chamada -> thoughtSignature
+        self._n_chamadas = 0
 
     def gerar(self, system_prompt, tools_schema, messages,
               max_tokens=2048, timeout=30) -> LLMResponse:
@@ -167,7 +178,7 @@ class GeminiRestProvider(LLMProvider):
                f"{self.modelo}:generateContent?key={self.api_key}")
         body = {
             "system_instruction": {"parts": [{"text": system_prompt}]},
-            "contents": _para_rest_parts(canonico_para_gemini_history(messages)),
+            "contents": _para_rest_parts(canonico_para_gemini_history(messages), self._assinaturas),
             "generationConfig": {"maxOutputTokens": max_tokens},
         }
         if tools_schema:
@@ -188,11 +199,15 @@ class GeminiRestProvider(LLMProvider):
             partes = data["candidates"][0]["content"]["parts"]
         except (KeyError, IndexError, TypeError):
             partes = []
-        for i, part in enumerate(partes):
+        for part in partes:
             fc = part.get("functionCall")
             if fc and fc.get("name"):
+                self._n_chamadas += 1
+                cid = f"gemini_{fc['name']}_{self._n_chamadas}"   # único na conversa
+                if part.get("thoughtSignature"):
+                    self._assinaturas[cid] = part["thoughtSignature"]
                 tool_calls.append(ToolCall(
-                    id=f"gemini_{fc['name']}_{i}",
+                    id=cid,
                     nome=fc["name"],
                     inputs=dict(fc.get("args", {}) or {}),
                 ))

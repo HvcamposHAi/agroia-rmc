@@ -20,7 +20,7 @@ parâmetros de `chat/agent.py`.
 | `claude`     | claude-haiku-4-5-20251001 (baseline) | `ANTHROPIC_API_KEY` |
 | `groq_llama` | openai/gpt-oss-20b (Groq; via `GROQ_MODELO`) | `GROQ_API_KEY` |
 | `maritaca`   | sabia-4 (Maritaca; via `MARITACA_MODELO`) | `MARITACA_API_KEY` |
-| `gemini`     | gemini-2.5-flash (Google; via `GEMINI_MODELO`) | `GOOGLE_API_KEY` |
+| `gemini`     | gemini-3.8-flash (Google; via `GEMINI_MODELO`) | `GOOGLE_API_KEY` |
 
 ## Instalação (venv 3.11 dedicada)
 

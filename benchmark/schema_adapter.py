@@ -217,7 +217,7 @@ def canonico_para_gemini_history(messages: list) -> list:
                 parts.append({"function_call": {
                     "name": nome,
                     "args": _bloco_get(bloco, "input") or {},
-                }})
+                }, "_id": tid})   # _id: permite reanexar o thoughtSignature (Gemini 3)
             elif btype == "tool_result":
                 # o conteúdo é uma string JSON; embrulha em {"result": ...}
                 tid = _bloco_get(bloco, "tool_use_id")
