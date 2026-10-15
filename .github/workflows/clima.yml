@@ -1,0 +1,50 @@
+name: Coleta de clima (NASA POWER, ONI, IPCA)
+
+# Clima diário das regiões produtoras (chat/clima_collector.py → clima_diario) e índices
+# mensais ONI (NOAA) e IPCA (IBGE). Fontes públicas fora da Prefeitura: runner hospedado.
+# Workflow separado: falha aqui nunca afeta as coletas de preço. Plano v3, etapa E4.
+# Pré-requisito: sql/clima.sql aplicado no Supabase.
+
+on:
+  workflow_dispatch:
+    inputs:
+      inicio:
+        description: "Data inicial AAAA-MM-DD (vazio = últimos 30 dias; carga: 2017-01-01)"
+        default: ""
+      regiao:
+        description: "Só esta região (id de clima_regiao; vazio = todas)"
+        default: ""
+  schedule:
+    - cron: "0 10 * * *"   # 10:00 UTC = 07:00 BRT
+
+concurrency:
+  group: clima
+  cancel-in-progress: false
+
+jobs:
+  coleta-clima:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      INICIO: ${{ github.event.inputs.inicio }}
+      REGIAO: ${{ github.event.inputs.regiao }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install httpx supabase==2.28.3 python-dotenv
+
+      - name: Coletar clima, ONI e IPCA
+        run: |
+          ARGS=""
+          if [ -n "$INICIO" ]; then ARGS="$ARGS --inicio $INICIO"; fi
+          if [ -n "$REGIAO" ]; then ARGS="$ARGS --regiao $REGIAO"; fi
+          python -m chat.clima_collector $ARGS
