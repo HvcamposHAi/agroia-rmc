@@ -12,6 +12,12 @@ on:
       dias:
         description: "Dias para coletar (backfill)"
         default: "7"
+      inicio:
+        description: "Carga retroativa: data inicial AAAA-MM-DD (vazio = usar 'dias')"
+        default: ""
+      fim:
+        description: "Carga retroativa: data final AAAA-MM-DD (vazio = hoje)"
+        default: ""
   schedule:
     - cron: "30 16 * * 1-6"   # 16:30 UTC = 13:30 BRT, seg–sáb
 
@@ -39,4 +45,12 @@ jobs:
           python -m pip install httpx supabase==2.28.3 python-dotenv
 
       - name: Coletar cotações por variedade
-        run: python -m chat.ceasa_pr_collector ${{ github.event.inputs.dias || '7' }}
+        env:
+          DIAS: ${{ github.event.inputs.dias || '7' }}
+          INICIO: ${{ github.event.inputs.inicio }}
+          FIM: ${{ github.event.inputs.fim }}
+        run: |
+          ARGS="$DIAS"
+          if [ -n "$INICIO" ]; then ARGS="$ARGS --inicio $INICIO"; fi
+          if [ -n "$FIM" ]; then ARGS="$ARGS --fim $FIM"; fi
+          python -m chat.ceasa_pr_collector $ARGS

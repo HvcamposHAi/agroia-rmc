@@ -160,6 +160,25 @@ def _buscar_janela(client: httpx.Client, ini: date, fim: date) -> str:
     return resp.content.decode("cp1252", errors="replace")
 
 
+def _buscar_registros(client: httpx.Client, ini: date, fim: date, falhas: list[str]) -> list[dict]:
+    """Busca a janela; se falhar, refaz dia a dia. Alguns dias antigos derrubam o servidor
+    (HTTP 500 sempre no mesmo dia, ex.: 10/10/2016) e levariam a janela inteira junto."""
+    try:
+        return parse_html(_buscar_janela(client, ini, fim))
+    except Exception as e:
+        if ini == fim:
+            logger.error(f"CEASA/PR {ini}: {e}")
+            falhas.append(f"{ini}:{str(e)[:80]}")
+            return []
+        logger.warning(f"CEASA/PR {ini}–{fim}: {e} — refazendo dia a dia")
+    registros = []
+    for k in range((fim - ini).days + 1):
+        dia = ini + timedelta(days=k)
+        time.sleep(PAUSA_SEG)
+        registros += _buscar_registros(client, dia, dia, falhas)
+    return registros
+
+
 def _upsert_lotes(supabase, registros: list[dict], falhas: list[str]) -> tuple[int, str | None]:
     """Grava em lotes. Lote que falha entra em `falhas` (a coleta termina em erro).
     Devolve (linhas gravadas, maior data_coleta efetivamente gravada)."""
@@ -213,12 +232,7 @@ def coletar_ceasa_pr(dias: int = 7, inicio: date | None = None, fim: date | None
         ini = inicio
         while ini <= fim:
             fim_janela = min(ini + timedelta(days=JANELA_DIAS - 1), fim)
-            try:
-                registros = parse_html(_buscar_janela(client, ini, fim_janela))
-            except Exception as e:
-                logger.error(f"CEASA/PR {ini}–{fim_janela}: {e}")
-                falhas_busca.append(f"{ini}:{str(e)[:80]}")
-                registros = []
+            registros = _buscar_registros(client, ini, fim_janela, falhas_busca)
             # dedup do payload (mesma chave repetida derruba o upsert do PostgREST)
             unicos = {(r["data_coleta"], r["unidade"], r["descricao"]): r for r in registros}
             lidas += len(unicos)

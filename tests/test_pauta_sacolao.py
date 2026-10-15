@@ -154,6 +154,34 @@ def test_tp0_coletor_ceasa_pr_portal_sem_cotacoes_e_erro(monkeypatch):
     assert any("HTML" in f for f in r["falhas"])
 
 
+class _ClienteHttpDiaRuim(_ClienteHttpFalso):
+    """Janela que contém o dia ruim dá HTTP 500 (como 10/10/2016 no portal real)."""
+
+    ruim = date.today() - timedelta(days=1)
+    pedidos: list = []
+
+    def post(self, url, data=None, **k):
+        from datetime import datetime as dt
+        ini = dt.strptime(data["dataIni"], "%d/%m/%Y").date()
+        fim = dt.strptime(data["dataFim"], "%d/%m/%Y").date()
+        self.pedidos.append((ini, fim))
+        if ini <= self.ruim <= fim:
+            import httpx
+            raise httpx.HTTPStatusError("500 Internal Server Error", request=None, response=None)
+        return _RespostaFalsa(_HTML_CEASA.format(data=ini.strftime("%d/%m/%Y")))
+
+
+def test_tp0_coletor_ceasa_pr_isola_dia_com_erro_500(monkeypatch):
+    sb = _SupabaseSemTabela()
+    sb.falhar = False
+    _ClienteHttpDiaRuim.pedidos = []
+    r = _coletor(monkeypatch, sb, _ClienteHttpDiaRuim).coletar_ceasa_pr(3)   # 1 janela de 3 dias
+    assert len(_ClienteHttpDiaRuim.pedidos) == 4          # janela + 3 dias isolados
+    assert r["linhas_inseridas"] == 4                     # 2 dias bons × 2 unidades
+    assert r["status"] == "ok"
+    assert [f[:10] for f in r["falhas"]] == [_ClienteHttpDiaRuim.ruim.isoformat()]
+
+
 def test_tp0_coletor_ceasa_pr_argumentos():
     from chat.ceasa_pr_collector import _args
     a = _args([])
@@ -324,6 +352,17 @@ def test_tp8_mase_e_cobertura():
     hi[0] = y[0] - 0.5                                  # 2 fora da faixa
     lo[9] = y[9] + 0.5
     assert av.cobertura_intervalo(y, lo, hi) == pytest.approx(0.8)
+
+
+def test_tp8_perda_quantil_e_diebold_mariano():
+    av = pytest.importorskip("ml.avaliacao", reason="E6 pendente")
+    assert av.perda_quantil([10], [8], 0.9) == pytest.approx(1.8)    # subestimou: 0,9 × 2
+    assert av.perda_quantil([10], [12], 0.9) == pytest.approx(0.2)   # superestimou: 0,1 × 2
+    ref = [3.0 + _ruido(i) * 10 for i in range(40)]                  # erros da referência
+    melhor = [e / 3 for e in ref]
+    r = av.diebold_mariano(melhor, ref)
+    assert r["p_valor"] < 0.05 and r["estatistica"] < 0
+    assert av.diebold_mariano(ref, melhor)["p_valor"] > 0.95         # pior não passa
 
 
 # ── T-P9 · sem vazamento temporal ────────────────────────────────────────────
