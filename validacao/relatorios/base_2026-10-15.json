@@ -1,0 +1,219 @@
+{
+ "medido_em": "2026-10-15T03:57:16+00:00",
+ "codigo": {
+  "tools_schema": {
+   "n": 11,
+   "sha256": "641c5cba5b551f0b1b20efe386fa699f495deeafca0681f0256d7928c7b48346",
+   "nomes": [
+    "query_itens_agro",
+    "query_fornecedores",
+    "query_licitacoes",
+    "buscar_chunks_rag",
+    "consultar_preco_produto",
+    "comparar_preco_historico",
+    "ranking_melhores_precos",
+    "consultar_precos_lista",
+    "comparar_ceasas",
+    "cruzar_preco_prefeitura",
+    "query_ofertas_produtores"
+   ]
+  },
+  "produtor_tools_schema": {
+   "n": 2,
+   "sha256": "4c81de3641ecfa542a3eed40a1122835aa26a5ebfb79b28c12526a202a299a81"
+  },
+  "prompts": {
+   "SYSTEM_PROMPT": "b5170f5e7a743d661767ca8d3affb37a7d722aa598943235b73312f1981bdba7",
+   "PRECOS_SYSTEM_PROMPT": "ffaf02c10a255a470f5c9fbb5257dd9630fbcb6e26344c61561271208762926b",
+   "PRODUTOR_SYSTEM_PROMPT": "5d978d7605ae88579e38b660f77c6660c7d7661904569e8cf3a1a0149d8abe76"
+  },
+  "arquivos": {
+   "requirements-api.txt": "f1b88b786713c6fcd962530fd0478d795034266e91e9a6c09841c191ac9bc19d",
+   "Dockerfile": "de4f07991856c96e5248a128f0ba5a3a79f47a51ac08a3612e4e1b897c829b45"
+  },
+  "rotas": [
+   "DELETE /conversas/{session_id}",
+   "GET /",
+   "GET /auditoria/consistencia",
+   "GET /benchmark/motores",
+   "GET /coleta/config",
+   "GET /coleta/proxima-execucao",
+   "GET /coleta/stats",
+   "GET /coleta/status",
+   "GET /coleta/ultima-execucao",
+   "GET /config/motor",
+   "GET /conversas/{session_id}",
+   "GET /docs",
+   "GET /docs/oauth2-redirect",
+   "GET /health",
+   "GET /openapi.json",
+   "GET /prohort/status",
+   "GET /redoc",
+   "GET /voz/status",
+   "POST /alertas",
+   "POST /alertas/stream",
+   "POST /auditoria/chat",
+   "POST /auditoria/executar",
+   "POST /auditoria/executar/stream",
+   "POST /benchmark/comparar/stream",
+   "POST /chat",
+   "POST /chat/stream",
+   "POST /coleta/cancelar",
+   "POST /coleta/config",
+   "POST /coleta/iniciar",
+   "POST /coleta/stream",
+   "POST /config/motor",
+   "POST /produtor/chat/stream",
+   "POST /produtor/ofertas/upload",
+   "POST /prohort/chat/stream",
+   "POST /prohort/coletar",
+   "POST /voz/tts"
+  ]
+ },
+ "banco": {
+  "assinatura": {
+   "licitacoes": {
+    "linhas": 1381,
+    "max_id": 1522
+   },
+   "itens_licitacao": {
+    "linhas": 8555,
+    "max_id": 37116
+   },
+   "participacoes": {
+    "linhas": 27306,
+    "max_id": 69766
+   },
+   "empenhos": {
+    "linhas": 4333,
+    "max_id": 11814
+   },
+   "documentos_licitacao": {
+    "linhas": 173,
+    "max_id": 2143
+   },
+   "fornecedores": {
+    "linhas": 3199,
+    "max_id": 75679
+   },
+   "licitacoes_max_coletado_em": "2026-10-14T19:34:45.328688+00:00",
+   "prohort_max_data": "2026-10-14",
+   "hash": "9071683eb7beacbd3645da6f6f30264e5b4adb0a9f6d95667ae95e6aba6dacc3"
+  },
+  "views": {
+   "modo": "colunas (aplicar sql/contrato_viewdefs.sql para pg_get_viewdef)",
+   "motivo": "{'message': 'Could not find the function public.contrato_viewdefs(nomes) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the fu",
+   "def": {
+    "vw_itens_agro": [
+     "canal",
+     "categoria",
+     "categoria_v2",
+     "codigo",
+     "cultura",
+     "descricao",
+     "descricao_completa",
+     "dt_abertura",
+     "id",
+     "licitacao_id",
+     "observacao",
+     "processo",
+     "qt_solicitada",
+     "relevante_agro",
+     "seq",
+     "unidade_medida",
+     "valor_total",
+     "valor_unitario"
+    ],
+    "vw_cruzamento_precos_ceasa": [
+     "ano_max",
+     "ano_min",
+     "ceasa",
+     "cultura",
+     "diferenca_pct",
+     "n_itens",
+     "preco_ceasa_max",
+     "preco_ceasa_medio",
+     "preco_ceasa_min",
+     "preco_kg_prefeitura",
+     "produto_norm",
+     "unidade_ceasa",
+     "unidades_compativeis"
+    ],
+    "vw_ofertas_produtores": [
+     "contato",
+     "criado_em",
+     "cultura",
+     "descricao",
+     "disponibilidade",
+     "id",
+     "municipio",
+     "origem",
+     "preco_pretendido",
+     "produtor_nome",
+     "produtor_tipo",
+     "quantidade",
+     "status",
+     "unidade"
+    ],
+    "vw_demanda_agro_ano": [
+     "ano",
+     "canal",
+     "categoria_v2",
+     "cultura",
+     "qtd_itens",
+     "qtd_licitacoes",
+     "unidade_medida",
+     "valor_total_r$",
+     "volume_total"
+    ],
+    "vw_licitacoes_agro_documentos": [
+     "canal",
+     "coletado_em",
+     "dt_abertura",
+     "id",
+     "licitacao_id",
+     "nome_arquivo",
+     "nome_doc",
+     "objeto",
+     "processo",
+     "situacao",
+     "storage_path",
+     "tamanho_bytes",
+     "tipo_processo",
+     "url_publica"
+    ],
+    "v_prohort_analise": [
+     "ceasa",
+     "max_30d",
+     "media_30d",
+     "media_90d",
+     "min_30d",
+     "produto_norm",
+     "total_cotacoes",
+     "ultima_cotacao",
+     "unidade",
+     "variacao_semanal_pct"
+    ],
+    "v_prohort_baseline_24m": [
+     "ceasa",
+     "max_24m",
+     "media_24m",
+     "min_24m",
+     "primeira_cotacao",
+     "produto_norm",
+     "total_24m",
+     "ultima_cotacao"
+    ],
+    "v_prohort_serie_diaria": [
+     "ceasa",
+     "data_coleta",
+     "preco_max",
+     "preco_medio",
+     "preco_min",
+     "produto_norm",
+     "unidade"
+    ]
+   }
+  }
+ }
+}
