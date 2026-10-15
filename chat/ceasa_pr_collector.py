@@ -20,6 +20,9 @@ Formato (confirmado por inspeção):
 Uso:
     python -m chat.ceasa_pr_collector          # últimos 7 dias
     python -m chat.ceasa_pr_collector 90       # backfill de 90 dias
+    python -m chat.ceasa_pr_collector --inicio 2021-01-01 --fim 2021-03-31   # carga retroativa
+
+Saída 1 quando a coleta termina em 'erro' (inclusive falha de GRAVAÇÃO no banco).
 """
 
 import re
@@ -157,8 +160,10 @@ def _buscar_janela(client: httpx.Client, ini: date, fim: date) -> str:
     return resp.content.decode("cp1252", errors="replace")
 
 
-def _upsert_lotes(supabase, registros: list[dict]) -> int:
-    inseridos = 0
+def _upsert_lotes(supabase, registros: list[dict], falhas: list[str]) -> tuple[int, str | None]:
+    """Grava em lotes. Lote que falha entra em `falhas` (a coleta termina em erro).
+    Devolve (linhas gravadas, maior data_coleta efetivamente gravada)."""
+    inseridos, data_max = 0, None
     for i in range(0, len(registros), LOTE_UPSERT):
         lote = registros[i: i + LOTE_UPSERT]
         try:
@@ -166,9 +171,18 @@ def _upsert_lotes(supabase, registros: list[dict]) -> int:
                 lote, on_conflict="data_coleta,unidade,descricao"
             ).execute()
             inseridos += len(lote)
+            maior = max(r["data_coleta"] for r in lote)
+            data_max = max(data_max or maior, maior)
         except Exception as e:
             logger.error(f"Erro no upsert CEASA/PR lote {i}: {e}")
-    return inseridos
+            falhas.append(f"gravacao lote {i}:{str(e)[:80]}")
+    return inseridos, data_max
+
+
+def _dias_uteis(inicio: date, fim: date) -> int:
+    """Dias de segunda a sábado no intervalo (a CEASA/PR não cota aos domingos)."""
+    return sum(1 for k in range((fim - inicio).days + 1)
+               if (inicio + timedelta(days=k)).weekday() != 6)
 
 
 def _registrar_status(supabase, **campos) -> None:
@@ -179,46 +193,69 @@ def _registrar_status(supabase, **campos) -> None:
         logger.warning(f"Não foi possível gravar ceasa_pr_status (ignorado): {e}")
 
 
-def coletar_ceasa_pr(dias: int = 7) -> dict:
-    """Coleta os últimos `dias` dias (todas as variedades, 5 unidades) e faz upsert idempotente."""
+def coletar_ceasa_pr(dias: int = 7, inicio: date | None = None, fim: date | None = None) -> dict:
+    """Coleta os últimos `dias` dias — ou o intervalo [inicio, fim], para carga retroativa —
+    (todas as variedades, 5 unidades) e faz upsert idempotente.
+
+    Status: 'erro' se alguma gravação falhou, se nada foi gravado e houve falha de busca, ou
+    se o portal respondeu sem nenhuma cotação em 2+ dias úteis (HTML mudou?); 'ok' se gravou;
+    'sem_dados' só para janela curta legitimamente vazia (ex.: feriado)."""
     from chat.db import get_supabase_client
 
     supabase = get_supabase_client()
     agora = lambda: datetime.now(timezone.utc).isoformat()
-    hoje = date.today()
-    inicio = hoje - timedelta(days=dias - 1)
+    fim = fim or date.today()
+    inicio = inicio or fim - timedelta(days=dias - 1)
 
-    total, data_max, falhas = 0, None, []
+    total, lidas, data_max, falhas_busca, falhas_gravacao = 0, 0, None, [], []
     with httpx.Client(timeout=120, follow_redirects=False) as client:
         client.get(FORM_URL)   # abre sessão ASP (cookie) antes do POST
         ini = inicio
-        while ini <= hoje:
-            fim = min(ini + timedelta(days=JANELA_DIAS - 1), hoje)
+        while ini <= fim:
+            fim_janela = min(ini + timedelta(days=JANELA_DIAS - 1), fim)
             try:
-                registros = parse_html(_buscar_janela(client, ini, fim))
+                registros = parse_html(_buscar_janela(client, ini, fim_janela))
             except Exception as e:
-                logger.error(f"CEASA/PR {ini}–{fim}: {e}")
-                falhas.append(f"{ini}:{str(e)[:80]}")
+                logger.error(f"CEASA/PR {ini}–{fim_janela}: {e}")
+                falhas_busca.append(f"{ini}:{str(e)[:80]}")
                 registros = []
             # dedup do payload (mesma chave repetida derruba o upsert do PostgREST)
             unicos = {(r["data_coleta"], r["unidade"], r["descricao"]): r for r in registros}
+            lidas += len(unicos)
             if unicos:
-                total += _upsert_lotes(supabase, list(unicos.values()))
-                maior = max(r["data_coleta"] for r in unicos.values())
-                data_max = max(data_max or maior, maior)
-            logger.info(f"CEASA/PR {ini}–{fim}: {len(unicos)} cotações")
-            ini = fim + timedelta(days=1)
+                gravadas, maior = _upsert_lotes(supabase, list(unicos.values()), falhas_gravacao)
+                total += gravadas
+                if maior:
+                    data_max = max(data_max or maior, maior)
+            logger.info(f"CEASA/PR {ini}–{fim_janela}: {len(unicos)} cotações")
+            ini = fim_janela + timedelta(days=1)
             time.sleep(PAUSA_SEG)
 
-    status = "ok" if total else ("erro" if falhas else "sem_dados")
+    falhas = falhas_busca + falhas_gravacao
+    if not lidas and not falhas_busca and _dias_uteis(inicio, fim) >= 2:
+        falhas.append(f"portal sem cotações de {inicio} a {fim} (estrutura do HTML mudou?)")
+    if falhas_gravacao or (falhas and not total):
+        status = "erro"
+    else:
+        status = "ok" if total else "sem_dados"
     _registrar_status(supabase, finalizado_em=agora(), data_max=data_max, linhas_inseridas=total,
                       status=status, erro="; ".join(falhas)[:500] or None)
     return {"linhas_inseridas": total, "data_max": data_max, "falhas": falhas, "status": status}
 
 
+def _args(argv: list[str]):
+    import argparse
+    ap = argparse.ArgumentParser(description="Coleta CEASA/PR por variedade.")
+    ap.add_argument("dias", nargs="?", type=int, default=7, help="últimos N dias (padrão 7)")
+    ap.add_argument("--inicio", type=date.fromisoformat, help="AAAA-MM-DD (carga retroativa)")
+    ap.add_argument("--fim", type=date.fromisoformat, help="AAAA-MM-DD (padrão: hoje)")
+    return ap.parse_args(argv)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    resultado = coletar_ceasa_pr(int(sys.argv[1]) if len(sys.argv) > 1 else 7)
+    a = _args(sys.argv[1:])
+    resultado = coletar_ceasa_pr(a.dias, inicio=a.inicio, fim=a.fim)
     print(resultado)
     if resultado["status"] == "erro":
         sys.exit(1)
