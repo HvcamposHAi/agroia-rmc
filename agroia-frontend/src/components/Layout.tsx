@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   House, MessageSquare, ChartColumn, TrendingUp, Tractor, FileText,
   BellRing, ShieldCheck, RefreshCw, FlaskConical, Sprout, Search, Menu, ChevronDown,
+  CalendarRange,
 } from 'lucide-react'
 import CommandPalette from './CommandPalette'
 import SeletorIdioma from './SeletorIdioma'
@@ -30,6 +31,7 @@ const moreNav: NavItem[] = [
   { to: '/auditoria', icon: ShieldCheck, label: 'auditoria' },
   { to: '/coleta', icon: RefreshCw, label: 'coleta' },
   { to: '/benchmark', icon: FlaskConical, label: 'benchmark' },
+  { to: '/safra', icon: CalendarRange, label: 'safra' },
 ]
 
 export default function Layout({ children }: { children?: ReactNode }) {

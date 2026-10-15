@@ -10,6 +10,7 @@ import Coleta from './pages/Coleta'
 import Mercado from './pages/Mercado'
 import Produtor from './pages/Produtor'
 import BenchmarkMotores from './pages/BenchmarkMotores'
+import Safra from './pages/Safra'
 
 // Redireciona rotas antigas preservando a query (?cultura=...&ano=..., ?q=...).
 function RedirectPreservando({ para }: { para: string }) {
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="benchmark" element={<BenchmarkMotores />} />
           <Route path="coleta" element={<Coleta />} />
+          <Route path="safra" element={<Safra />} />
           {/* Compatibilidade: rotas antigas */}
           <Route path="dashboard" element={<RedirectPreservando para="/demanda" />} />
           <Route path="consultas" element={<RedirectPreservando para="/demanda" />} />

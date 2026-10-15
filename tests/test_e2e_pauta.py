@@ -230,6 +230,14 @@ def test_te8_projecao_publicada_ou_motivo():
 # ── T-E9 · safra: calendário sazonal e comparação entre CEASAs ───────────────
 
 @precisa_backend
+def test_te9_catalogo_lista_fechada():
+    r = _get("/pauta/safra/catalogo")
+    assert r.status_code == 200
+    c = r.json()
+    assert "couve-flor" in c["produtos"] and "CURITIBA" in c["ceasas"]
+
+
+@precisa_backend
 def test_te9_sazonal_12_meses():
     r = _get("/pauta/safra/sazonal", produto="couve-flor", ceasa="CURITIBA")
     assert r.status_code == 200

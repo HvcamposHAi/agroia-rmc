@@ -2,6 +2,7 @@
 
 Incluído em api/main.py dentro de try/except: erro aqui nunca derruba a API.
 Implementadas nesta etapa (dados do PROHORT, já em produção):
+  GET /pauta/safra/catalogo  produtos e CEASAs aceitos
   GET /pauta/safra/sazonal   calendário sazonal de um produto numa CEASA
   GET /pauta/safra/comparar  ranking das CEASAs pela mediana dos últimos 30 dias
 Pendentes: /pauta, /pauta/fundamentacao, /pauta/exportar (E2/E3) e /pauta/projecao (E6).
@@ -82,6 +83,13 @@ def _paginar(consulta) -> list[dict]:
         if len(lote) < PAGINA:
             return linhas
         inicio += PAGINA
+
+
+@router.get("/safra/catalogo")
+def safra_catalogo():
+    """Produtos e CEASAs aceitos pelas rotas de safra (lista fechada)."""
+    cat = _catalogo()
+    return {"produtos": cat["produtos"], "ceasas": cat["ceasas"], "fonte": FONTE_PROHORT}
 
 
 @router.get("/safra/sazonal")
