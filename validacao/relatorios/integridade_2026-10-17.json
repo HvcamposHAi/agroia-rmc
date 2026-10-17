@@ -1,0 +1,145 @@
+{
+ "executado_em": "2026-10-17T03:26:51+00:00",
+ "escopo": "cotações dos últimos 30 dias",
+ "aprovado": true,
+ "checagens": [
+  {
+   "regra": "I1",
+   "nome": "unicidade (data, unidade, descrição)",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": null,
+   "hora": "2026-10-17T03:26:46+00:00"
+  },
+  {
+   "regra": "I2",
+   "nome": "domínio: preço > 0, unidade válida, data ≤ hoje e não domingo",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": null,
+   "hora": "2026-10-17T03:26:46+00:00"
+  },
+  {
+   "regra": "I3",
+   "nome": "preco_kg = preco ÷ peso_kg (±R$ 0,01)",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": null,
+   "hora": "2026-10-17T03:26:46+00:00"
+  },
+  {
+   "regra": "I6",
+   "nome": "variação diária > 3× a mediana dos 30 dias anteriores",
+   "tipo": "aviso",
+   "aprovada": true,
+   "linhas_afetadas": 31,
+   "detalhe": [
+    31967,
+    129,
+    28796,
+    32072,
+    32561,
+    163,
+    32583,
+    167,
+    32100,
+    31443,
+    180,
+    193,
+    27476,
+    29711,
+    31082,
+    31467,
+    31827,
+    31542,
+    31135,
+    32657
+   ],
+   "hora": "2026-10-17T03:26:46+00:00"
+  },
+  {
+   "regra": "I4",
+   "nome": "última cotação de Curitiba ≥ 2026-10-15 (último dia útil − 1)",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "ultima": "2026-10-15"
+   },
+   "hora": "2026-10-17T03:26:46+00:00"
+  },
+  {
+   "regra": "I21",
+   "nome": "status ok ⇒ linhas gravadas e data_max = maior data da tabela",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "status": "ok",
+    "data_max_status": "2026-10-15",
+    "maior_data_tabela": "2026-10-15"
+   },
+   "hora": "2026-10-17T03:26:47+00:00"
+  },
+  {
+   "regra": "I14",
+   "nome": "clima: ≥ 98% dos dias, nada impossível, atraso ≤ 10 dias",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "pr_curitiba": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_colombo": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_sjp": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_mandirituba": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_araucaria": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    }
+   },
+   "hora": "2026-10-17T03:26:51+00:00"
+  },
+  {
+   "regra": "I17",
+   "nome": "IPCA sem meses faltantes desde 2017-01",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "ultimo": "2026-09",
+    "faltam": null
+   },
+   "hora": "2026-10-17T03:26:51+00:00"
+  }
+ ]
+}
