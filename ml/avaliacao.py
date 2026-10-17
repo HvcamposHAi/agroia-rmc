@@ -41,6 +41,34 @@ def cobertura_intervalo(y, lo, hi) -> float:
     return float(np.mean((y >= lo) & (y <= hi)))
 
 
+ALFA_PUBLICACAO = 0.05
+
+
+def decidir_publicacao(real, previsto, ingenuo, ingenuo_sazonal, y_hist, h: int = 1,
+                       m: int = 52, alfa: float = ALFA_PUBLICACAO) -> dict:
+    """Regra de publicação de uma série (decidida em 16/10/2026).
+
+    Publica só se MASE < 1 E o modelo vencer, com p < alfa no Diebold-Mariano, os DOIS
+    ingênuos: o sazonal (mesma semana do ano anterior) e o simples (último preço). O
+    simples entra porque, no PROHORT semanal, ele já erra muito menos que o sazonal.
+    """
+    real, previsto = _arr(real), _arr(previsto)
+    erro = real - previsto
+    valor_mase = mase(real, previsto, y_hist, m)
+    dm_sazonal = diebold_mariano(erro, real - _arr(ingenuo_sazonal), h)
+    dm_simples = diebold_mariano(erro, real - _arr(ingenuo), h)
+    motivos = []
+    if valor_mase >= 1:
+        motivos.append(f"MASE {valor_mase:.2f} ≥ 1")
+    for nome, dm in (("ingênuo sazonal", dm_sazonal), ("ingênuo simples", dm_simples)):
+        if dm["p_valor"] is None or dm["p_valor"] >= alfa:
+            p = "indefinido" if dm["p_valor"] is None else f"{dm['p_valor']:.3f}"
+            motivos.append(f"não supera o {nome} (p = {p})")
+    return {"publicar": not motivos, "mase": valor_mase,
+            "p_vs_sazonal": dm_sazonal["p_valor"], "p_vs_ingenuo": dm_simples["p_valor"],
+            "motivo": "; ".join(motivos) or None}
+
+
 def diebold_mariano(erros_modelo, erros_referencia, h: int = 1) -> dict:
     """Teste de Diebold-Mariano (perda absoluta) com correção de Harvey, Leybourne e Newbold.
 

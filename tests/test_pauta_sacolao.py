@@ -365,6 +365,24 @@ def test_tp8_perda_quantil_e_diebold_mariano():
     assert av.diebold_mariano(ref, melhor)["p_valor"] > 0.95         # pior não passa
 
 
+def test_tp8_regra_publicacao_exige_vencer_os_dois_ingenuos():
+    av = pytest.importorskip("ml.avaliacao", reason="E6 pendente")
+    m = 4
+    hist = [10 + 2 * (t // m) + (t % m) for t in range(5 * m)]      # escala do sazonal = 2
+    n = 40
+    real = [20.0 + _ruido(i) * 50 for i in range(n)]
+    sazonal = [r + 2 + _ruido(i + 100) * 20 for i, r in enumerate(real)]      # erra ~2
+    simples = [r + 0.3 + _ruido(i + 200) * 5 for i, r in enumerate(real)]     # erra ~0,3
+    bom_so_contra_sazonal = [r + 0.4 + _ruido(i + 300) * 5 for i, r in enumerate(real)]
+    r = av.decidir_publicacao(real, bom_so_contra_sazonal, simples, sazonal, hist, m=m)
+    assert r["mase"] < 1 and r["p_vs_sazonal"] < 0.05
+    assert r["publicar"] is False and "ingênuo simples" in r["motivo"]
+
+    otimo = [r + 0.05 + _ruido(i + 400) for i, r in enumerate(real)]           # erra ~0,05
+    r = av.decidir_publicacao(real, otimo, simples, sazonal, hist, m=m)
+    assert r["publicar"] is True and r["motivo"] is None
+
+
 # ── T-P9 · sem vazamento temporal ────────────────────────────────────────────
 
 def test_tp9_atributos_nao_veem_o_futuro():

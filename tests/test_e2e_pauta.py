@@ -221,7 +221,9 @@ def test_te8_projecao_publicada_ou_motivo():
         assert p["motivo"], "sem projeção e sem motivo"
         return
     assert p["mase"] < 1
-    assert [h["h"] for h in p["horizontes"]] == [1, 2, 4, 8]
+    # regra de 16/10/2026: vencer os dois ingênuos, não só o sazonal
+    assert p["p_vs_sazonal"] < 0.05 and p["p_vs_ingenuo"] < 0.05
+    assert {h["h"] for h in p["horizontes"]} <= {1, 2, 4, 8} and p["horizontes"]
     for h in p["horizontes"]:
         assert h["q10"] <= h["q50"] <= h["q90"]
     assert p["modelo_versao"] and p["dados_ate"]
