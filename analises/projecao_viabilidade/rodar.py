@@ -34,7 +34,7 @@ sys.path.insert(0, str(RAIZ))
 from ml.atributos import montar_atributos  # noqa: E402
 from ml.avaliacao import diebold_mariano, escala_ingenuo_sazonal  # noqa: E402
 
-HORIZONTES = (1, 4)
+HORIZONTES = (1, 4, 8)
 MIN_SEMANAS = 104 + 8
 SAIDA = Path(__file__).resolve().parent
 
@@ -145,6 +145,8 @@ def resumir(r: pd.DataFrame) -> pd.DataFrame:
         for m in ("ets", "gbm_global"):
             dm = diebold_mariano(g["real"] - g[m], g["real"] - g["ingenuo_sazonal"], h=h)
             linha[f"p_{m}"] = dm["p_valor"]
+            dm = diebold_mariano(g["real"] - g[m], g["real"] - g["ingenuo"], h=h)
+            linha[f"p_{m}_ing"] = dm["p_valor"]
         linhas.append(linha)
     return pd.DataFrame(linhas)
 
@@ -152,26 +154,31 @@ def resumir(r: pd.DataFrame) -> pd.DataFrame:
 def relatorio(res: pd.DataFrame, ceasa: str, semanas: int) -> str:
     l = [f"# Viabilidade da projeção — PROHORT {ceasa}", "",
          f"Gerado em {date.today().isoformat()}. Origem móvel nas últimas {semanas} semanas; "
-         "MASE < 1 = melhor que o ingênuo sazonal; publicação exige MASE < 1 e p < 0,05 "
-         "(Diebold-Mariano contra o ingênuo sazonal).", ""]
+         "MASE < 1 = melhor que o ingênuo sazonal. Regra v3: MASE < 1 e p < 0,05 contra o "
+         "ingênuo sazonal. Regra nova (16/10/2026): além disso, p < 0,05 contra o ingênuo "
+         "simples (último preço). p = Diebold-Mariano unilateral.", ""]
     for h in HORIZONTES:
         g = res[res["h"] == h]
         l += [f"## Horizonte de {h} semana(s) — {len(g)} séries", "",
-              "| Modelo | MASE mediano | Séries com MASE < 1 | Publicáveis (MASE < 1 e p < 0,05) |",
-              "| --- | --- | --- | --- |"]
+              "| Modelo | MASE mediano | Séries com MASE < 1 | Publicáveis, regra v3 | Publicáveis, regra nova |",
+              "| --- | --- | --- | --- | --- |"]
         for m in ("ingenuo", "ingenuo_sazonal", "ets", "gbm_global"):
             col = g[f"mase_{m}"]
-            pub = "—"
+            pub = nova = "—"
             if m in ("ets", "gbm_global"):
-                pub = str(int(((g[f"mase_{m}"] < 1) & (g[f"p_{m}"] < 0.05)).sum()))
-            l.append(f"| {m} | {col.median():.2f} | {int((col < 1).sum())} | {pub} |")
+                v3 = (g[f"mase_{m}"] < 1) & (g[f"p_{m}"] < 0.05)
+                pub = str(int(v3.sum()))
+                nova = str(int((v3 & (g[f"p_{m}_ing"] < 0.05)).sum()))
+            l.append(f"| {m} | {col.median():.2f} | {int((col < 1).sum())} | {pub} | {nova} |")
         l.append("")
-    l += ["## Por produto (horizonte de 1 semana)", "",
-          "| Produto | MASE ing. sazonal | MASE ingênuo | MASE ETS | MASE GBM | p GBM |", "| --- | --- | --- | --- | --- | --- |"]
-    for _, x in res[res["h"] == 1].sort_values("mase_gbm_global").iterrows():
-        p = "—" if x["p_gbm_global"] is None or pd.isna(x["p_gbm_global"]) else f"{x['p_gbm_global']:.3f}"
+    fmt = lambda v: "—" if v is None or pd.isna(v) else f"{v:.3f}"
+    l += ["## Por produto (horizonte de 4 semanas)", "",
+          "| Produto | MASE ing. sazonal | MASE ingênuo | MASE ETS | MASE GBM | p GBM × sazonal | p GBM × ingênuo |",
+          "| --- | --- | --- | --- | --- | --- | --- |"]
+    for _, x in res[res["h"] == 4].sort_values("mase_gbm_global").iterrows():
         l.append(f"| {x['produto']} | {x['mase_ingenuo_sazonal']:.2f} | {x['mase_ingenuo']:.2f} | "
-                 f"{x['mase_ets']:.2f} | {x['mase_gbm_global']:.2f} | {p} |")
+                 f"{x['mase_ets']:.2f} | {x['mase_gbm_global']:.2f} | {fmt(x['p_gbm_global'])} | "
+                 f"{fmt(x['p_gbm_global_ing'])} |")
     return "\n".join(l) + "\n"
 
 
