@@ -182,6 +182,41 @@ def test_tp0_coletor_ceasa_pr_isola_dia_com_erro_500(monkeypatch):
     assert [f[:10] for f in r["falhas"]] == [_ClienteHttpDiaRuim.ruim.isoformat()]
 
 
+class _SupabaseComStatus(_SupabaseSemTabela):
+    """Banco cujo status já registra uma data mais recente que a da execução."""
+
+    falhar = False
+    anterior = "2099-01-01"
+
+    def table(self, nome):
+        q = super().table(nome)
+        if nome == "ceasa_pr_status":
+            anterior = self.anterior
+
+            class _Leitura:
+                def select(self, *a):
+                    return self
+
+                def eq(self, *a):
+                    return self
+
+                def execute(self):
+                    return type("R", (), {"data": [{"data_max": anterior}]})()
+
+                def upsert(self, dados, **k):
+                    return q.upsert(dados, **k)
+            return _Leitura()
+        return q
+
+
+def test_tp0_carga_retroativa_nao_rebaixa_data_max(monkeypatch):
+    sb = _SupabaseComStatus()
+    r = _coletor(monkeypatch, sb).coletar_ceasa_pr(1)
+    assert r["status"] == "ok"
+    assert r["data_max"] == "2099-01-01"            # mantém a data mais recente da tabela
+    assert sb.status[-1]["data_max"] == "2099-01-01"
+
+
 def test_tp0_coletor_ceasa_pr_argumentos():
     from chat.ceasa_pr_collector import _args
     a = _args([])

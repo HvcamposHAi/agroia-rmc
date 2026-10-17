@@ -204,6 +204,14 @@ def _dias_uteis(inicio: date, fim: date) -> int:
                if (inicio + timedelta(days=k)).weekday() != 6)
 
 
+def _data_max_anterior(supabase) -> str | None:
+    try:
+        linhas = supabase.table("ceasa_pr_status").select("data_max").eq("id", 1).execute().data
+        return (linhas or [{}])[0].get("data_max")
+    except Exception:
+        return None
+
+
 def _registrar_status(supabase, **campos) -> None:
     """Best-effort: falha aqui nunca derruba a coleta (mesma filosofia do PROHORT)."""
     try:
@@ -252,6 +260,9 @@ def coletar_ceasa_pr(dias: int = 7, inicio: date | None = None, fim: date | None
         status = "erro"
     else:
         status = "ok" if total else "sem_dados"
+    # data_max do status = data mais recente NA TABELA: uma carga retroativa (ex.: 2021)
+    # não pode fazer a base parecer desatualizada.
+    data_max = max(filter(None, [data_max, _data_max_anterior(supabase)]), default=None)
     _registrar_status(supabase, finalizado_em=agora(), data_max=data_max, linhas_inseridas=total,
                       status=status, erro="; ".join(falhas)[:500] or None)
     return {"linhas_inseridas": total, "data_max": data_max, "falhas": falhas, "status": status}

@@ -104,7 +104,8 @@ def test_te1_coleta_ceasa_pr_ok_fresca_e_com_historico():
     sb = _supabase()
     st = _executar(_tabela(sb, "ceasa_pr_status").eq("id", 1), "ceasa_pr_status").data
     assert st and st[0]["status"] == "ok", st
-    assert st[0]["data_max"] >= _ultimo_dia_util(date.today()).isoformat()
+    # I4: última data ≥ último dia útil − 1 (a CEASA publica ao longo do dia)
+    assert st[0]["data_max"] >= _ultimo_dia_util(_ultimo_dia_util(date.today())).isoformat()
     mais_antiga = _executar(_tabela(sb, "ceasa_pr_cotacoes", "data_coleta")
                             .eq("unidade", "CURITIBA").order("data_coleta").limit(1),
                             "ceasa_pr_cotacoes").data
