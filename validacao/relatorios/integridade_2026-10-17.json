@@ -1,6 +1,6 @@
 {
- "executado_em": "2026-10-17T03:26:51+00:00",
- "escopo": "cotações dos últimos 30 dias",
+ "executado_em": "2026-10-17T04:18:48+00:00",
+ "escopo": "completo",
  "aprovado": true,
  "checagens": [
   {
@@ -10,16 +10,35 @@
    "aprovada": true,
    "linhas_afetadas": 0,
    "detalhe": null,
-   "hora": "2026-10-17T03:26:46+00:00"
+   "hora": "2026-10-17T04:15:12+00:00"
   },
   {
    "regra": "I2",
-   "nome": "domínio: preço > 0, unidade válida, data ≤ hoje e não domingo",
+   "nome": "domínio: preço > 0, unidade válida, data ≤ hoje",
    "tipo": "bloqueante",
    "aprovada": true,
    "linhas_afetadas": 0,
    "detalhe": null,
-   "hora": "2026-10-17T03:26:46+00:00"
+   "hora": "2026-10-17T04:15:12+00:00"
+  },
+  {
+   "regra": "I2b",
+   "nome": "cotações em domingo (a CEASA abre em datas especiais)",
+   "tipo": "aviso",
+   "aprovada": true,
+   "linhas_afetadas": 384,
+   "detalhe": [
+    "2024-01-07",
+    "2024-01-14",
+    "2024-03-24",
+    "2024-04-21",
+    "2024-11-10",
+    "2024-12-22",
+    "2024-12-29",
+    "2025-02-02",
+    "2025-03-23"
+   ],
+   "hora": "2026-10-17T04:15:13+00:00"
   },
   {
    "regra": "I3",
@@ -28,37 +47,37 @@
    "aprovada": true,
    "linhas_afetadas": 0,
    "detalhe": null,
-   "hora": "2026-10-17T03:26:46+00:00"
+   "hora": "2026-10-17T04:15:13+00:00"
   },
   {
    "regra": "I6",
    "nome": "variação diária > 3× a mediana dos 30 dias anteriores",
    "tipo": "aviso",
    "aprovada": true,
-   "linhas_afetadas": 31,
+   "linhas_afetadas": 10461,
    "detalhe": [
-    31967,
-    129,
-    28796,
-    32072,
-    32561,
-    163,
-    32583,
-    167,
-    32100,
-    31443,
-    180,
-    193,
-    27476,
-    29711,
-    31082,
-    31467,
-    31827,
-    31542,
-    31135,
-    32657
+    260450,
+    684110,
+    54307,
+    557661,
+    680803,
+    691645,
+    697035,
+    698110,
+    699708,
+    730774,
+    732869,
+    735657,
+    737352,
+    737878,
+    741196,
+    776261,
+    776744,
+    782101,
+    181468,
+    182459
    ],
-   "hora": "2026-10-17T03:26:46+00:00"
+   "hora": "2026-10-17T04:17:17+00:00"
   },
   {
    "regra": "I4",
@@ -69,7 +88,7 @@
    "detalhe": {
     "ultima": "2026-10-15"
    },
-   "hora": "2026-10-17T03:26:46+00:00"
+   "hora": "2026-10-17T04:17:18+00:00"
   },
   {
    "regra": "I21",
@@ -82,7 +101,35 @@
     "data_max_status": "2026-10-15",
     "maior_data_tabela": "2026-10-15"
    },
-   "hora": "2026-10-17T03:26:47+00:00"
+   "hora": "2026-10-17T04:17:19+00:00"
+  },
+  {
+   "regra": "I5",
+   "nome": "séries de Curitiba com lacuna > 3 meses (fora do alerta FAO)",
+   "tipo": "bloqueante para o alerta",
+   "aprovada": true,
+   "linhas_afetadas": 276,
+   "detalhe": {
+    "series_total": 661,
+    "exemplos": {
+     "ABACATE COLISON cx 20 kg": 9,
+     "ALECRIM BANDEJA bj 200 g": 14,
+     "ALFACE CRESPA MEDIO cx 6 kg": 11,
+     "ALMEIRAO PÃO DE AÇUCAR mç 400 g": 10,
+     "AMEIXA VERMELHA cx 10 kg": 6,
+     "AMORA PRETA bj 300 g": 10,
+     "BANANA CATURRA SEGUNDA cx 20 kg": 13,
+     "BETERRABA cx 20 kg": 7,
+     "BETERRABA GRAUDA mç 1,5 kg": 5,
+     "BROTO DE BAMBU MAÇO mç 3 kg": 9,
+     "CAXI cx 16 kg": 4,
+     "CEBOLINHA HIDROPONICA pc 200 g": 7,
+     "ESCAROLA/CHICORIA ROXA BANDEJA bj 300 g": 12,
+     "GENGIBRE SEGUNDA cx 16 kg": 21,
+     "LARANJA PERA GRAUDA cx 20 kg": 6
+    }
+   },
+   "hora": "2026-10-17T04:18:44+00:00"
   },
   {
    "regra": "I14",
@@ -127,7 +174,7 @@
      "atraso_dias": 5
     }
    },
-   "hora": "2026-10-17T03:26:51+00:00"
+   "hora": "2026-10-17T04:18:47+00:00"
   },
   {
    "regra": "I17",
@@ -139,7 +186,7 @@
     "ultimo": "2026-09",
     "faltam": null
    },
-   "hora": "2026-10-17T03:26:51+00:00"
+   "hora": "2026-10-17T04:18:48+00:00"
   }
  ]
 }

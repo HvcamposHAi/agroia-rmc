@@ -3,6 +3,7 @@
 Implementadas (as que já têm dado em produção):
   I1  unicidade das cotações              bloqueante
   I2  domínio (preço, unidade, data)       bloqueante
+  I2b cotações em domingo                  aviso (a CEASA abre em datas especiais)
   I3  coerência do R$/kg                   bloqueante
   I4  frescor de Curitiba                  bloqueante (relatório e projeção)
   I5  continuidade (lacuna > 3 meses)      bloqueante para o alerta FAO — só com --completo
@@ -53,6 +54,19 @@ def paginar(consulta) -> list[dict]:
         i += PAGINA
 
 
+def paginar_por_id(montar) -> list[dict]:
+    """Paginação por id (keyset): custo constante por página, mesmo com centenas de milhares
+    de linhas — o deslocamento (offset) estoura o tempo limite do PostgREST.
+    `montar(ultimo_id)` devolve a consulta já filtrada por id > ultimo_id."""
+    linhas, ultimo = [], 0
+    while True:
+        lote = montar(ultimo).order("id").limit(PAGINA).execute().data or []
+        linhas += lote
+        if len(lote) < PAGINA:
+            return linhas
+        ultimo = lote[-1]["id"]
+
+
 def ultimo_dia_util(d: date) -> date:
     d -= timedelta(days=1)
     while d.weekday() == 6:
@@ -69,10 +83,10 @@ def resultado(regra, nome, tipo, ok, afetadas=0, detalhe=None):
 # ── Cotações CEASA/PR ────────────────────────────────────────────────────────
 
 def checar_cotacoes(sb, desde: str | None, hoje: date) -> list[dict]:
-    q = sb.table("ceasa_pr_cotacoes").select("id,data_coleta,unidade,descricao,preco,peso_kg,preco_kg")
-    if desde:
-        q = q.gte("data_coleta", desde)
-    linhas = paginar(q.order("id"))
+    def montar(ultimo):
+        q = sb.table("ceasa_pr_cotacoes").select("id,data_coleta,unidade,descricao,preco,peso_kg,preco_kg")             .gt("id", ultimo)
+        return q.gte("data_coleta", desde) if desde else q
+    linhas = paginar_por_id(montar)
     out = []
 
     vistos, dup = set(), 0
@@ -84,9 +98,14 @@ def checar_cotacoes(sb, desde: str | None, hoje: date) -> list[dict]:
 
     fora = [r["id"] for r in linhas
             if r["preco"] is None or r["preco"] <= 0 or r["unidade"] not in UNIDADES
-            or r["data_coleta"] > hoje.isoformat() or date.fromisoformat(r["data_coleta"]).weekday() == 6]
-    out.append(resultado("I2", "domínio: preço > 0, unidade válida, data ≤ hoje e não domingo",
+            or r["data_coleta"] > hoje.isoformat()]
+    out.append(resultado("I2", "domínio: preço > 0, unidade válida, data ≤ hoje",
                          "bloqueante", not fora, len(fora), fora[:20] or None))
+    # A CEASA abre em alguns domingos (ex.: 22 e 29/12/2024, antes das festas): dado real,
+    # publicado pela fonte — só aviso.
+    domingos = sorted({r["data_coleta"] for r in linhas if date.fromisoformat(r["data_coleta"]).weekday() == 6})
+    out.append(resultado("I2b", "cotações em domingo (a CEASA abre em datas especiais)", "aviso", True,
+                         sum(1 for r in linhas if r["data_coleta"] in domingos), domingos or None))
 
     incoer = [r["id"] for r in linhas
               if (r["peso_kg"] and (r["preco_kg"] is None or abs(r["preco_kg"] - r["preco"] / r["peso_kg"]) > 0.01))
@@ -136,8 +155,8 @@ def checar_frescor_e_status(sb, hoje: date) -> list[dict]:
 
 def checar_continuidade(sb) -> list[dict]:
     """I5 (base inteira, Curitiba): séries com lacuna > 3 meses ficam fora do alerta FAO."""
-    linhas = paginar(sb.table("ceasa_pr_cotacoes").select("data_coleta,descricao")
-                     .eq("unidade", "CURITIBA").order("id"))
+    linhas = paginar_por_id(lambda u: sb.table("ceasa_pr_cotacoes").select("id,data_coleta,descricao")
+                            .eq("unidade", "CURITIBA").gt("id", u))
     meses = defaultdict(set)
     for r in linhas:
         a, m = map(int, r["data_coleta"][:7].split("-"))
