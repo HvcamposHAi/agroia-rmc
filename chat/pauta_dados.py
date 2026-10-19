@@ -9,7 +9,9 @@ unidade deve ofertar (soma 26 por estação) e uma lista de espécies CANDIDATAS
 O título "26 espécies" do anexo é a soma dos mínimos, não o tamanho da lista.
 
 Cada linha guarda `texto_original` exatamente como no anexo; quando a leitura exigiu
-interpretação, `observacao` explica e `validar_smsan` = True (premissa P7 do plano).
+interpretação, `observacao` explica. As leituras foram conferidas no calendário oficial de
+comercialização da CEASA-PR, unidade Curitiba (a pauta é definida pela oferta na CEASA-Curitiba);
+`validar_smsan` = True só sobra para o que nenhuma fonte oficial resolve.
 Python puro: importado pela API (sem pandas).
 """
 
@@ -48,10 +50,12 @@ MINIMOS = {
     PRIMAVERA_VERAO: {1: 3, 2: 6, 3: 3, 4: 12, 5: 2},
 }
 
-_ESPECIE_DUPLA = "lida como duas espécies separadas por 'e'"
-_MIMOSA = ("'mimosa' aparece sozinha na lista de cítricas; interpretada como tangerina mimosa "
+_CAL = "calendário oficial da CEASA-PR (Curitiba)"
+_ESPECIE_DUPLA = f"lida como duas espécies separadas por 'e'; o {_CAL} lista as duas separadas"
+_MIMOSA = ("'mimosa' aparece sozinha na lista de cítricas; o " + _CAL + " lista 'Tangerina "
+           "Mimosa/Comum' (mexerica) — confirmado; antes interpretada como tangerina mimosa "
            "(mexerica)")
-_MURCOTE = "grafia do anexo 'murcot'; variedade usual 'murcote' (Murcott)"
+_MURCOTE = f"grafia do anexo 'murcot'; o {_CAL} lista 'Tangerina Murcot' — confirmado"
 
 # estação → ordem do subgrupo → [(especie, variedade, texto_original, observacao)]
 _ANEXO = {
@@ -60,8 +64,8 @@ _ANEXO = {
             ("alho-poró", None, "alho poró", None),
             ("agrião", None, "agrião", None),
             ("almeirão", None, "almeirão", None),
-            ("couve-flor", None, "couve-flor", "brássica listada pelo anexo entre as folhosas"),
-            ("brócolis", None, "couve- brócolis", "anexo grafa 'couve- brócolis'; brássica listada entre as folhosas"),
+            ("couve-flor", None, "couve-flor", f"brássica entre as folhosas, como no {_CAL} (Hortaliças Folhosas) — confirmado"),
+            ("brócolis", None, "couve- brócolis", f"anexo grafa 'couve- brócolis'; o {_CAL} lista 'Brócolis' entre as Hortaliças Folhosas — confirmado"),
             ("couve", None, "couve", "o anexo traz um item vazio logo depois (', ,'), ignorado"),
             ("couve chinesa", None, "couve chinesa", None),
             ("cheiro-verde", None, "cheiro-verde", None),
@@ -107,7 +111,7 @@ _ANEXO = {
             ("escarola", None, "escarola", None),
             ("almeirão", None, "almeirão", None),
             ("couve", None, "couve", None),
-            ("repolho", None, "repolho", "brássica listada pelo anexo entre as folhosas")],
+            ("repolho", None, "repolho", f"brássica entre as folhosas, como no {_CAL} (Hortaliças Folhosas) — confirmado")],
         2: [("abobrinha", None, "Abobrinha", None),
             ("berinjela", None, "berinjela", None),
             ("feijão-vagem", None, "feijão vagem", None),
@@ -159,7 +163,8 @@ def _linhas() -> list[dict]:
                     "ato": ATO["ato"], "ato_id": ATO["id"], "estacao": estacao,
                     "ordem_subgrupo": ordem, "grupo": grupo, "subgrupo": subgrupo,
                     "minimo": MINIMOS[estacao][ordem], "especie": especie, "variedade": variedade,
-                    "texto_original": original, "observacao": obs, "validar_smsan": obs is not None,
+                    "texto_original": original, "observacao": obs, "validar_smsan": obs is not None and "confirmado" not in obs
+                    and _CAL not in obs and "espaçamento" not in obs and "item vazio" not in obs,
                 })
     return linhas
 
