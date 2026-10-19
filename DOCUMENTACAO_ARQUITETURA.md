@@ -489,7 +489,7 @@ Os dois coletores terminam em `erro` (saída 1) quando a gravação falha — nu
 `ml/` (atributos sem vazamento temporal, MASE, perda por quantis, Diebold-Mariano com correção
 HLN). Regra de publicação (`ml/avaliacao.py::decidir_publicacao`): MASE < 1, redução de MAE de
 pelo menos 2% e p < 0,05 contra o ingênuo sazonal **e** contra o ingênuo simples. Com o PROHORT
-de Curitiba (2022–2026) nenhuma série atende à regra de forma robusta
+de Curitiba (2022–2026) só 1 de 282 combinações produto × modelo × horizonte atende à regra, o que é compatível com acaso
 (`analises/projecao_viabilidade/`); a projeção não é publicada. A análise clima × preço
 (`analises/clima_preco/`), com teste exato, não detectou associação.
 

@@ -13,6 +13,7 @@ Sem pandas/numpy (requirements-api.txt): os cálculos estão em chat/pauta.py.
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
@@ -31,6 +32,7 @@ CACHE_SEG = 3600
 CACHE_MAX = 300          # teto de entradas: o processo da API tem 512 MB (achado M2)
 PAGINA = 1000
 _cache: dict[tuple, tuple[float, object, str]] = {}   # chave → (instante, valor, consultado_em)
+_trava = threading.Lock()   # rotas síncronas rodam em várias threads (achado N1)
 
 
 def _sb():
@@ -43,16 +45,19 @@ def _em_cache(chave: tuple, gerar) -> tuple[object, str]:
     não a do pedido (achado B12). Entradas vencidas saem a cada gravação e o total é
     limitado a CACHE_MAX, descartando as mais antigas (achado M2)."""
     agora = time.monotonic()
-    hit = _cache.get(chave)
+    with _trava:
+        hit = _cache.get(chave)
     if hit and agora - hit[0] < CACHE_SEG:
         return hit[1], hit[2]
-    valor = gerar()
-    for k in [k for k, v in _cache.items() if agora - v[0] >= CACHE_SEG]:
-        del _cache[k]
-    while len(_cache) >= CACHE_MAX:
-        del _cache[min(_cache, key=lambda k: _cache[k][0])]
-    _cache[chave] = (agora, valor, _agora())
-    return valor, _cache[chave][2]
+    valor = gerar()                      # fora da trava: consultas ao banco em paralelo
+    consultado_em = _agora()
+    with _trava:
+        for k in [k for k, v in _cache.items() if agora - v[0] >= CACHE_SEG]:
+            del _cache[k]
+        while len(_cache) >= CACHE_MAX:
+            del _cache[min(_cache, key=lambda k: _cache[k][0])]
+        _cache[chave] = (agora, valor, consultado_em)
+    return valor, consultado_em
 
 
 def _agora() -> str:

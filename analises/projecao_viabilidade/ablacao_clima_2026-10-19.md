@@ -1,6 +1,6 @@
 # Ablação do clima na projeção — prévia
 
-Gerado em 2026-10-19. Origem móvel nas últimas 52 semanas; árvores com gradiente global, com e sem clima do cinturão verde da RMC (provisório). Regra de publicação: MASE < 1 e p < 0,05 contra os dois ingênuos.
+Gerado em 2026-10-19. Origem móvel nas últimas 52 semanas; árvores com gradiente global, com e sem clima do cinturão verde da RMC (provisório). Regra de publicação: MASE < 1, redução de MAE ≥ 2% e p < 0,05 contra os dois ingênuos.
 
 ## Horizonte de 4 semanas
 

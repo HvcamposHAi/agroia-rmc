@@ -249,7 +249,7 @@ Frontend (Cloudflare Pages / Vite):
   4 dos 5 pontos da RMC caem na mesma célula do POWER — use células distintas.
 - **API:** `api/pauta_api.py` (`/pauta/safra/catalogo|sazonal|comparar`), cache com teto; sem pandas.
 - **Projeção:** regra `ml/avaliacao.py::decidir_publicacao` (vencer os dois ingênuos com
-  p < 0,05 e ganho ≥ 2%). Hoje nenhuma série passa: a projeção fica desligada.
+  p < 0,05 e ganho ≥ 2%). Hoje só 1 de 282 combinações passa (inhame, GBM, 8 semanas) — compatível com acaso; a projeção fica desligada.
 - **Integridade:** `python scripts/checar_integridade.py [--completo]`.
 - Banco (17/10/2026): 375 MB de 500 MB do plano gratuito.
 

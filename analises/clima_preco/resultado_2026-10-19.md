@@ -2,7 +2,7 @@
 
 Gerado em 2026-10-19. Preços de 2022-06-01 a 2026-10-15, deflacionados pelo IPCA, em log, sem tendência e sazonalidade (STL). Clima: 5 pontos do cinturão verde da RMC que caem em 2 células distintas do NASA POWER (média das células), em anomalia contra 1991–2020. **Escopo provisório:** sem ponderação por procedência (P8/P9). Valor-p exato por todos os deslocamentos circulares (substitui a versão de 16/10, que tinha piso artificial — auditoria, A1).
 
-Testes: 595 correlações (produto × variável × defasagem 0–16 semanas) e 70 testes de Granger, todos corrigidos juntos por Benjamini-Hochberg. Correlação é associação, não causa.
+Testes: 595 correlações (produto × variável × defasagem 0–16 semanas) e 70 testes de Granger, todos corrigidos juntos por Benjamini-Hochberg. Correlação é associação, não causa. Com o p mínimo de 1/(deslocamentos + 1) e a correção sobre todos os testes, o poder é baixo: resultado nulo significa efeito NÃO DETECTÁVEL com este desenho e estes ~4 anos, não ausência de efeito.
 
 ## Resultado: 0 associações sobrevivem à correção para múltiplos testes
 

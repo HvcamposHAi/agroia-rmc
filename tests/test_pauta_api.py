@@ -67,3 +67,25 @@ def test_cache_expurga_vencidas_e_respeita_teto(monkeypatch):
         pauta_api._em_cache(("nova", i), lambda: i)
     assert len(pauta_api._cache) <= 5
     assert ("nova", 9) in pauta_api._cache and ("nova", 0) not in pauta_api._cache
+
+
+def test_cache_aguenta_varias_threads(monkeypatch):
+    """N1: o expurgo sem trava dava RuntimeError/KeyError (resposta 500) com várias threads."""
+    import threading
+    pauta_api._cache.clear()
+    monkeypatch.setattr(pauta_api, "CACHE_MAX", 8)
+    erros = []
+
+    def trabalhar(t):
+        try:
+            for i in range(300):
+                pauta_api._em_cache((t, i % 20), lambda: i)
+        except Exception as e:          # noqa: BLE001
+            erros.append(repr(e))
+
+    ths = [threading.Thread(target=trabalhar, args=(t,)) for t in range(8)]
+    for th in ths:
+        th.start()
+    for th in ths:
+        th.join()
+    assert erros == [] and len(pauta_api._cache) <= 8

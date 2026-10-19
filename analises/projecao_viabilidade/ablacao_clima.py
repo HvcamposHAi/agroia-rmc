@@ -105,7 +105,7 @@ def main():
     l = ["# Ablação do clima na projeção — prévia", "",
          f"Gerado em {HOJE}. Origem móvel nas últimas {SEMANAS} semanas; árvores "
          "com gradiente global, com e sem clima do cinturão verde da RMC (provisório). Regra de "
-         "publicação: MASE < 1 e p < 0,05 contra os dois ingênuos.", ""]
+         "publicação: MASE < 1, redução de MAE ≥ 2% e p < 0,05 contra os dois ingênuos.", ""]
     for h in HORIZONTES:
         origens = datas[-(SEMANAS + h):-h]
         sem = prever(tabela(series, h, None), origens).rename(columns={"previsto": "sem_clima"})

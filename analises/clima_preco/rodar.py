@@ -47,6 +47,7 @@ REGIOES = {   # mesmas coordenadas de sql/clima.sql (provisórias)
 PRODUTOS = ["alface", "couve", "couve-flor", "repolho", "brocolo"]
 DEFASAGENS = range(0, 17)
 CELULAS_DISTINTAS = None
+HOJE = date.today().isoformat()   # uma única data por execução
 N_BOOT = 999
 BLOCO = 8
 SEMENTE = 20261016
@@ -214,7 +215,7 @@ ROTULO = {"chuva_mm": "chuva da semana (mm)", "dias_chuva": "dias com chuva ≥ 
 
 def relatorio(cc: pd.DataFrame, gr: pd.DataFrame, est: dict, periodo: tuple) -> str:
     l = ["# Clima × preço — análise preliminar (PROHORT Curitiba)", "",
-         f"Gerado em {date.today().isoformat()}. Preços de {periodo[0]} a {periodo[1]}, "
+         f"Gerado em {HOJE}. Preços de {periodo[0]} a {periodo[1]}, "
          "deflacionados pelo IPCA, em log, sem tendência e sazonalidade (STL). Clima: 5 pontos do "
          f"cinturão verde da RMC que caem em {CELULAS_DISTINTAS} células distintas do NASA POWER "
          "(média das células), em anomalia contra 1991–2020. **Escopo provisório:** sem "
@@ -222,7 +223,9 @@ def relatorio(cc: pd.DataFrame, gr: pd.DataFrame, est: dict, periodo: tuple) -> 
          "circulares (substitui a versão de 16/10, que tinha piso artificial — auditoria, A1).", "",
          f"Testes: {len(cc)} correlações (produto × variável × defasagem 0–16 semanas) e "
          f"{len(gr)} testes de Granger, todos corrigidos juntos por Benjamini-Hochberg. "
-         "Correlação é associação, não causa.", ""]
+         "Correlação é associação, não causa. Com o p mínimo de 1/(deslocamentos + 1) e "
+         "a correção sobre todos os testes, o poder é baixo: resultado nulo significa efeito "
+         "NÃO DETECTÁVEL com este desenho e estes ~4 anos, não ausência de efeito.", ""]
     sig = cc[cc["p_bh"] < 0.05]
     l += [f"## Resultado: {len(sig)} associações sobrevivem à correção para múltiplos testes", ""]
     l += ["| Produto | Variável | Defasagem (semanas) | r | IC 95% | p ajustado |",
@@ -271,7 +274,7 @@ def main():
     todos = benjamini_hochberg(np.concatenate([cc["p"].to_numpy(), gr["p"].to_numpy()]))
     cc["p_bh"], gr["p_bh"] = todos[:len(cc)], todos[len(cc):]
     periodo = (pdf["data_coleta"].min(), pdf["data_coleta"].max())
-    stem = f"resultado_{date.today().isoformat()}"
+    stem = f"resultado_{HOJE}"
     cc.to_csv(SAIDA / f"{stem}_correlacoes.csv", index=False)
     gr.to_csv(SAIDA / f"{stem}_granger.csv", index=False)
     (SAIDA / f"{stem}.md").write_text(relatorio(cc, gr, est, periodo), encoding="utf-8")
