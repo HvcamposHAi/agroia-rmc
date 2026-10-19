@@ -452,3 +452,49 @@ reconferido na data da defesa.
 
 **Para subir o ambiente completo localmente:** `INICIAR_DESENVOLVIMENTO.bat`
 (backend em `localhost:8000`, frontend em `localhost:5173`).
+
+## 14. Pacote pauta do Sacolão, safra e clima (posterior à dissertação)
+
+Pacote aditivo desenvolvido depois da data de corte da dissertação (tag `dissertacao-base`),
+no ramo `feat/pauta-safra-projecao` (plano v3). Nenhuma tabela, view, rota ou ferramenta do
+agente anterior mudou; a linha de base dos contratos fica em
+`validacao/relatorios/base_2026-10-15.json` e é conferida com
+`python scripts/linha_base_contratos.py --comparar <arquivo>`.
+
+### 14.1 Dados novos
+
+| Tabela | Conteúdo | Coleta |
+| --- | --- | --- |
+| `ceasa_pr_cotacoes`, `ceasa_pr_status`, view `v_ceasa_pr_variedades` | Preço por variedade e embalagem das 5 unidades da CEASA-PR, desde 01/07/2021 (~785 mil linhas, ~224 MB) | `chat/ceasa_pr_collector.py`, workflow `ceasa_pr.yml` (runner hospedado; entradas `dias` ou `inicio`/`fim` para carga retroativa) |
+| `clima_regiao`, `clima_diario`, `clima_status` | Clima diário NASA POWER desde 2017 para 5 pontos provisórios do cinturão verde da RMC (2 células distintas da grade de 0,5°) | `chat/clima_collector.py`, workflow `clima.yml` |
+| `indice_enso` | ONI mensal (NOAA) | idem |
+| `ipca_mensal` | IPCA número-índice (IBGE/SIDRA 1737) — deflator | idem |
+
+SQL em `sql/ceasa_pr_cotacoes.sql`, `sql/clima.sql` e `sql/contrato_viewdefs.sql` (opcional).
+RLS só de leitura para `anon`/`authenticated`; escrita só pela chave de serviço dos coletores.
+Os dois coletores terminam em `erro` (saída 1) quando a gravação falha — nunca "sem dados".
+
+### 14.2 Aplicação
+
+- `chat/pauta.py`: indicadores em Python puro (variação mensal e anual, anomalia de preço pelo
+  método FAO/ODS 2.c.1, índice sazonal, cobertura de mínimos e teto da Portaria nº 175,
+  comparação entre CEASAs).
+- `api/pauta_api.py`: rotas só de leitura `GET /pauta/safra/catalogo`, `/pauta/safra/sazonal`
+  e `/pauta/safra/comparar`, registradas em `api/main.py` dentro de `try/except`; sem pandas
+  (a API usa só `requirements-api.txt`).
+- Frontend: página `/safra` (`pages/Safra.tsx`, `lib/pauta.ts`), item "Safra" no menu Gestão.
+
+### 14.3 Projeção de preços
+
+`ml/` (atributos sem vazamento temporal, MASE, perda por quantis, Diebold-Mariano com correção
+HLN). Regra de publicação (`ml/avaliacao.py::decidir_publicacao`): MASE < 1, redução de MAE de
+pelo menos 2% e p < 0,05 contra o ingênuo sazonal **e** contra o ingênuo simples. Com o PROHORT
+de Curitiba (2022–2026) só 1 de 282 combinações produto × modelo × horizonte atende à regra, o que é compatível com acaso
+(`analises/projecao_viabilidade/`); a projeção não é publicada. A análise clima × preço
+(`analises/clima_preco/`), com teste exato, não detectou associação.
+
+### 14.4 Integridade e auditoria
+
+`scripts/checar_integridade.py` (I1–I6, I14, I17, I21; `--completo` para a base inteira) grava
+`validacao/relatorios/integridade_<data>_<escopo>.json`. A auditoria independente de
+17/10/2026 está em `validacao/relatorios/auditoria_2026-10-17.md`.

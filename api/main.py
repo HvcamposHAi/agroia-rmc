@@ -82,6 +82,14 @@ app.include_router(benchmark_router)
 from api.voz_api import router as voz_router  # noqa: E402
 app.include_router(voz_router)
 
+# Pauta do Sacolão e planejamento de safra (rotas só de leitura sob /pauta). Protegido:
+# erro de importação aqui deixa só as rotas /pauta de fora, nunca derruba a API.
+try:
+    from api.pauta_api import router as pauta_router  # noqa: E402
+    app.include_router(pauta_router)
+except Exception as e:  # pragma: no cover
+    logging.getLogger(__name__).error(f"Rotas /pauta desativadas: {e}")
+
 class ChatRequest(BaseModel):
     pergunta: str
     historico: list[dict] = []

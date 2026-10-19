@@ -1,0 +1,192 @@
+{
+ "executado_em": "2026-10-17T04:18:48+00:00",
+ "escopo": "completo",
+ "aprovado": true,
+ "checagens": [
+  {
+   "regra": "I1",
+   "nome": "unicidade (data, unidade, descrição)",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": null,
+   "hora": "2026-10-17T04:15:12+00:00"
+  },
+  {
+   "regra": "I2",
+   "nome": "domínio: preço > 0, unidade válida, data ≤ hoje",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": null,
+   "hora": "2026-10-17T04:15:12+00:00"
+  },
+  {
+   "regra": "I2b",
+   "nome": "cotações em domingo (a CEASA abre em datas especiais)",
+   "tipo": "aviso",
+   "aprovada": true,
+   "linhas_afetadas": 384,
+   "detalhe": [
+    "2024-01-07",
+    "2024-01-14",
+    "2024-03-24",
+    "2024-04-21",
+    "2024-11-10",
+    "2024-12-22",
+    "2024-12-29",
+    "2025-02-02",
+    "2025-03-23"
+   ],
+   "hora": "2026-10-17T04:15:13+00:00"
+  },
+  {
+   "regra": "I3",
+   "nome": "preco_kg = preco ÷ peso_kg (±R$ 0,01)",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": null,
+   "hora": "2026-10-17T04:15:13+00:00"
+  },
+  {
+   "regra": "I6",
+   "nome": "variação diária > 3× a mediana dos 30 dias anteriores",
+   "tipo": "aviso",
+   "aprovada": true,
+   "linhas_afetadas": 10461,
+   "detalhe": [
+    260450,
+    684110,
+    54307,
+    557661,
+    680803,
+    691645,
+    697035,
+    698110,
+    699708,
+    730774,
+    732869,
+    735657,
+    737352,
+    737878,
+    741196,
+    776261,
+    776744,
+    782101,
+    181468,
+    182459
+   ],
+   "hora": "2026-10-17T04:17:17+00:00"
+  },
+  {
+   "regra": "I4",
+   "nome": "última cotação de Curitiba ≥ 2026-10-15 (último dia útil − 1)",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "ultima": "2026-10-15"
+   },
+   "hora": "2026-10-17T04:17:18+00:00"
+  },
+  {
+   "regra": "I21",
+   "nome": "status ok ⇒ linhas gravadas e data_max = maior data da tabela",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "status": "ok",
+    "data_max_status": "2026-10-15",
+    "maior_data_tabela": "2026-10-15"
+   },
+   "hora": "2026-10-17T04:17:19+00:00"
+  },
+  {
+   "regra": "I5",
+   "nome": "séries de Curitiba com lacuna > 3 meses (fora do alerta FAO)",
+   "tipo": "bloqueante para o alerta",
+   "aprovada": true,
+   "linhas_afetadas": 276,
+   "detalhe": {
+    "series_total": 661,
+    "exemplos": {
+     "ABACATE COLISON cx 20 kg": 9,
+     "ALECRIM BANDEJA bj 200 g": 14,
+     "ALFACE CRESPA MEDIO cx 6 kg": 11,
+     "ALMEIRAO PÃO DE AÇUCAR mç 400 g": 10,
+     "AMEIXA VERMELHA cx 10 kg": 6,
+     "AMORA PRETA bj 300 g": 10,
+     "BANANA CATURRA SEGUNDA cx 20 kg": 13,
+     "BETERRABA cx 20 kg": 7,
+     "BETERRABA GRAUDA mç 1,5 kg": 5,
+     "BROTO DE BAMBU MAÇO mç 3 kg": 9,
+     "CAXI cx 16 kg": 4,
+     "CEBOLINHA HIDROPONICA pc 200 g": 7,
+     "ESCAROLA/CHICORIA ROXA BANDEJA bj 300 g": 12,
+     "GENGIBRE SEGUNDA cx 16 kg": 21,
+     "LARANJA PERA GRAUDA cx 20 kg": 6
+    }
+   },
+   "hora": "2026-10-17T04:18:44+00:00"
+  },
+  {
+   "regra": "I14",
+   "nome": "clima: ≥ 98% dos dias, nada impossível, atraso ≤ 10 dias",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "pr_curitiba": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_colombo": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_sjp": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_mandirituba": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    },
+    "pr_araucaria": {
+     "de": "2017-01-01",
+     "ate": "2026-10-12",
+     "cobertura": 1.0,
+     "impossiveis": 0,
+     "atraso_dias": 5
+    }
+   },
+   "hora": "2026-10-17T04:18:47+00:00"
+  },
+  {
+   "regra": "I17",
+   "nome": "IPCA sem meses faltantes desde 2017-01",
+   "tipo": "bloqueante",
+   "aprovada": true,
+   "linhas_afetadas": 0,
+   "detalhe": {
+    "ultimo": "2026-09",
+    "faltam": null
+   },
+   "hora": "2026-10-17T04:18:48+00:00"
+  }
+ ]
+}

@@ -235,6 +235,24 @@ Frontend (Cloudflare Pages / Vite):
   `https://celepar7.pr.gov.br/ceasa/result_evolucao_precos.asp`, janelas de 3 dias), workflow
   `ceasa_pr.yml`, SQL `sql/ceasa_pr_cotacoes.sql`. Painel `VariedadesCeasaPR` na página Mercado.
 
+### Safra, clima e integridade (pacote pós-dissertação, ramo `feat/pauta-safra-projecao`)
+
+- **Não mexer no que a dissertação usa:** tag `dissertacao-base`; contratos em
+  `validacao/relatorios/base_2026-10-15.json` — conferir com
+  `python scripts/linha_base_contratos.py --comparar validacao/relatorios/base_2026-10-15.json`.
+  Nada é anexado a `TOOLS_SCHEMA`; `requirements-api.txt` não muda.
+- **CEASA-PR por variedade em produção** desde 01/07/2021 (`ceasa_pr_cotacoes`, ~224 MB).
+  Carga retroativa: `ceasa_pr.yml` com `inicio`/`fim` (um disparo por vez: o GitHub mantém
+  só um pendente por grupo de concorrência). Dias antigos com HTTP 500 são isolados dia a dia.
+  Desde out/2026 Maringá e Foz não publicam; Londrina publica pouco.
+- **Clima:** `sql/clima.sql`, `chat/clima_collector.py`, `clima.yml` (NASA POWER, ONI, IPCA).
+  4 dos 5 pontos da RMC caem na mesma célula do POWER — use células distintas.
+- **API:** `api/pauta_api.py` (`/pauta/safra/catalogo|sazonal|comparar`), cache com teto; sem pandas.
+- **Projeção:** regra `ml/avaliacao.py::decidir_publicacao` (vencer os dois ingênuos com
+  p < 0,05 e ganho ≥ 2%). Hoje só 1 de 282 combinações passa (inhame, GBM, 8 semanas) — compatível com acaso; a projeção fica desligada.
+- **Integridade:** `python scripts/checar_integridade.py [--completo]`.
+- Banco (17/10/2026): 375 MB de 500 MB do plano gratuito.
+
 ### Multi-idioma (pt / en / es)
 
 - **Frontend:** `agroia-frontend/src/i18n/` (sem dependência externa). Cada página declara
