@@ -1,0 +1,256 @@
+especie,variedade,sugerida,descricao,embalagem,peso_kg,ultima_data,cotacoes_30d,media_kg_30d,media_30d,especial
+agrião,,True,AGRIAO mç 400 g,mç 400 g,0.4,2026-10-15,22,6.25,2.5,False
+agrião,,False,AGRIÃO HIDROPONICO pc 300 g,pc 300 g,0.3,2026-10-15,22,8.33,2.5,True
+alface,,True,"ALFACE AMERICANA cx 7,5 kg","cx 7,5 kg",7.5,2026-10-15,22,4.64,34.77,False
+alface,,False,ALFACE CRESPA GRANDE cx 7 kg,cx 7 kg,7.0,2026-10-15,22,4.48,31.36,False
+alface,,False,ALFACE CRESPA MEDIO cx 6 kg,cx 6 kg,6.0,2026-10-15,22,3.56,21.36,False
+alface,,False,ALFACE ROXA GRANDE cx 7 kg,cx 7 kg,7.0,2026-10-15,22,4.48,31.36,False
+alface,,False,ALFACE LISA GRANDE cx 7 kg,cx 7 kg,7.0,2026-10-14,21,4.49,31.43,False
+alface,,False,ALFACE LISA MEDIO cx 6 kg,cx 6 kg,6.0,2026-10-15,17,3.53,21.18,False
+alface,,False,ALFACE FRISÉE cx 7 kg,cx 7 kg,7.0,2026-10-10,10,2.86,20.0,False
+alface,,False,ALFACE HIDROPONICO cx 7 kg,cx 7 kg,7.0,2026-10-15,22,5.0,35.0,True
+alface,,False,ALFACE AMERICANA BANDEJA C/2 UN bj 500 g,bj 500 g,0.5,2026-10-15,22,8.0,4.0,True
+alface,,False,ALFACE CORAÇÃO HIDROPONICO pc 200 g,pc 200 g,0.2,2026-10-09,2,25.0,5.0,True
+almeirão,,True,ALMEIRAO C. ESPADA mç 300 g,mç 300 g,0.3,2026-10-15,22,6.67,2.0,False
+almeirão,,False,ALMEIRAO PÃO DE AÇUCAR mç 400 g,mç 400 g,0.4,2026-10-15,22,5.0,2.0,False
+brócolis,,True,COUVE BROCOLO dz 6 kg,dz 6 kg,6.0,2026-10-15,22,6.1,36.59,False
+brócolis,,False,COUVE BROCOLO mç 500 g,mç 500 g,0.5,2026-10-15,22,6.05,3.02,False
+brócolis,,False,COUVE BROCOLO bj 250 g,bj 250 g,0.25,2026-10-14,11,16.0,4.0,True
+cheiro-verde,,True,CHEIRO-VERDE mç 400 g,mç 400 g,0.4,2026-10-15,22,10.0,4.0,False
+couve,,True,COUVE MANTEIGA mç 400 g,mç 400 g,0.4,2026-10-15,22,5.0,2.0,False
+couve,,False,COUVE RABANO mç 500 g,mç 500 g,0.5,2026-10-15,17,6.0,3.0,False
+couve,,False,COUVE BLOCOLO ROMANESCO un 1 kg,un 1 kg,1.0,2026-09-30,3,4.33,4.33,False
+couve,,False,COUVE MANTEIGA FATIADA bj 300 g,bj 300 g,0.3,2026-10-15,21,16.67,5.0,True
+couve,,False,COUVE DE BRUXELA pc 500 g,pc 500 g,0.5,2026-10-13,9,24.0,12.0,True
+couve chinesa,,True,"COUVE CHINESA un 1,5 kg","un 1,5 kg",1.5,2026-10-15,22,1.67,2.5,False
+couve chinesa,,False,COUVE CHINESA GRANDE eg 15 kg,eg 15 kg,15.0,2026-10-15,22,2.33,35.0,False
+couve chinesa,,False,COUVE CHINESA MEDIO eg 15 kg,eg 15 kg,15.0,2026-10-15,22,2.0,30.0,False
+couve-flor,,True,"COUVE FLOR un 1,5 kg","un 1,5 kg",1.5,2026-10-15,22,3.33,5.0,False
+couve-flor,,False,COUVE FLOR MEDIA dz 20 kg,dz 20 kg,20.0,2026-10-15,22,1.65,32.95,False
+couve-flor,,False,COUVE FLOR GRANDE dz 24 kg,dz 24 kg,24.0,2026-10-15,8,1.75,41.88,False
+escarola,,True,ESCAROLA/CHICORIA GRANDE cx 7 kg,cx 7 kg,7.0,2026-10-15,22,5.0,35.0,False
+escarola,,False,ESCAROLA/CHICORIA ROXA BANDEJA bj 300 g,bj 300 g,0.3,2026-10-15,22,16.67,5.0,True
+escarola,,False,ESCAROLA/CHICORIA BANDEJA bj 300 g,bj 300 g,0.3,2026-10-15,9,16.67,5.0,True
+espinafre,,True,ESPINAFRE mç 400 g,mç 400 g,0.4,2026-10-15,22,6.25,2.5,False
+espinafre,,False,ESPINAFRE HIDROPONICO pc 300 g,pc 300 g,0.3,2026-10-15,22,8.33,2.5,True
+mostarda,,True,MOSTARDA mç 400 g,mç 400 g,0.4,2026-10-15,22,5.0,2.0,False
+repolho,,True,REPOLHO ROXO eng 25 kg,eng 25 kg,25.0,2026-10-15,22,1.32,32.95,False
+repolho,,False,REPOLHO ROXO un 2 kg,un 2 kg,2.0,2026-10-15,22,1.5,3.0,False
+repolho,,False,REPOLHO VERDE CABEÇA MEDIA cb 2 kg,cb 2 kg,2.0,2026-10-15,22,0.8,1.6,False
+repolho,,False,REPOLHO VERDE GRANDE eng 25 kg,eng 25 kg,25.0,2026-10-15,22,0.9,22.41,False
+repolho,,False,REPOLHO VERDE MEDIO eng 25 kg,eng 25 kg,25.0,2026-10-15,22,0.71,17.82,False
+repolho,,False,"REPOLHO VERDE CABEÇA GRANDE cb 2,5 kg","cb 2,5 kg",2.5,2026-10-13,10,0.77,1.92,False
+rúcula,,True,RUCULA mç 300 g,mç 300 g,0.3,2026-10-15,22,6.67,2.0,False
+rúcula,,False,RUCULA HIDROPONICA mç 300 g,mç 300 g,0.3,2026-10-15,22,8.33,2.5,True
+abobrinha,,True,ABOBRINHA VERDE EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,3.57,71.36,False
+abobrinha,,False,ABOBRINHA BRANCA EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-09,8,5.94,118.75,False
+abobrinha,,False,ABOBRINHA VERDE EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-09-26,3,5.5,110.0,False
+abobrinha,,False,ABOBRINHA BRANCA EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-09,2,4.25,85.0,False
+abobrinha,,False,ABOBRINHA BJ C/3 A 4 UN bj 500 g,bj 500 g,0.5,2026-10-06,5,8.0,4.0,True
+abóbora,,True,ABOBORA HOKAIDO/KABOTIA sc 20 kg,sc 20 kg,20.0,2026-10-15,22,2.25,45.0,False
+abóbora,,False,ABOBORA MENINA/PAULISTA sc 20 kg,sc 20 kg,20.0,2026-10-15,22,2.0,40.0,False
+abóbora,,False,ABOBORA MORANGA sc 20 kg,sc 20 kg,20.0,2026-10-15,22,1.75,35.0,False
+abóbora,,False,ABOBORA SECA/PESCOÇO kg,kg,1.0,2026-10-15,21,3.0,3.0,False
+abóbora,,False,ABOBORA GILA un 2 kg,un 2 kg,2.0,2026-10-09,4,4.0,8.0,False
+abóbora,,False,ABOBORA MENINA/PAULISTA kg,kg,1.0,2026-10-08,2,1.75,1.75,False
+abóbora,,False,ABOBORA FATIADA bj 300 g,bj 300 g,0.3,2026-10-03,1,10.0,3.0,True
+berinjela,,True,BERINJELA EXTRA A cx 12 kg,cx 12 kg,12.0,2026-10-15,22,2.8,33.64,False
+berinjela,,False,BERINJELA EXTRA cx 12 kg,cx 12 kg,12.0,2026-10-07,5,1.67,20.0,False
+berinjela,,False,BERINJELA EXTRA AA cx 12 kg,cx 12 kg,12.0,2026-10-09,4,3.64,43.75,False
+berinjela,,False,BERINJELA BANDEJA C/3 UN bj 450 g,bj 450 g,0.45,2026-09-26,3,8.89,4.0,True
+chuchu,,True,CHUCHU EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,1.73,34.55,False
+chuchu,,False,CHUCHU EXTRA cx 20 kg,cx 20 kg,20.0,2026-10-10,5,0.9,18.0,False
+chuchu,,False,CHUCHU EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-08,3,2.17,43.33,False
+chuchu,,False,CHUCHU BABY bj 550 g,bj 550 g,0.55,2026-10-13,8,5.45,3.0,True
+ervilha,,True,ERVILHA PR TORTA cx 12 kg,cx 12 kg,12.0,2026-10-15,22,12.5,150.0,False
+ervilha,,False,ERVILHA SP TORTA cx 16 kg,cx 16 kg,16.0,2026-10-10,2,13.12,210.0,False
+ervilha,,False,ERVILHA TORTA bj 200 g,bj 200 g,0.2,2026-10-15,21,30.0,6.0,True
+feijão-vagem,,True,VAGEM MACARRAO EXTRA A cx 15 kg,cx 15 kg,15.0,2026-10-15,22,7.5,112.5,False
+feijão-vagem,,False,VAGEM MACARRAO EXTRA AA cx 15 kg,cx 15 kg,15.0,2026-10-10,2,10.0,150.0,False
+feijão-vagem,,False,VAGEM BANDEJA bj 300 g,bj 300 g,0.3,2026-10-15,19,20.0,6.0,True
+feijão-vagem,,False,VAGEM SEM FIO bj 300 g,bj 300 g,0.3,2026-10-15,17,16.67,5.0,True
+maxixe,,True,MAXIXI PRIMEIRA cx 16 kg,cx 16 kg,16.0,2026-10-14,7,8.12,130.0,False
+milho-verde,,True,MILHO VERDE BANDEJA C/5 UN bj 1 kg,bj 1 kg,1.0,2026-10-15,22,4.95,4.95,True
+milho-verde,,False,MILHO VERDE BANDEJA C/4 UN bj 750 g,bj 750 g,0.75,2026-10-14,14,5.33,4.0,True
+milho-verde,,False,MILHO VERDE SC C/50 ESPIGAS sc c/50 espigas,sc c/50 espigas,,2026-10-14,20,,55.0,False
+pepino,,True,PEPINO AODAI/SALADA EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,3.15,62.95,False
+pepino,,False,PEPINO JAPONES EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,4.86,97.27,False
+pepino,,False,PEPINO JAPONES EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-15,12,6.04,120.83,False
+pepino,,False,PEPINO CONSERVA EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-13,12,3.5,70.0,False
+pepino,,False,PEPINO AODAI/SALADA EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-01,2,4.0,80.0,False
+pepino,,False,PEPINO JAPONES BANDEJA bj 500 g,bj 500 g,0.5,2026-10-06,7,8.0,4.0,True
+pepino,,False,PEPINO AODAI/SALADA BANDEJA bj 570 g,bj 570 g,0.57,2026-09-21,1,7.02,4.0,True
+pimenta,,True,PIMENTA CAMBUCI cx 12 kg,cx 12 kg,12.0,2026-10-15,22,11.36,136.36,False
+pimenta,,False,PIMENTA DEDO DE MOÇA/AR cx 10 kg,cx 10 kg,10.0,2026-10-15,22,20.0,200.0,False
+pimenta,,False,PIMENTA AMERICANA cx 12 kg,cx 12 kg,12.0,2026-10-07,9,7.5,90.0,False
+pimenta,,False,PIMENTA BIQUINHO cx 10 kg,cx 10 kg,10.0,2026-09-23,2,10.0,100.0,False
+pimenta,,False,PIMENTA DEDO DE MOÇA/AR bj 150 g,bj 150 g,0.15,2026-10-15,21,33.33,5.0,True
+pimenta,,False,PIMENTA CAMBUCI BANDEJA cx 300 g,cx 300 g,0.3,2026-10-15,20,13.33,4.0,True
+pimenta,,False,PIMENTA AMERICANA bj 250 g,bj 250 g,0.25,2026-10-14,11,19.64,4.91,True
+pimenta,,False,PIMENTA MALAGUETA bj 150 g,bj 150 g,0.15,2026-10-14,2,33.33,5.0,True
+pimenta,,False,PIMENTA BIQUINHO bj 250 g,bj 250 g,0.25,2026-10-07,1,20.0,5.0,True
+pimentão,,True,PIMENTÃO VERDE EXTRA A cx 12 kg,cx 12 kg,12.0,2026-10-15,22,5.32,63.86,False
+pimentão,,False,PIMENTÃO AMARELO EXTRA AA cx 12 kg,cx 12 kg,12.0,2026-10-15,21,10.48,125.71,False
+pimentão,,False,PIMENTÃO VERMELHO EXTRA A cx 12 kg,cx 12 kg,12.0,2026-10-15,21,7.15,85.71,False
+pimentão,,False,PIMENTÃO VERDE EXTRA AA cx 12 kg,cx 12 kg,12.0,2026-10-09,5,6.16,74.0,False
+pimentão,,False,PIMENTÃO COLORIDO EXTRA AA cx 12 kg,cx 12 kg,12.0,2026-10-15,22,10.0,120.0,True
+pimentão,,False,PIMENTÃO COLORIDO BANDEJA bj 300 g,bj 300 g,0.3,2026-10-09,14,20.0,6.0,True
+pimentão,,False,PIMENTÃO VERDE BANDEJA bj 300 g,bj 300 g,0.3,2026-10-15,10,16.67,5.0,True
+quiabo,,True,QUIABO PRIMEIRA cx 15 kg,cx 15 kg,15.0,2026-10-15,22,10.06,150.91,False
+quiabo,,False,QUIABO SEGUNDA cx 15 kg,cx 15 kg,15.0,2026-10-15,20,7.6,114.0,False
+quiabo,,False,QUIABO bj 300 g,bj 300 g,0.3,2026-10-14,19,16.67,5.0,True
+tomate,,True,TOMATE EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,8.92,178.41,False
+tomate,,False,TOMATE LONGA VIDA EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,7.48,149.55,False
+tomate,,False,TOMATE SALADETE EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-15,21,10.86,217.14,False
+tomate,,False,TOMATE LONGA VIDA EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-13,12,8.88,177.5,False
+tomate,,False,TOMATE RASTEIRO EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-10,11,4.86,97.27,False
+tomate,,False,TOMATE HOLANDES EXTRA AA cx 8 kg,cx 8 kg,8.0,2026-10-09,5,16.25,130.0,False
+tomate,,False,TOMATE CAQUI/SALADA EXTRA AA cx 2 kg,cx 2 kg,2.0,2026-09-26,1,11.5,23.0,False
+tomate,,False,TOMATE CEREJA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,10.0,200.0,True
+tomate,,False,TOMATE CEREJA BANDEJA bj 200 g,bj 200 g,0.2,2026-10-15,22,20.0,4.0,True
+tomate,,False,TOMATE CEREJA BANDEJA bj 450 g,bj 450 g,0.45,2026-10-15,20,11.11,5.0,True
+tomate,,False,TOMATE CEREJA EXTRA AA cx 3 kg,cx 3 kg,3.0,2026-10-09,6,6.67,20.0,True
+tomate,,False,TOMATE HOLANDES bj 500 g,bj 500 g,0.5,2026-09-26,1,10.0,5.0,True
+aipim,,True,AIPIM-MANDIOCA SEGUNDA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,2.5,50.0,False
+aipim,,False,AIPIM-MANDIOCA PRIMEIRA cx 20 kg,cx 20 kg,20.0,2026-10-14,21,3.5,70.0,False
+aipim,,False,AIPIM-MANDIOCA TOLETO kg,kg,1.0,2026-10-14,19,5.0,5.0,False
+batata,,True,BATATA COMUM ESPECIAL sc 25 kg,sc 25 kg,25.0,2026-10-15,22,4.08,102.05,False
+batata,,False,BATATA YAKON cx 20 kg,cx 20 kg,20.0,2026-10-15,20,5.0,100.0,False
+batata,,False,BATATA COMUM PRIMEIRINHA sc 25 kg,sc 25 kg,25.0,2026-10-09,5,2.12,53.0,False
+batata,,False,BATATA CASCA ROSADA ESPECIAL sc 25 kg,sc 25 kg,25.0,2026-10-09,4,4.65,116.25,False
+batata,,False,BATATA COMUM MISTA/BONECA sc 25 kg,sc 25 kg,25.0,2026-10-09,4,2.6,65.0,False
+batata-doce,,True,BATATA DOCE ROXA EXTRA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,3.15,62.95,False
+batata-doce,,False,BATATA DOCE BRANCA EXTRA cx 20 kg,cx 20 kg,20.0,2026-10-10,16,3.38,67.5,False
+batata-doce,,False,BATATA DOCE LARANJA cx 20 kg,cx 20 kg,20.0,2026-10-14,9,3.0,60.0,False
+batata-doce,,False,BATATA DOCE BANDEJA C/3 A 4 bj 750 g,bj 750 g,0.75,2026-10-13,10,4.0,3.0,True
+beterraba,,True,BETERRABA EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,1.75,35.0,False
+beterraba,,False,"BETERRABA MEDIA mç 1,5 kg","mç 1,5 kg",1.5,2026-10-15,22,1.33,2.0,False
+beterraba,,False,"BETERRABA GRAUDA mç 1,5 kg","mç 1,5 kg",1.5,2026-10-15,21,2.0,3.0,False
+beterraba,,False,BETERRABA cx 20 kg,cx 20 kg,20.0,2026-10-15,16,1.75,35.0,False
+beterraba,,False,BETERRABA EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-13,9,2.25,45.0,False
+beterraba,,False,BETERRABA BANDEJA bj 750 g,bj 750 g,0.75,2026-10-15,12,5.33,4.0,True
+cará,,True,CARA cx 20 kg,cx 20 kg,20.0,2026-10-13,16,6.5,130.0,False
+cebola,,True,CEBOLA PERA sc 20 kg,sc 20 kg,20.0,2026-10-15,22,5.3,105.91,False
+cebola,,False,CEBOLA ROXA sc 20 kg,sc 20 kg,20.0,2026-10-10,15,6.63,132.67,False
+cebola,,False,CEBOLA BRANCA sc 20 kg,sc 20 kg,20.0,2026-10-09,1,2.0,40.0,False
+cebola,,False,CEBOLA PERA IMPORTADA sc 20 kg,sc 20 kg,20.0,2026-10-13,6,7.5,150.0,True
+cenoura,,True,CENOURA COMUM EXTRA A cx 20 kg,cx 20 kg,20.0,2026-10-15,22,2.2,44.09,False
+cenoura,,False,CENOURA BABY cx 10 kg,cx 10 kg,10.0,2026-10-15,16,30.0,300.0,False
+cenoura,,False,CENOURA COMUM EXTRA cx 20 kg,cx 20 kg,20.0,2026-10-10,9,1.64,32.78,False
+cenoura,,False,CENOURA COMUM EXTRA AA cx 20 kg,cx 20 kg,20.0,2026-10-10,6,2.75,55.0,False
+cenoura,,False,CENOURA COMUM mç 3 kg,mç 3 kg,3.0,2026-10-09,6,3.33,10.0,False
+cenoura,,False,CENOURA COMUM BANDEJA bj 500 g,bj 500 g,0.5,2026-10-13,18,8.0,4.0,True
+inhame,,True,INHAME-TAIA SEGUNDA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,4.0,80.0,False
+inhame,,False,INHAME-TAIA PRIMEIRA cx 20 kg,cx 20 kg,20.0,2026-10-14,20,5.0,100.0,False
+inhame,,False,INHAME-TAIA bj 500 g,bj 500 g,0.5,2026-10-13,10,8.2,4.1,True
+mandioquinha-salsa,,True,MANDIOQUINHA/BATATA SALSA PRIMEIRA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,3.05,60.96,False
+mandioquinha-salsa,,False,MANDIOQUINHA/BATATA SALSA SACOLA cx 5 kg,cx 5 kg,5.0,2026-10-15,20,3.3,16.49,False
+mandioquinha-salsa,,False,MANDIOQUINHA/BATATA SALSA SEGUNDA cx 20 kg,cx 20 kg,20.0,2026-10-15,3,2.0,40.0,False
+mandioquinha-salsa,,False,MANDIOQUINHA/BATATA SALSA bj 450 g,bj 450 g,0.45,2026-10-15,22,9.09,4.09,True
+nabo,,True,NABO BRANCO mç 3 kg,mç 3 kg,3.0,2026-10-15,22,2.33,7.0,False
+nabo,,False,NABO BRANCO cx 16 kg,cx 16 kg,16.0,2026-10-15,21,2.19,35.0,False
+rabanete,,True,RABANETE DZ DE MAÇOS cx 12 kg,cx 12 kg,12.0,2026-10-15,22,2.5,30.0,False
+rabanete,,False,RABANETE MAÇO mç 1 kg,mç 1 kg,1.0,2026-10-15,22,3.0,3.0,False
+abacate,,True,ABACATE QUINTAL cx 20 kg,cx 20 kg,20.0,2026-10-15,21,5.38,107.62,False
+abacate,,False,ABACATE BREDA cx 20 kg,cx 20 kg,20.0,2026-10-15,18,5.39,107.78,False
+abacate,,False,ABACATE MARGARIDA cx 20 kg,cx 20 kg,20.0,2026-10-15,15,3.45,69.0,False
+abacate,,False,ABACATE GEADA cx 20 kg,cx 20 kg,20.0,2026-10-10,14,3.75,75.0,False
+abacate,,False,ABACATE AVOCADO cx 3 kg,cx 3 kg,3.0,2026-10-14,14,20.0,60.0,False
+abacate,,False,ABACATE FORTUNA cx 20 kg,cx 20 kg,20.0,2026-10-15,9,5.44,108.89,False
+abacate,,False,ABACATE COMUM cx 20 kg,cx 20 kg,20.0,2026-10-13,9,3.25,65.0,False
+abacate,,False,ABACATE MANTEIGA cx 20 kg,cx 20 kg,20.0,2026-10-08,4,3.0,60.0,False
+abacate,,False,ABACATE COLISON cx 20 kg,cx 20 kg,20.0,2026-10-15,1,4.0,80.0,False
+abacaxi,,True,ABACAXI PEROLA GRAUDO cx 15 kg,cx 15 kg,15.0,2026-10-15,22,4.48,67.27,False
+abacaxi,,False,ABACAXI HAVAI GRAUDO cx 18 kg,cx 18 kg,18.0,2026-10-15,21,3.73,67.14,False
+abacaxi,,False,"ABACAXI PEROLA GRAUDO un 1,8 kg","un 1,8 kg",1.8,2026-10-15,20,4.44,8.0,False
+abacaxi,,False,"ABACAXI PEROLA MEDIO un 1,5 kg","un 1,5 kg",1.5,2026-10-08,3,4.67,7.0,False
+abacaxi,,False,"ABACAXI HAVAI GRAUDO un 2,5 kg","un 2,5 kg",2.5,2026-10-02,1,3.4,8.5,False
+abacaxi,,False,"ABACAXI HAVAI MEDIO un 1,8 kg","un 1,8 kg",1.8,2026-10-02,1,4.44,8.0,False
+abacaxi,,False,ABACAXI HAVAI MEDIO cx 18 kg,cx 18 kg,18.0,2026-10-07,1,3.61,65.0,False
+ameixa,,True,AMEIXA VERMELHA cx 10 kg,cx 10 kg,10.0,2026-10-15,6,10.0,100.0,False
+ameixa,,False,AMEIXA VERMELHA cx 18 kg,cx 18 kg,18.0,2026-10-03,1,11.11,200.0,False
+ameixa,,False,AMEIXA VERMELHA IMPORTADA cx 10 kg,cx 10 kg,10.0,2026-10-15,18,14.67,146.67,True
+ameixa,,False,AMEIXA PRETA IMPORTADA cx 10 kg,cx 10 kg,10.0,2026-10-08,2,14.5,145.0,True
+banana,,True,BANANA CATURRA PRIMEIRA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,2.5,50.0,False
+banana,,False,BANANA PRATA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,4.0,80.0,False
+banana,,False,BANANA TERRA cx 20 kg,cx 20 kg,20.0,2026-10-14,15,7.0,140.0,False
+banana,,False,BANANA CATURRA SEGUNDA cx 20 kg,cx 20 kg,20.0,2026-10-15,11,2.0,40.0,False
+banana,,False,BANANA MAÇA PRIMEIRA cx 20 kg,cx 20 kg,20.0,2026-10-13,8,7.0,140.0,False
+banana,,False,BANANA OURO cx 6 kg,cx 6 kg,6.0,2026-10-08,1,6.17,37.0,False
+caqui,,True,CAQUI TAUBATE cx 8 kg,cx 8 kg,8.0,2026-09-29,1,8.12,65.0,False
+carambola,,True,CARAMBOLA cx 7 kg,cx 7 kg,7.0,2026-09-24,2,8.57,60.0,False
+carambola,,False,CARAMBOLA cx 3 kg,cx 3 kg,3.0,2026-09-26,2,13.33,40.0,False
+goiaba,,True,GOIABA VERMELHA cx 20 kg,cx 20 kg,20.0,2026-10-15,21,6.5,130.0,False
+kiwi,,True,KIWI NACIONAL cx 8 kg,cx 8 kg,8.0,2026-10-08,1,20.0,160.0,False
+kiwi,,False,KIWI IMPORTADO cx 10 kg,cx 10 kg,10.0,2026-10-15,22,24.09,240.91,True
+mamão,,True,MAMAO FORMOSA MADURO cx 15 kg,cx 15 kg,15.0,2026-10-15,22,5.39,80.91,False
+mamão,,False,MAMAO PAPAYA/HAVAI cx 8 kg,cx 8 kg,8.0,2026-10-15,19,8.62,68.95,False
+mamão,,False,MAMAO FORMOSA kg,kg,1.0,2026-10-15,17,5.49,5.49,False
+manga,,True,MANGA TOMMY ATKING cx 20 kg,cx 20 kg,20.0,2026-10-15,22,3.43,68.64,False
+manga,,False,MANGA PALMER cx 20 kg,cx 20 kg,20.0,2026-10-15,20,3.7,74.0,False
+manga,,False,MANGA ESPADA COMUM cx 10 kg,cx 10 kg,10.0,2026-10-13,11,10.0,100.0,False
+manga,,False,MANGA ROSA cx 20 kg,cx 20 kg,20.0,2026-10-15,5,7.0,140.0,False
+manga,,False,MANGA ESPADA ROSA cx 6 kg,cx 6 kg,6.0,2026-10-09,4,10.0,60.0,False
+manga,,False,MANGA HADEN cx 6 kg,cx 6 kg,6.0,2026-09-26,3,9.17,55.0,False
+manga,,False,MANGA ROSA cx 10 kg,cx 10 kg,10.0,2026-10-01,3,7.17,71.67,False
+manga,,False,MANGA TOMMY ATKING cx 10 kg,cx 10 kg,10.0,2026-09-21,1,4.5,45.0,False
+manga,,False,MANGA KEITT cx 20 kg,cx 20 kg,20.0,2026-09-30,1,3.75,75.0,False
+maracujá,,True,MARACUJA AZEDO cx 12 kg,cx 12 kg,12.0,2026-10-15,22,9.51,114.09,False
+maracujá,,False,MARACUJA DOCE cx 2 kg,cx 2 kg,2.0,2026-10-15,15,27.0,54.0,False
+maracujá,,False,MARACUJA AZEDO cx 11 kg,cx 11 kg,11.0,2026-09-28,1,8.36,92.0,False
+maçã,,True,MAÇA FUJI CAT 1 TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-15,22,6.67,120.0,False
+maçã,,False,MAÇA RED DELICIOUS TP 80 A 100 cx 19 kg,cx 19 kg,19.0,2026-10-15,22,10.53,200.0,False
+maçã,,False,MAÇA GRAND SMITH TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-15,18,12.22,220.0,False
+maçã,,False,MAÇA GALA CAT 2 TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-15,16,5.56,100.0,False
+maçã,,False,MAÇA GALA CAT 1 TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-10,16,6.67,120.0,False
+maçã,,False,MAÇA FUJI CAT 3 TP 100 A 150 cx 18 kg,cx 18 kg,18.0,2026-09-28,1,3.61,65.0,False
+maçã,,False,MAÇA GRAND SMITH TP 80 A 100 IMP cx 18 kg,cx 18 kg,18.0,2026-10-03,1,12.22,220.0,False
+maçã,,False,MAÇA COMERCIAL cx 18 kg,cx 18 kg,18.0,2026-10-07,1,5.0,90.0,False
+maçã,,False,MAÇA FUJI CAT 2 TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-08,1,5.28,95.0,False
+melancia,,True,MELANCIA REDONDA kg,kg,1.0,2026-10-15,22,2.31,2.31,False
+melancia,,False,MELANCIA BABY cx 10 kg,cx 10 kg,10.0,2026-10-09,11,6.0,60.0,False
+melancia,,False,MELANCIA KODAMA cx 10 kg,cx 10 kg,10.0,2026-10-15,1,6.0,60.0,False
+melão,,True,MELAO AMARELO COMUM TP-10 cx 13 kg,cx 13 kg,13.0,2026-10-15,22,6.36,82.73,False
+melão,,False,MELAO ORANGE 5 A 6 UN cx 6 kg,cx 6 kg,6.0,2026-10-09,6,11.67,70.0,False
+melão,,False,MELAO PELE DE SAPO 5-6-8-10 UN cx 13 kg,cx 13 kg,13.0,2026-10-13,4,6.54,85.0,False
+melão,,False,MELAO CAIPIRA kg,kg,1.0,2026-10-06,2,5.0,5.0,False
+melão,,False,MELAO cx 12 kg,cx 12 kg,12.0,2026-10-03,1,7.5,90.0,False
+nectarina,,True,NECTARINA NACIONAL cx 20 kg,cx 20 kg,20.0,2026-10-13,3,6.0,120.0,False
+nectarina,,False,NECTARINA IMPORTADA cx 9 kg,cx 9 kg,9.0,2026-10-15,18,15.56,140.0,True
+pera,,True,PERA NACIONAL COMUM cx 20 kg,cx 20 kg,20.0,2026-10-14,6,3.75,75.0,False
+pera,,False,PERA NACIONAL YARI cx 20 kg,cx 20 kg,20.0,2026-09-24,1,7.0,140.0,False
+pera,,False,PERA IMPORTADA PACKHAM´S TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-15,22,8.33,150.0,True
+pera,,False,PERA IMPORTADA D´ANJOU TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-15,18,8.83,158.89,True
+pera,,False,PERA IMPORTADA WILLIAMS TP 80 A 100 cx 18 kg,cx 18 kg,18.0,2026-10-15,14,9.4,169.29,True
+pera,,False,PERA IMPORTADA PORTUGUESA cx 10 kg,cx 10 kg,10.0,2026-09-24,1,16.0,160.0,True
+pitaya,,True,PITAIA C/12UN cx 4 kg,cx 4 kg,4.0,2026-10-15,13,29.81,119.23,False
+pêssego,,True,PESSEGO cx 18 kg,cx 18 kg,18.0,2026-10-15,20,8.33,150.0,False
+pêssego,,False,PESSEGO cx 10 kg,cx 10 kg,10.0,2026-10-14,3,9.0,90.0,False
+pêssego,,False,PESSEGO cx 6 kg,cx 6 kg,6.0,2026-10-03,1,10.0,60.0,False
+pêssego,,False,PESSEGO IMPORTADO cx 9 kg,cx 9 kg,9.0,2026-10-15,19,17.08,153.68,True
+uva,,True,UVA THOMPSON NACIONAL cx 5 kg,cx 5 kg,5.0,2026-10-15,22,14.05,70.23,False
+uva,,False,UVA NIAGARA ROSADA cx 8 kg,cx 8 kg,8.0,2026-10-15,21,11.61,92.86,False
+uva,,False,UVA VITORIA NACIONAL cx 5 kg,cx 5 kg,5.0,2026-10-15,20,12.8,64.0,False
+uva,,False,UVA ITALIA NACIONAL cx 8 kg,cx 8 kg,8.0,2026-10-15,13,10.0,80.0,False
+uva,,False,UVA BENITAKE NACIONAL cx 8 kg,cx 8 kg,8.0,2026-10-14,13,10.62,85.0,False
+uva,,False,UVA PRETA NACIONAL cx 8 kg,cx 8 kg,8.0,2026-10-14,12,10.62,85.0,False
+uva,,False,UVA CRINSON NACIONAL cx 5 kg,cx 5 kg,5.0,2026-10-15,8,13.38,66.88,False
+uva,,False,UVA BRASIL/CENTENIA NACIONAL cx 8 kg,cx 8 kg,8.0,2026-10-13,7,11.25,90.0,False
+uva,,False,UVA NIAGARA BRANCA cx 8 kg,cx 8 kg,8.0,2026-10-13,3,10.83,86.67,False
+uva,,False,UVA THOMPSON NACIONAL cx 8 kg,cx 8 kg,8.0,2026-10-08,1,16.0,128.0,False
+uva,,False,UVA RUBI NACIONAL cx 8 kg,cx 8 kg,8.0,2026-10-10,1,10.0,80.0,False
+uva,,False,UVA REDGLO IMPORTADA cx 9 kg,cx 9 kg,9.0,2026-10-09,1,14.44,130.0,True
+laranja,lima,True,LARANJA LIMA GRAUDA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,4.25,85.0,False
+laranja,lima,False,LARANJA LIMA MEDIA cx 20 kg,cx 20 kg,20.0,2026-10-07,6,4.0,80.0,False
+laranja,pera,True,LARANJA PERA GRAUDA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,2.5,50.0,False
+laranja,pera,False,LARANJA PERA MEDIA cx 20 kg,cx 20 kg,20.0,2026-10-15,21,2.5,50.0,False
+limão,rosa,True,LIMAO ROSA cx 20 kg,cx 20 kg,20.0,2026-10-15,22,2.5,50.0,False
+limão,rosa,False,LIMAO ROSA cx 6 kg,cx 6 kg,6.0,2026-10-15,13,2.5,15.0,False
+limão,rosa,False,LIMAO ROSA bj 500 g,bj 500 g,0.5,2026-10-13,13,6.0,3.0,True
+limão,tahiti,True,LIMAO TAHITI GRAUDO cx 23 kg,cx 23 kg,23.0,2026-10-15,22,7.31,168.18,False
+limão,tahiti,False,LIMAO TAHITI MEDIO cx 23 kg,cx 23 kg,23.0,2026-10-13,11,6.27,144.09,False
+tangerina,mimosa,True,TANGERINA MIMOSA/MEXERICA COMUM cx 20 kg,cx 20 kg,20.0,2026-10-10,16,2.5,50.0,False
+tangerina,murcote,True,TANGERINA MURKOTE GRAUDA cx 23 kg,cx 23 kg,23.0,2026-10-14,17,4.45,102.35,False
+tangerina,murcote,False,TANGERINA MURKOTE MEDIA cx 23 kg,cx 23 kg,23.0,2026-10-06,4,3.48,80.0,False
+tangerina,ponkan,True,TANGERINA PONKAN MEDIA cx 20 kg,cx 20 kg,20.0,2026-10-13,16,3.03,60.62,False
+tangerina,ponkan,False,TANGERINA PONKAN GRAUDA cx 20 kg,cx 20 kg,20.0,2026-10-15,14,4.29,85.71,False
