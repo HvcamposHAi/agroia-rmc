@@ -34,11 +34,14 @@ create policy ceasa_pr_leitura on ceasa_pr_cotacoes for select to anon, authenti
 
 -- Resumo por variedade × embalagem × unidade: última cotação + estatísticas de 30 dias.
 -- Janela ancorada na última data da própria linha (a fonte não cota todo dia/toda variedade).
+-- "produto" entra na CTE e na junção para que o filtro do painel (produto + unidade) chegue
+-- às duas leituras e use o índice idx_ceasa_pr_prod; sem isso, com a carga retroativa
+-- (~785 mil linhas), a CTE agrupava a tabela inteira e a chave anon estourava o tempo (HTTP 500).
 create or replace view v_ceasa_pr_variedades as
 with ult as (
-    select unidade, descricao, max(data_coleta) as ultima_data
+    select unidade, produto, descricao, max(data_coleta) as ultima_data
     from ceasa_pr_cotacoes
-    group by unidade, descricao
+    group by unidade, produto, descricao
 )
 select
     c.unidade,
@@ -56,7 +59,7 @@ select
     round(avg(c.preco_kg), 2)                                  as media_kg_30d,
     count(*)                                                   as cotacoes_30d
 from ceasa_pr_cotacoes c
-join ult u on u.unidade = c.unidade and u.descricao = c.descricao
+join ult u on u.unidade = c.unidade and u.produto = c.produto and u.descricao = c.descricao
 where c.data_coleta > u.ultima_data - 30
 group by c.unidade, c.produto, c.variedade, c.embalagem, c.descricao, u.ultima_data;
 
