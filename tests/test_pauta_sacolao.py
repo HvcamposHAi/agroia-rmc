@@ -259,6 +259,21 @@ def test_tp1_cadastro_pauta_175():
         assert len(nomes) == len(set(nomes)), f"{estacao}: espécie repetida"
 
 
+def test_tp1_transcricao_fiel_ao_texto_oficial():
+    """Cada texto_original existe no Anexo I do DOM 159 (texto extraído do PDF assinado)."""
+    import re
+    from pathlib import Path
+    dados = pytest.importorskip("chat.pauta_dados", reason="E2 pendente")
+    arq = Path(__file__).resolve().parents[1] / "docs/legislacao/portaria_smsan_175_26-08-2026_DOM159.txt"
+    texto = re.sub(r"\s+", " ", arq.read_text(encoding="utf-8"))
+    anexo = texto[texto.find("ANEXO I"):]
+    oi, pv = anexo.split("B – Primavera/Verão")
+    for l in dados.PAUTA_175:
+        trecho = oi if l["estacao"] == "outono_inverno" else pv
+        assert l["texto_original"] in trecho, (l["estacao"], l["texto_original"])
+    assert dados.ATO["diario_oficial"] == 159 and dados.ATO["data"] == "2026-08-26"
+
+
 # ── T-P2 · variação mensal e anual ───────────────────────────────────────────
 
 def test_tp2_variacao_mensal_e_anual():

@@ -8,6 +8,7 @@ Implementadas (as que já têm dado em produção):
   I4  frescor de Curitiba                  bloqueante (relatório e projeção)
   I5  continuidade (lacuna > 3 meses)      bloqueante para o alerta FAO — só com --completo
   I6  valores atípicos                     aviso
+  I7  pauta no banco = chat/pauta_dados.py bloqueante (aviso enquanto a tabela não existir)
   I14 cobertura e validade do clima        bloqueante (treino)
   I17 IPCA sem meses faltantes             bloqueante (treino)
   I21 status × tabela                      bloqueante
@@ -212,6 +213,27 @@ def checar_ipca(sb, desde: str = "2017-01-01") -> list[dict]:
                        "faltam": faltam or None})]
 
 
+def checar_pauta(sb) -> list[dict]:
+    """I7: pauta gravada igual à transcrição em código (86 linhas, 43 por estação, mínimos)."""
+    from chat.pauta_dados import ATO, MINIMOS, PAUTA_175
+    try:
+        banco = paginar(sb.table("pauta_referencia")
+                        .select("estacao,ordem_subgrupo,minimo,especie,variedade")
+                        .eq("ato_id", ATO["id"]).order("id"))
+    except Exception as e:
+        return [resultado("I7", "cadastro da pauta (tabela pauta_referencia)", "aviso", True,
+                          detalhe=f"tabela indisponível — aplicar sql/pauta_referencia.sql: {str(e)[:80]}")]
+    chave = lambda l: (l["estacao"], l["ordem_subgrupo"], l["minimo"], l["especie"], l["variedade"] or "")
+    codigo, gravado = {chave(l) for l in PAUTA_175}, {chave(l) for l in banco}
+    faltam, sobram = codigo - gravado, gravado - codigo
+    estrutura_ok = all(sum(MINIMOS[e].values()) == 26 and len(MINIMOS[e]) == 5 for e in MINIMOS)
+    return [resultado("I7", f"pauta {ATO['ato']}/{ATO['ano']} no banco igual ao código "
+                            "(2 estações, 5 subgrupos, mínimos somando 26)", "bloqueante",
+                      not faltam and not sobram and estrutura_ok, len(faltam) + len(sobram),
+                      {"linhas_banco": len(banco), "linhas_codigo": len(PAUTA_175),
+                       "faltam": sorted(faltam)[:10] or None, "sobram": sorted(sobram)[:10] or None})]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--completo", action="store_true", help="base inteira (inclui I5)")
@@ -224,6 +246,7 @@ def main():
     for nome, f in (("cotações", lambda: checar_cotacoes(sb, desde, hoje)),
                     ("frescor/status", lambda: checar_frescor_e_status(sb, hoje)),
                     ("continuidade", lambda: checar_continuidade(sb) if a.completo else []),
+                    ("pauta", lambda: checar_pauta(sb)),
                     ("clima", lambda: checar_clima(sb, hoje)),
                     ("ipca", lambda: checar_ipca(sb))):
         try:
