@@ -11,7 +11,7 @@ Procedimento (seção "Clima × preço" do plano):
   3. anomalias semanais de clima contra a climatologia 1991–2020 da mesma semana do ano;
   4. correlação cruzada resíduo × anomalia, defasagens 0–16 semanas:
      IC 95% por bootstrap em blocos móveis (bloco de 8 semanas);
-     valor-p por deslocamento circular do clima (preserva a autocorrelação);
+     valor-p EXATO por todos os deslocamentos circulares do clima (preserva a autocorrelação);
   5. Granger (clima → preço) com 4 e 8 defasagens, depois de ADF e KPSS;
   6. Benjamini-Hochberg sobre todos os testes (produto × variável × defasagem).
 
@@ -46,6 +46,7 @@ REGIOES = {   # mesmas coordenadas de sql/clima.sql (provisórias)
 }
 PRODUTOS = ["alface", "couve", "couve-flor", "repolho", "brocolo"]
 DEFASAGENS = range(0, 17)
+CELULAS_DISTINTAS = None
 N_BOOT = 999
 BLOCO = 8
 SEMENTE = 20261016
@@ -63,9 +64,19 @@ def clima_diario() -> pd.DataFrame:
             if not arq.exists():
                 arq.write_text(json.dumps(buscar_power(c, lat, lon, date(1991, 1, 1), date.today())))
             quadros.append(pd.DataFrame(parse_power(json.loads(arq.read_text()), rid)))
-    d = pd.concat(quadros)
+    # Pontos que caem na MESMA célula de 0,5° do POWER têm séries idênticas (achado M3):
+    # 4 dos 5 pontos são a mesma célula. Média só sobre as células distintas.
+    unicos, vistos = [], set()
+    for q in quadros:
+        assinatura = tuple(q["chuva_mm"].round(3)) + tuple(q["tmax_c"].round(3))
+        if assinatura not in vistos:
+            vistos.add(assinatura)
+            unicos.append(q)
+    global CELULAS_DISTINTAS
+    CELULAS_DISTINTAS = len(unicos)
+    d = pd.concat(unicos)
     d["data"] = pd.to_datetime(d["data"])
-    return d.groupby("data").mean(numeric_only=True)       # média simples das regiões
+    return d.groupby("data").mean(numeric_only=True)       # média simples das células distintas
 
 
 def ipca() -> pd.Series:
@@ -124,9 +135,11 @@ def semanal_preco(d: pd.DataFrame, indice: pd.Series) -> dict[str, pd.Series]:
     out = {}
     for p, g in d.groupby("produto_norm"):
         un = g["unidade"].mode().iat[0]
-        s = g[g["unidade"] == un].set_index("data")["preco_medio"]
+        s = g[g["unidade"] == un].set_index("data")["preco_medio"].sort_index()
         mes = s.index.to_period("M").to_timestamp()
-        s = s / deflator.reindex(mes).ffill().values
+        # meses ainda sem IPCA publicado usam o último índice disponível (ordem cronológica)
+        meses = pd.DatetimeIndex(sorted(set(deflator.index) | set(mes)))
+        s = s / deflator.reindex(meses).ffill().reindex(mes).values
         w = np.log(s.resample("W-MON", label="left", closed="left").median()).interpolate(limit=2)
         w = w.dropna()
         with warnings.catch_warnings():
@@ -153,9 +166,11 @@ def correlacao_defasada(y: pd.Series, x: pd.Series, lag: int, rng) -> dict:
     inicios = rng.integers(0, n - BLOCO + 1, size=(N_BOOT, nb))
     idx = (inicios[:, :, None] + np.arange(BLOCO)).reshape(N_BOOT, -1)[:, :n]
     boot = np.array([_corr(xv[i], yv[i]) for i in idx])
-    desl = rng.integers(26, n - 26, size=N_BOOT)
-    nulo = np.array([_corr(np.roll(xv, k), yv) for k in desl])
-    p = (1 + np.sum(np.abs(nulo) >= abs(r))) / (1 + N_BOOT)
+    # Nulo exato: TODOS os deslocamentos circulares de pelo menos meio ano. Sortear com
+    # reposição (versão anterior) repetia os ~176 deslocamentos distintos e criava um piso
+    # artificial de p = 0,001 (achado A1 da auditoria de 17/10/2026).
+    nulo = np.array([_corr(np.roll(xv, k), yv) for k in range(26, n - 26)])
+    p = (1 + np.sum(np.abs(nulo) >= abs(r))) / (1 + len(nulo))
     return {"r": r, "ic_inf": float(np.percentile(boot, 2.5)),
             "ic_sup": float(np.percentile(boot, 97.5)), "p": float(p), "n": n}
 
@@ -200,9 +215,11 @@ ROTULO = {"chuva_mm": "chuva da semana (mm)", "dias_chuva": "dias com chuva ≥ 
 def relatorio(cc: pd.DataFrame, gr: pd.DataFrame, est: dict, periodo: tuple) -> str:
     l = ["# Clima × preço — análise preliminar (PROHORT Curitiba)", "",
          f"Gerado em {date.today().isoformat()}. Preços de {periodo[0]} a {periodo[1]}, "
-         "deflacionados pelo IPCA, em log, sem tendência e sazonalidade (STL). Clima: média "
-         "simples de 5 pontos do cinturão verde da RMC (NASA POWER), em anomalia contra "
-         "1991–2020. **Escopo provisório:** sem ponderação por procedência (P8/P9).", "",
+         "deflacionados pelo IPCA, em log, sem tendência e sazonalidade (STL). Clima: 5 pontos do "
+         f"cinturão verde da RMC que caem em {CELULAS_DISTINTAS} células distintas do NASA POWER "
+         "(média das células), em anomalia contra 1991–2020. **Escopo provisório:** sem "
+         "ponderação por procedência (P8/P9). Valor-p exato por todos os deslocamentos "
+         "circulares (substitui a versão de 16/10, que tinha piso artificial — auditoria, A1).", "",
          f"Testes: {len(cc)} correlações (produto × variável × defasagem 0–16 semanas) e "
          f"{len(gr)} testes de Granger, todos corrigidos juntos por Benjamini-Hochberg. "
          "Correlação é associação, não causa.", ""]

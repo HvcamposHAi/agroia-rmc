@@ -42,15 +42,20 @@ def cobertura_intervalo(y, lo, hi) -> float:
 
 
 ALFA_PUBLICACAO = 0.05
+GANHO_MINIMO = 0.02   # o modelo precisa reduzir o MAE da referência em pelo menos 2%
 
 
 def decidir_publicacao(real, previsto, ingenuo, ingenuo_sazonal, y_hist, h: int = 1,
-                       m: int = 52, alfa: float = ALFA_PUBLICACAO) -> dict:
+                       m: int = 52, alfa: float = ALFA_PUBLICACAO,
+                       ganho_minimo: float = GANHO_MINIMO) -> dict:
     """Regra de publicação de uma série (decidida em 16/10/2026).
 
     Publica só se MASE < 1 E o modelo vencer, com p < alfa no Diebold-Mariano, os DOIS
     ingênuos: o sazonal (mesma semana do ano anterior) e o simples (último preço). O
     simples entra porque, no PROHORT semanal, ele já erra muito menos que o sazonal.
+    Além da significância, exige ganho mínimo de MAE (GANHO_MINIMO) sobre cada referência:
+    sem isso, um modelo que reproduz o ingênuo com ruído de ponto flutuante (diferenças de
+    1e-9) passava no teste por ter sinal constante (achado A2 da auditoria de 17/10/2026).
     """
     real, previsto = _arr(real), _arr(previsto)
     erro = real - previsto
@@ -60,12 +65,21 @@ def decidir_publicacao(real, previsto, ingenuo, ingenuo_sazonal, y_hist, h: int 
     motivos = []
     if valor_mase >= 1:
         motivos.append(f"MASE {valor_mase:.2f} ≥ 1")
-    for nome, dm in (("ingênuo sazonal", dm_sazonal), ("ingênuo simples", dm_simples)):
-        if dm["p_valor"] is None or dm["p_valor"] >= alfa:
+    mae = float(np.mean(np.abs(erro)))
+    ganhos = {}
+    for nome, ref, dm in (("ingênuo sazonal", ingenuo_sazonal, dm_sazonal),
+                          ("ingênuo simples", ingenuo, dm_simples)):
+        mae_ref = float(np.mean(np.abs(real - _arr(ref))))
+        ganho = 1 - mae / mae_ref if mae_ref > 0 else 0.0
+        ganhos[nome] = ganho
+        if ganho < ganho_minimo:
+            motivos.append(f"ganho sobre o {nome} de {ganho:.1%} (mínimo {ganho_minimo:.0%})")
+        elif dm["p_valor"] is None or dm["p_valor"] >= alfa:
             p = "indefinido" if dm["p_valor"] is None else f"{dm['p_valor']:.3f}"
             motivos.append(f"não supera o {nome} (p = {p})")
     return {"publicar": not motivos, "mase": valor_mase,
             "p_vs_sazonal": dm_sazonal["p_valor"], "p_vs_ingenuo": dm_simples["p_valor"],
+            "ganho_vs_sazonal": ganhos["ingênuo sazonal"], "ganho_vs_ingenuo": ganhos["ingênuo simples"],
             "motivo": "; ".join(motivos) or None}
 
 
@@ -81,7 +95,7 @@ def diebold_mariano(erros_modelo, erros_referencia, h: int = 1) -> dict:
     if n < 3:
         return {"estatistica": None, "p_valor": None, "n": n}
     media = d.mean()
-    gamma = [np.mean((d[k:] - media) * (d[:n - k] - media)) for k in range(h)]
+    gamma = [np.sum((d[k:] - media) * (d[:n - k] - media)) / n for k in range(h)]
     variancia = (gamma[0] + 2 * sum(gamma[1:])) / n
     if variancia <= 0:
         return {"estatistica": None, "p_valor": None, "n": n}

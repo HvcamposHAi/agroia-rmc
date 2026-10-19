@@ -1,9 +1,11 @@
 """Ablação do clima na projeção (plano v3, E6, validação item 4) — prévia.
 
-Mesmo modelo de árvores global de rodar.py, com e sem atributos de clima, nas séries em
-que a análise clima × preço (analises/clima_preco) achou associação: alface, couve-flor,
-repolho e brócolis (+ couve como controle). Clima = anomalia semanal do cinturão verde da
-RMC (5 pontos, peso igual, PROVISÓRIO), só com semanas ≤ origem (sem vazamento).
+Mesmo modelo de árvores global de rodar.py, com e sem atributos de clima, nas folhosas e
+brássicas (alface, couve, couve-flor, repolho, brócolis). Escolha AGRONÔMICA: são os
+produtos que a CEASA Curitiba recebe sobretudo do cinturão verde da RMC, onde está o clima
+medido — não decorre da análise clima × preço (que, refeita com teste exato, não achou
+associação). Clima = anomalia semanal das células distintas do NASA POWER que cobrem os 5
+pontos da RMC (PROVISÓRIO), só com semanas ≤ origem (sem vazamento).
 
 Pergunta: o clima faz o modelo vencer o ingênuo simples, que a regra de publicação exige?
     python analises/projecao_viabilidade/ablacao_clima.py
@@ -20,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 AQUI = Path(__file__).resolve().parent
+HOJE = date.today().isoformat()   # uma única data por execução (achado B14)
 RAIZ = AQUI.parents[1]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "analises" / "clima_preco"))
@@ -100,7 +103,7 @@ def main():
     anom = _clima()
     datas = sorted(set().union(*(s.index for s in series.values())))
     l = ["# Ablação do clima na projeção — prévia", "",
-         f"Gerado em {date.today().isoformat()}. Origem móvel nas últimas {SEMANAS} semanas; árvores "
+         f"Gerado em {HOJE}. Origem móvel nas últimas {SEMANAS} semanas; árvores "
          "com gradiente global, com e sem clima do cinturão verde da RMC (provisório). Regra de "
          "publicação: MASE < 1 e p < 0,05 contra os dois ingênuos.", ""]
     for h in HORIZONTES:
@@ -126,7 +129,7 @@ def main():
                      f"{mase(g['com_clima'].to_numpy()):.2f} | {'sim' if d['publicar'] else 'não'} | "
                      f"{d['motivo'] or '—'} |")
         l.append("")
-    arq = AQUI / f"ablacao_clima_{date.today().isoformat()}.md"
+    arq = AQUI / f"ablacao_clima_{HOJE}.md"
     arq.write_text("\n".join(l), encoding="utf-8")
     print(arq)
 

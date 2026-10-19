@@ -418,6 +418,22 @@ def test_tp8_regra_publicacao_exige_vencer_os_dois_ingenuos():
     assert r["publicar"] is True and r["motivo"] is None
 
 
+def test_tp8_regra_publicacao_recusa_copia_do_ingenuo():
+    """Achado A2: previsão = ingênuo + ruído de ponto flutuante, com sinal constante,
+    dava p < 0,05 no Diebold-Mariano. O ganho mínimo de MAE impede a publicação."""
+    av = pytest.importorskip("ml.avaliacao", reason="E6 pendente")
+    m = 4
+    hist = [10 + 2 * (t // m) + (t % m) for t in range(5 * m)]
+    real = [20.0 + _ruido(i) * 50 for i in range(40)]
+    simples = [r + 0.3 + _ruido(i + 200) * 5 for i, r in enumerate(real)]
+    sazonal = [r + 2 + _ruido(i + 100) * 20 for i, r in enumerate(real)]
+    copia = [x - 1e-9 * (1.5 + 10 * _ruido(i + 500)) for i, x in enumerate(simples)]  # ~1e-9 do ingênuo
+    dm = av.diebold_mariano([r - c for r, c in zip(real, copia)], [r - s for r, s in zip(real, simples)])
+    assert dm["p_valor"] < 0.05                     # o teste sozinho "aprovaria"
+    r = av.decidir_publicacao(real, copia, simples, sazonal, hist, m=m)
+    assert r["publicar"] is False and "ganho sobre o ingênuo simples" in r["motivo"]
+
+
 # ── T-P9 · sem vazamento temporal ────────────────────────────────────────────
 
 def test_tp9_atributos_nao_veem_o_futuro():

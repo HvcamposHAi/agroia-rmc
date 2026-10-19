@@ -28,11 +28,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+HOJE = date.today().isoformat()   # uma única data por execução (achado B14)
 RAIZ = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ))
 
 from ml.atributos import montar_atributos  # noqa: E402
-from ml.avaliacao import diebold_mariano, escala_ingenuo_sazonal  # noqa: E402
+from ml.avaliacao import GANHO_MINIMO, diebold_mariano, escala_ingenuo_sazonal  # noqa: E402
 
 HORIZONTES = (1, 4, 8)
 MIN_SEMANAS = 104 + 8
@@ -65,7 +66,9 @@ def series_semanais(df: pd.DataFrame) -> dict[str, pd.Series]:
         un = g["unidade"].mode().iat[0]
         s = g[g["unidade"] == un].set_index("data")["preco_medio"].resample("W-MON", label="left",
                                                                             closed="left").median()
-        s = s.interpolate(limit=2).dropna()
+        # sem interpolação: preencher uma semana vazia usaria o preço da semana seguinte
+        # (vazamento temporal, achado B4 da auditoria de 17/10/2026)
+        s = s.dropna()
         if len(s) >= MIN_SEMANAS:
             out[prod] = s
     return out
@@ -147,16 +150,22 @@ def resumir(r: pd.DataFrame) -> pd.DataFrame:
             linha[f"p_{m}"] = dm["p_valor"]
             dm = diebold_mariano(g["real"] - g[m], g["real"] - g["ingenuo"], h=h)
             linha[f"p_{m}_ing"] = dm["p_valor"]
+            mae = np.mean(np.abs(g["real"] - g[m]))
+            linha[f"ganho_{m}_saz"] = 1 - mae / np.mean(np.abs(g["real"] - g["ingenuo_sazonal"]))
+            linha[f"ganho_{m}_ing"] = 1 - mae / np.mean(np.abs(g["real"] - g["ingenuo"]))
         linhas.append(linha)
     return pd.DataFrame(linhas)
 
 
 def relatorio(res: pd.DataFrame, ceasa: str, semanas: int) -> str:
     l = [f"# Viabilidade da projeção — PROHORT {ceasa}", "",
-         f"Gerado em {date.today().isoformat()}. Origem móvel nas últimas {semanas} semanas; "
+         f"Gerado em {HOJE}. Origem móvel nas últimas {semanas} semanas; "
          "MASE < 1 = melhor que o ingênuo sazonal. Regra v3: MASE < 1 e p < 0,05 contra o "
-         "ingênuo sazonal. Regra nova (16/10/2026): além disso, p < 0,05 contra o ingênuo "
-         "simples (último preço). p = Diebold-Mariano unilateral.", ""]
+         "ingênuo sazonal. Regra nova (16/10/2026, com o ganho mínimo da auditoria de 17/10): além "
+         "disso, p < 0,05 contra o ingênuo simples (último preço) e redução de MAE ≥ 2% sobre os "
+         "dois ingênuos. p = Diebold-Mariano unilateral. São 47 séries × 2 modelos × "
+         f"{len(HORIZONTES)} horizontes = {47 * 2 * len(HORIZONTES)} testes sem correção para múltiplos testes: "
+         "alguns 'publicáveis' são esperados por acaso.", ""]
     for h in HORIZONTES:
         g = res[res["h"] == h]
         l += [f"## Horizonte de {h} semana(s) — {len(g)} séries", "",
@@ -168,7 +177,8 @@ def relatorio(res: pd.DataFrame, ceasa: str, semanas: int) -> str:
             if m in ("ets", "gbm_global"):
                 v3 = (g[f"mase_{m}"] < 1) & (g[f"p_{m}"] < 0.05)
                 pub = str(int(v3.sum()))
-                nova = str(int((v3 & (g[f"p_{m}_ing"] < 0.05)).sum()))
+                nova = str(int((v3 & (g[f"p_{m}_ing"] < 0.05) & (g[f"ganho_{m}_saz"] >= GANHO_MINIMO)
+                                & (g[f"ganho_{m}_ing"] >= GANHO_MINIMO)).sum()))
             l.append(f"| {m} | {col.median():.2f} | {int((col < 1).sum())} | {pub} | {nova} |")
         l.append("")
     fmt = lambda v: "—" if v is None or pd.isna(v) else f"{v:.3f}"
@@ -191,7 +201,7 @@ def main():
     print(f"{len(series)} séries com >= {MIN_SEMANAS} semanas")
     r = avaliar(series, a.semanas)
     res = resumir(r)
-    stem = f"resultado_{a.ceasa.lower()}_{date.today().isoformat()}"
+    stem = f"resultado_{a.ceasa.lower()}_{HOJE}"
     res.to_csv(SAIDA / f"{stem}.csv", index=False)
     (SAIDA / f"{stem}.md").write_text(relatorio(res, a.ceasa, a.semanas), encoding="utf-8")
     print(SAIDA / f"{stem}.md")
