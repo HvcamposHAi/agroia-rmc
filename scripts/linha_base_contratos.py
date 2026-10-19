@@ -104,6 +104,10 @@ def comparar(base: dict, atual: dict) -> list[str]:
     for chave in ("tools_schema", "produtor_tools_schema", "prompts", "arquivos"):
         if bc.get(chave) != ac.get(chave):
             erros.append(f"{chave} mudou")
+    # rotas que não puderam ser medidas contam como violação, não como "sem diferença" (B9)
+    for lado, rotas in (("base", bc.get("rotas")), ("atual", ac.get("rotas"))):
+        if not isinstance(rotas, list):
+            erros.append(f"rotas da {lado} não medidas: {rotas}")
     if isinstance(bc.get("rotas"), list) and isinstance(ac.get("rotas"), list):
         sumiram = set(bc["rotas"]) - set(ac["rotas"])
         fora = [r for r in set(ac["rotas"]) - set(bc["rotas"]) if not r.split(" ", 1)[1].startswith("/pauta")]
@@ -113,7 +117,13 @@ def comparar(base: dict, atual: dict) -> list[str]:
             erros.append(f"rotas novas fora de /pauta: {sorted(fora)}")
     if "banco" in base and "banco" in atual:
         bv, av = base["banco"]["views"], atual["banco"]["views"]
-        if bv["modo"] == av["modo"] and bv["def"] != av["def"]:
+        if bv["modo"] != av["modo"]:
+            # base por colunas e atual por pg_get_viewdef (ou o contrário): compara só os nomes
+            if set(bv["def"]) != set(av["def"]):
+                erros.append("conjunto de views mudou")
+            print("AVISO: views medidas de formas diferentes na base e agora; "
+                  "refaça a linha de base com a mesma forma para comparar as definições.")
+        elif bv["def"] != av["def"]:
             erros.append("definição/colunas de views mudaram")
         ba, aa = base["banco"]["assinatura"], atual["banco"]["assinatura"]
         for t, v in ba.items():

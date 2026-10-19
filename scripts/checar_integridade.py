@@ -201,9 +201,15 @@ def checar_ipca(sb, desde: str = "2017-01-01") -> list[dict]:
     meses = [r["mes"][:7] for r in paginar(sb.table("ipca_mensal").select("mes").gte("mes", desde).order("mes"))]
     idx = sorted({int(m[:4]) * 12 + int(m[5:7]) - 1 for m in meses})
     faltam = [f"{k // 12:04d}-{k % 12 + 1:02d}" for a, b in zip(idx, idx[1:]) for k in range(a + 1, b)]
-    return [resultado("I17", f"IPCA sem meses faltantes desde {desde[:7]}", "bloqueante",
-                      bool(idx) and not faltam, len(faltam),
-                      {"ultimo": meses[-1] if meses else None, "faltam": faltam or None})]
+    # o IBGE divulga o IPCA de um mês por volta do dia 10 do mês seguinte: mais de 2 meses
+    # sem novo índice = série parada (achado B10)
+    hoje = date.today()
+    atraso = (hoje.year * 12 + hoje.month - 1) - idx[-1] if idx else None
+    parado = atraso is None or atraso > 2
+    return [resultado("I17", f"IPCA sem meses faltantes desde {desde[:7]} e com até 2 meses de atraso",
+                      "bloqueante", bool(idx) and not faltam and not parado, len(faltam),
+                      {"ultimo": meses[-1] if meses else None, "atraso_meses": atraso,
+                       "faltam": faltam or None})]
 
 
 def main():
@@ -230,7 +236,9 @@ def main():
     rel = {"executado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "escopo": "completo" if a.completo else f"cotações dos últimos {a.dias} dias",
            "aprovado": not bloqueadas, "checagens": checagens}
-    destino = RAIZ / "validacao" / "relatorios" / f"integridade_{hoje.isoformat()}.json"
+    # um arquivo por escopo: a checagem de 30 dias não sobrescreve a completa do dia (B10)
+    sufixo = "completo" if a.completo else f"{a.dias}d"
+    destino = RAIZ / "validacao" / "relatorios" / f"integridade_{hoje.isoformat()}_{sufixo}.json"
     destino.write_text(json.dumps(rel, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     for c in checagens:
         marca = "OK " if c["aprovada"] else "REPROVADA"

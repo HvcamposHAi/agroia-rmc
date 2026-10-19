@@ -28,8 +28,9 @@ router = APIRouter(prefix="/pauta", tags=["pauta"])
 
 FONTE_PROHORT = "PROHORT/CONAB"
 CACHE_SEG = 3600
+CACHE_MAX = 300          # teto de entradas: o processo da API tem 512 MB (achado M2)
 PAGINA = 1000
-_cache: dict[tuple, tuple[float, object]] = {}
+_cache: dict[tuple, tuple[float, object, str]] = {}   # chave → (instante, valor, consultado_em)
 
 
 def _sb():
@@ -37,14 +38,21 @@ def _sb():
     return get_supabase_client()
 
 
-def _em_cache(chave: tuple, gerar):
+def _em_cache(chave: tuple, gerar) -> tuple[object, str]:
+    """Devolve (valor, consultado_em). consultado_em = hora em que o dado foi lido do banco,
+    não a do pedido (achado B12). Entradas vencidas saem a cada gravação e o total é
+    limitado a CACHE_MAX, descartando as mais antigas (achado M2)."""
     agora = time.monotonic()
     hit = _cache.get(chave)
     if hit and agora - hit[0] < CACHE_SEG:
-        return hit[1]
+        return hit[1], hit[2]
     valor = gerar()
-    _cache[chave] = (agora, valor)
-    return valor
+    for k in [k for k, v in _cache.items() if agora - v[0] >= CACHE_SEG]:
+        del _cache[k]
+    while len(_cache) >= CACHE_MAX:
+        del _cache[min(_cache, key=lambda k: _cache[k][0])]
+    _cache[chave] = (agora, valor, _agora())
+    return valor, _cache[chave][2]
 
 
 def _agora() -> str:
@@ -54,14 +62,15 @@ def _agora() -> str:
 def _catalogo() -> dict:
     """Produtos e CEASAs válidos (lista fechada) e a última cotação de cada par."""
     def gerar():
-        linhas = _sb().table("v_prohort_baseline_24m") \
-            .select("produto_norm,ceasa,ultima_cotacao").limit(PAGINA).execute().data or []
+        linhas = _paginar(_sb().table("v_prohort_baseline_24m")
+                          .select("produto_norm,ceasa,ultima_cotacao")
+                          .order("produto_norm").order("ceasa"))       # achado B7
         return {
             "produtos": sorted({l["produto_norm"] for l in linhas}),
             "ceasas": sorted({l["ceasa"] for l in linhas}),
             "ultima": {(l["produto_norm"], l["ceasa"]): l["ultima_cotacao"] for l in linhas},
         }
-    return _em_cache(("catalogo",), gerar)
+    return _em_cache(("catalogo",), gerar)[0]
 
 
 def _validar(produto: str, ceasa: str | None = None) -> tuple[str, str | None]:
@@ -69,8 +78,8 @@ def _validar(produto: str, ceasa: str | None = None) -> tuple[str, str | None]:
     p = produto.strip().lower()
     if p not in cat["produtos"]:
         raise HTTPException(422, f"produto desconhecido: use um de {', '.join(cat['produtos'])}")
-    c = ceasa.strip().upper() if ceasa else None
-    if c is not None and c not in cat["ceasas"]:
+    c = ceasa.strip().upper() if ceasa is not None else None
+    if c is not None and c not in cat["ceasas"]:      # inclui ceasa="" (achado B1)
         raise HTTPException(422, f"CEASA desconhecida: use uma de {', '.join(cat['ceasas'])}")
     return p, c
 
@@ -101,7 +110,7 @@ def safra_sazonal(produto: str = Query(..., max_length=40),
     def gerar():
         linhas = _paginar(_sb().table("prohort_precos")
                           .select("data_coleta,unidade,preco_medio")
-                          .eq("produto_norm", p).eq("ceasa", c).order("data_coleta"))
+                          .eq("produto_norm", p).eq("ceasa", c).order("data_coleta").order("id"))
         linhas = [l for l in linhas if l["preco_medio"] is not None and l["preco_medio"] > 0]
         if not linhas:
             return None
@@ -120,10 +129,10 @@ def safra_sazonal(produto: str = Query(..., max_length=40),
             "observacao": f"Meses com menos de {pauta.MIN_ANOS_CONFIAVEL} anos de dados são pouco confiáveis.",
         }
 
-    corpo = _em_cache(("sazonal", p, c), gerar)
+    corpo, consultado_em = _em_cache(("sazonal", p, c), gerar)
     if corpo is None:
         raise HTTPException(404, f"sem cotações de {p} em {c}")
-    return {**corpo, "consultado_em": _agora()}
+    return {**corpo, "consultado_em": consultado_em}
 
 
 @router.get("/safra/comparar")
@@ -137,11 +146,11 @@ def safra_comparar(produto: str = Query(..., max_length=40),
         desde = (hoje - timedelta(days=pauta.JANELA_COMPARACAO_DIAS - 1)).isoformat()
         linhas = _paginar(_sb().table("prohort_precos")
                           .select("ceasa,unidade,data_coleta,preco_medio")
-                          .eq("produto_norm", p).gte("data_coleta", desde))
+                          .eq("produto_norm", p).gte("data_coleta", desde).order("id"))
         return [{"ceasa": l["ceasa"], "unidade": l["unidade"], "data": l["data_coleta"],
                  "preco": l["preco_medio"]} for l in linhas]
 
-    cotacoes = _em_cache(("comparar", p, hoje.isoformat()), gerar)
+    cotacoes, consultado_em = _em_cache(("comparar", p, hoje.isoformat()), gerar)
     un = (unidade or "").upper() or (
         Counter(c["unidade"] for c in cotacoes if c["ceasa"] == "CURITIBA").most_common(1) or
         Counter(c["unidade"] for c in cotacoes).most_common(1) or [("KG", 0)])[0][0]
@@ -152,4 +161,4 @@ def safra_comparar(produto: str = Query(..., max_length=40),
                if prod == p and c not in presentes and ultima
                and (hoje - date.fromisoformat(ultima[:10])).days > pauta.FRESCOR_DIAS]
     resultado = pauta.comparar_ceasas(cotacoes + paradas, hoje=hoje, unidade=un)
-    return {**resultado, "produto": p, "fonte": FONTE_PROHORT, "consultado_em": _agora()}
+    return {**resultado, "produto": p, "fonte": FONTE_PROHORT, "consultado_em": consultado_em}

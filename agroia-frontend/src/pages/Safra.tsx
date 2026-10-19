@@ -18,6 +18,7 @@ const MSG = defineMessages({
     ceasa: 'CEASA do calendário',
     carregando: 'Carregando…',
     erro: 'Não foi possível carregar os dados agora. Tente novamente em instantes.',
+    semDados: 'Não há cotações deste produto na CEASA {c} para montar o calendário. Escolha outra CEASA.',
     quandoTitulo: 'Quando a colheita vale mais',
     quandoSub: 'Preço de cada mês comparado com a média do mesmo ano, em {c}. Resumo de {n} anos ({de} a {ate}), em {u}.',
     acima: '{p}% acima da média',
@@ -51,6 +52,7 @@ const MSG = defineMessages({
     ceasa: 'CEASA for the calendar',
     carregando: 'Loading…',
     erro: "Couldn't load the data right now. Please try again in a moment.",
+    semDados: 'There are no quotes for this product at CEASA {c} to build the calendar. Choose another CEASA.',
     quandoTitulo: 'When the harvest pays more',
     quandoSub: 'Each month’s price compared with the same year’s average, at {c}. Summary of {n} years ({de} to {ate}), in {u}.',
     acima: '{p}% above average',
@@ -84,6 +86,7 @@ const MSG = defineMessages({
     ceasa: 'CEASA del calendario',
     carregando: 'Cargando…',
     erro: 'No fue posible cargar los datos ahora. Inténtelo de nuevo en unos instantes.',
+    semDados: 'No hay cotizaciones de este producto en la CEASA {c} para armar el calendario. Elija otra CEASA.',
     quandoTitulo: 'Cuándo la cosecha vale más',
     quandoSub: 'Precio de cada mes comparado con el promedio del mismo año, en {c}. Resumen de {n} años ({de} a {ate}), en {u}.',
     acima: '{p}% por encima del promedio',
@@ -111,6 +114,14 @@ const MSG = defineMessages({
   },
 })
 
+/** 404/422 = não há dado para essa combinação (não adianta tentar de novo); resto = falha. */
+type Falha = null | 'sem_dados' | 'falha'
+function classificarFalha(r: PromiseSettledResult<unknown>): Falha {
+  if (r.status === 'fulfilled') return null
+  const status = (r.reason as { response?: { status?: number } })?.response?.status
+  return status === 404 || status === 422 ? 'sem_dados' : 'falha'
+}
+
 const COR_FAIXA: Record<FaixaSazonal, { fundo: string; borda: string }> = {
   alta: { fundo: 'var(--ok-fundo)', borda: 'var(--ok-borda)' },
   baixa: { fundo: 'var(--erro-fundo)', borda: 'var(--erro-borda)' },
@@ -128,23 +139,33 @@ export default function Safra() {
   // (evita setState síncrono dentro do efeito).
   const chave = `${produto}|${ceasa}`
   const [res, setRes] = useState<{
-    chave: string; sazonal: SafraSazonal | null; comparar: SafraComparar | null; erro: boolean
+    chave: string; sazonal: SafraSazonal | null; comparar: SafraComparar | null
+    falhaSazonal: Falha; falhaComparar: Falha
   } | null>(null)
 
   useEffect(() => { getCatalogoProhort().then(setCatalogo) }, [])
 
   useEffect(() => {
     let vivo = true
-    Promise.all([getSafraSazonal(produto, ceasa), getSafraComparar(produto)])
-      .then(([s, c]) => { if (vivo) setRes({ chave, sazonal: s, comparar: c, erro: false }) })
-      .catch(() => { if (vivo) setRes({ chave, sazonal: null, comparar: null, erro: true }) })
+    // allSettled: se só o calendário falhar, a comparação continua aparecendo (achado B11)
+    Promise.allSettled([getSafraSazonal(produto, ceasa), getSafraComparar(produto)])
+      .then(([s, c]) => {
+        if (!vivo) return
+        setRes({
+          chave,
+          sazonal: s.status === 'fulfilled' ? s.value : null,
+          comparar: c.status === 'fulfilled' ? c.value : null,
+          falhaSazonal: classificarFalha(s), falhaComparar: classificarFalha(c),
+        })
+      })
     return () => { vivo = false }
   }, [chave, produto, ceasa])
 
   const carregando = res?.chave !== chave
   const sazonal = carregando ? null : res?.sazonal ?? null
   const comparar = carregando ? null : res?.comparar ?? null
-  const erro = !carregando && !!res?.erro
+  const semDados = !carregando && res?.falhaSazonal === 'sem_dados'
+  const erro = !carregando && (res?.falhaSazonal === 'falha' || res?.falhaComparar === 'falha')
 
   const nomeMes = (m: number) =>
     new Date(2026, m - 1, 1).toLocaleString(locale, { month: 'long' })
@@ -192,6 +213,12 @@ export default function Safra() {
 
       {!carregando && erro && (
         <div className="aviso-box erro"><CircleAlert size={17} aria-hidden /> <span>{t('erro')}</span></div>
+      )}
+
+      {semDados && (
+        <div className="aviso-box aviso" style={{ marginBottom: 20 }}>
+          <CircleAlert size={17} aria-hidden /> <span>{t('semDados', { c: rotuloCeasa(ceasa) })}</span>
+        </div>
       )}
 
       {!carregando && sazonal && (

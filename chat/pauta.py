@@ -113,7 +113,7 @@ def classificar_anomalia(indice: float) -> str:
         return "anormalmente_alto"
     if indice >= LIMIAR_MODERADO:
         return "moderadamente_alto"
-    if indice <= -LIMIAR_MODERADO:
+    if indice < -LIMIAR_MODERADO:          # FAO: −0,5 ≤ IPA < 0,5 é normal (achado B6)
         return "baixo"
     return "normal"
 
@@ -153,7 +153,9 @@ def indice_sazonal(serie: dict) -> dict[int, dict]:
     """{mês 1..12: {'indice', 'anos', 'confiavel'}}.
 
     Dentro de cada ano: preço do mês ÷ média do ano (remove a inflação entre anos sem
-    deflator); entre anos: mediana. Anos com menos de MIN_MESES_ANO meses ficam fora.
+    deflator); entre anos: mediana. Anos com menos de MIN_MESES_ANO meses ficam fora, e o
+    ÚLTIMO ano da série só entra se estiver completo: o ano corrente (ex.: jan–out) não tem
+    os meses que faltam e distorceria a média do ano (achado B13).
     """
     por_ano: dict[int, dict[int, float]] = {}
     for chave, preco in serie.items():
@@ -161,8 +163,9 @@ def indice_sazonal(serie: dict) -> dict[int, dict]:
             ano, mes = _mes(chave)
             por_ano.setdefault(ano, {})[mes] = preco
     razoes: dict[int, list[float]] = {m: [] for m in range(1, 13)}
-    for meses in por_ano.values():
-        if len(meses) < MIN_MESES_ANO:
+    ultimo = max(por_ano, default=None)
+    for ano, meses in por_ano.items():
+        if len(meses) < MIN_MESES_ANO or (ano == ultimo and len(meses) < 12):
             continue
         media_ano = mean(meses.values())
         for mes, preco in meses.items():

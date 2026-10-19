@@ -117,6 +117,14 @@ def _upsert(supabase, tabela: str, linhas: list[dict], chave: str, falhas: list[
     return gravadas
 
 
+def _data_max_anterior(supabase) -> str | None:
+    try:
+        linhas = supabase.table("clima_status").select("data_max").eq("id", 1).execute().data
+        return (linhas or [{}])[0].get("data_max")
+    except Exception:
+        return None
+
+
 def _registrar_status(supabase, **campos) -> None:
     try:
         supabase.table("clima_status").upsert({"id": 1, **campos}, on_conflict="id").execute()
@@ -181,6 +189,8 @@ def coletar_clima(inicio: date | None = None, fim: date | None = None, regiao: s
         status = "erro"
     else:
         status = "ok" if total else "sem_dados"
+    # carga retroativa (ex.: só 2017) não rebaixa a data mais recente já gravada (achado B3)
+    data_max = max(filter(None, [data_max, _data_max_anterior(supabase)]), default=None)
     _registrar_status(supabase, finalizado_em=datetime.now(timezone.utc).isoformat(),
                       data_max=data_max, linhas_inseridas=total, status=status,
                       erro="; ".join(falhas)[:500] or None)

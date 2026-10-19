@@ -92,8 +92,10 @@ class _Http:
 
 
 class _Banco:
-    def __init__(self, falhar_em=()):
+    def __init__(self, falhar_em=(), regioes=None, status_anterior=None):
         self.falhar_em, self.gravado, self.status = set(falhar_em), {}, []
+        self.regioes = [{"id": "pr_colombo", "lat": -25.29, "lon": -49.23}] if regioes is None else regioes
+        self.status_anterior = status_anterior
 
     def table(self, nome):
         banco = self
@@ -113,8 +115,10 @@ class _Banco:
                 if nome in banco.falhar_em:
                     raise RuntimeError(f"relation {nome} does not exist (404)")
                 if nome == "clima_regiao":
-                    return types.SimpleNamespace(data=[{"id": "pr_colombo", "lat": -25.29, "lon": -49.23}])
+                    return types.SimpleNamespace(data=banco.regioes)
                 if nome == "clima_status":
+                    if not hasattr(self, "dados"):          # leitura do status anterior
+                        return types.SimpleNamespace(data=[{"data_max": banco.status_anterior}])
                     banco.status.append(self.dados)
                 else:
                     banco.gravado.setdefault(nome, []).extend(self.dados)
@@ -150,10 +154,24 @@ def test_coleta_tabela_ausente_e_erro(coletor):
     assert any("clima_diario" in f for f in r["falhas"])
 
 
-def test_coleta_sem_regioes_cadastradas_e_erro(coletor):
+def test_coleta_leitura_de_regioes_falha_e_erro(coletor):
     banco = _Banco(falhar_em={"clima_regiao"})
     r = coletor(banco)(so_clima=True)
     assert r["status"] == "erro" and r["linhas_inseridas"] == 0
+
+
+def test_coleta_sem_regioes_cadastradas_e_erro(coletor):
+    """B8: tabela existe, mas sem nenhuma região — não pode terminar 'ok' nem 'sem_dados'."""
+    banco = _Banco(regioes=[])
+    r = coletor(banco)(so_clima=True)
+    assert r["status"] == "erro" and any("nenhuma região" in f for f in r["falhas"])
+
+
+def test_carga_retroativa_nao_rebaixa_data_max(coletor):
+    """B3: status já em 2026-10-12; carga de 2017 mantém a data mais recente."""
+    banco = _Banco(status_anterior="2099-01-01")
+    r = coletor(banco)()
+    assert r["data_max"] == "2099-01-01" and banco.status[-1]["data_max"] == "2099-01-01"
 
 
 def test_argumentos():

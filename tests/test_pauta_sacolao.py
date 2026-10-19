@@ -340,6 +340,21 @@ def test_tp6_indice_sazonal_ignora_inflacao():
     assert sem[4]["indice"] > 1 > sem[10]["indice"]   # pico em abril, vale em outubro
 
 
+def test_tp6_ano_corrente_incompleto_fica_fora():
+    pauta = pytest.importorskip("chat.pauta", reason="E5 pendente")
+    serie = _serie_mensal(anos=4)                       # 2019..2022 completos
+    for m in range(1, 11):                              # 2023: jan–out (10 meses, em curso)
+        serie[f"2023-{m:02d}"] = 999.0                  # valores absurdos: não podem entrar
+    r = pauta.indice_sazonal(serie)
+    assert r[1]["anos"] == 4 and r[11]["anos"] == 4
+
+
+def test_tp3_limite_menos_meio_e_normal():
+    pauta = pytest.importorskip("chat.pauta", reason="E5 pendente")
+    assert pauta.classificar_anomalia(-0.5) == "normal"
+    assert pauta.classificar_anomalia(-0.51) == "baixo"
+
+
 def test_tp6_mes_com_menos_de_3_anos_pouco_confiavel():
     pauta = pytest.importorskip("chat.pauta", reason="E5 pendente")
     serie = _serie_mensal(anos=4)
